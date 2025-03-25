@@ -1,0 +1,24 @@
+{
+  "templates": [
+    {
+      "id": "1",
+      "name": "Brand Video Monthly",
+      "content": "**📢 Info Penting untuk Affiliate YOUVIT! 🚀**\nHi Kakkk 👋,\n\nAda update nih buat yang masih belum kenal! Yuk, kenalan lebih dalam lagi sama Youvit! 💡✨\n\n📺 **Tonton video ini** untuk mengetahui informasi penting seputar Youvit [link video) \n\n📖 Untuk detail lebih lengkap, silakan cek **product brief** di sini:\n⭐️ Brief & Product Knowledge ⭐️ \nbit.ly/youvitaffiliateprogram\n\nJangan sampai ketinggalan! Semakin paham produk, semakin gampang promosiinnya! 💰🔥\n\nKalau ada pertanyaan, feel free untuk tanya ya! 😉",
+      "triggerType": "recurring",
+      "triggerValue": "2",
+      "lastSent": "2024-02-02",
+      "category": "marketing",
+      "targetGroup": "all-affiliates"
+    },
+    {
+      "id": "2",
+      "name": "Welcome New Affiliate",
+      "content": "✨**Welcome to Youvit Affiliate Club**✨\n\nHai Kak! 👋\n\nSelamat datang di Youvit Affiliate Club! 🥳 Seneng banget Kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀\n\nNah, biar makin siap promosikan produk Youvit, yuk request Free Sample Kakak sekarang!\n\nKlik link ini buat isi formnya:\n🎁 **Pengajuan Sample** 🎁\nbit.ly/sampleyouvitindo \n*sample akan diproses maksimal 7 hari\n\nKalau ada pertanyaan, langsung aja tanyadi grup atau hubungi Vita +62 851-7988-0454\n\nLet's go, waktunya gaspol jualan bareng Youvit! 💪💚\n\nSalam cuan,\nTim Youvit Affiliate",
+      "triggerType": "event",
+      "triggerValue": "new-affiliate",
+      "lastSent": "2024-03-10",
+      "category": "onboarding",
+      "targetGroup": "new-affiliates"
+    }
+  ]
+}

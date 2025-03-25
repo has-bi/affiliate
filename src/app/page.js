@@ -4,12 +4,14 @@ import React, { useState } from "react";
 import { Toaster } from "react-hot-toast";
 import SessionChecker from "@/components/session-checker";
 import MessageSender from "@/components/message-sender";
-import { MessageSquare, Users, CheckCircle } from "lucide-react";
+import MessageTemplateManager from "@/components/message-template-manager";
+import { MessageSquare, Users, CheckCircle, FileText } from "lucide-react";
 
 // Tab enum
 const TABS = {
   SESSIONS: "sessions",
   MESSAGES: "messages",
+  TEMPLATES: "templates",
 };
 
 export default function Home() {
@@ -63,12 +65,25 @@ export default function Home() {
             <MessageSquare className="h-5 w-5 mr-2" />
             Send Messages
           </button>
+
+          <button
+            onClick={() => setActiveTab(TABS.TEMPLATES)}
+            className={`flex items-center py-3 px-4 font-medium text-sm border-b-2 -mb-px ${
+              activeTab === TABS.TEMPLATES
+                ? "border-green-600 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <FileText className="h-5 w-5 mr-2" />
+            Message Templates
+          </button>
         </div>
 
         {/* Tab Content */}
         <div className="mt-4">
           {activeTab === TABS.SESSIONS && <SessionChecker />}
           {activeTab === TABS.MESSAGES && <MessageSender />}
+          {activeTab === TABS.TEMPLATES && <MessageTemplateManager />}
         </div>
       </div>
 
