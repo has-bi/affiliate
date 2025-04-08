@@ -1,0 +1,133 @@
+{
+  "templates": [
+    {
+      "id": "video_promo",
+      "name": "Video Promotion",
+      "description": "Template untuk promosi video Youvit",
+      "content": "📢 Info Penting untuk Affiliate YOUVIT! 🚀\nHi Kakkk 👋,\nAda update nih buat yang masih belum kenal! Yuk, kenalan lebih dalam lagi sama Youvit! 💡✨\n📺 **Tonton video ini** untuk mengetahui informasi penting seputar Youvit {video_link} 📖 Untuk detail lebih lengkap, silakan cek **product brief** di sini: ⭐️ Brief & Product Knowledge ⭐️ {brief_link}\nJangan sampai ketinggalan! Semakin paham produk, semakin gampang promosiinnya! 💰🔥\nKalau ada pertanyaan, feel free untuk tanya ya! 😉",
+      "parameters": [
+        {
+          "id": "video_link",
+          "name": "Link Video",
+          "type": "url",
+          "placeholder": "Masukkan link video",
+          "required": true
+        },
+        {
+          "id": "brief_link",
+          "name": "Link Brief",
+          "type": "url",
+          "placeholder": "Masukkan link brief produk",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "promo_discount",
+      "name": "Promo Discount",
+      "description": "Template untuk promosi diskon produk",
+      "content": "🔥 PROMO SPECIAL! 🔥\nHai {nama_affiliate}! \nKami punya kabar gembira nih! Mulai hari ini sampai {tanggal_berakhir}, ada diskon {persentase_diskon}% untuk semua produk Youvit!\n\nKode promo: {kode_promo}\nLink order: {link_order}\n\nShare ke klien kamu dan dapatkan komisi lebih banyak! 💰",
+      "parameters": [
+        {
+          "id": "nama_affiliate",
+          "name": "Nama Affiliate",
+          "type": "text",
+          "placeholder": "Masukkan nama affiliate",
+          "required": true
+        },
+        {
+          "id": "tanggal_berakhir",
+          "name": "Tanggal Berakhir",
+          "type": "date",
+          "placeholder": "DD/MM/YYYY",
+          "required": true
+        },
+        {
+          "id": "persentase_diskon",
+          "name": "Persentase Diskon",
+          "type": "number",
+          "placeholder": "Masukkan angka diskon",
+          "required": true
+        },
+        {
+          "id": "kode_promo",
+          "name": "Kode Promo",
+          "type": "text",
+          "placeholder": "Masukkan kode promo",
+          "required": true
+        },
+        {
+          "id": "link_order",
+          "name": "Link Order",
+          "type": "url",
+          "placeholder": "Masukkan link order",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "product_launch",
+      "name": "Product Launch",
+      "description": "Template untuk peluncuran produk baru",
+      "content": "🎉 PRODUK BARU YOUVIT! 🎉\nHalo {nama_affiliate}!\n\nYouVit baru saja meluncurkan produk terbaru: {nama_produk}! 🌟\n\nKeunggulan produk:\n✅ {keunggulan_1}\n✅ {keunggulan_2}\n✅ {keunggulan_3}\n\nHarga spesial peluncuran: Rp {harga_produk}\nDapatkan komisi {persentase_komisi}% untuk setiap penjualan!\n\nInfo lengkap: {link_info}\n\nJangan ketinggalan kesempatan ini! 🚀",
+      "parameters": [
+        {
+          "id": "nama_affiliate",
+          "name": "Nama Affiliate",
+          "type": "text",
+          "placeholder": "Masukkan nama affiliate",
+          "required": true
+        },
+        {
+          "id": "nama_produk",
+          "name": "Nama Produk",
+          "type": "text",
+          "placeholder": "Masukkan nama produk baru",
+          "required": true
+        },
+        {
+          "id": "keunggulan_1",
+          "name": "Keunggulan 1",
+          "type": "text",
+          "placeholder": "Masukkan keunggulan pertama",
+          "required": true
+        },
+        {
+          "id": "keunggulan_2",
+          "name": "Keunggulan 2",
+          "type": "text",
+          "placeholder": "Masukkan keunggulan kedua",
+          "required": true
+        },
+        {
+          "id": "keunggulan_3",
+          "name": "Keunggulan 3",
+          "type": "text",
+          "placeholder": "Masukkan keunggulan ketiga",
+          "required": true
+        },
+        {
+          "id": "harga_produk",
+          "name": "Harga Produk",
+          "type": "number",
+          "placeholder": "Masukkan harga produk",
+          "required": true
+        },
+        {
+          "id": "persentase_komisi",
+          "name": "Persentase Komisi",
+          "type": "number",
+          "placeholder": "Masukkan persentase komisi",
+          "required": true
+        },
+        {
+          "id": "link_info",
+          "name": "Link Info Produk",
+          "type": "url",
+          "placeholder": "Masukkan link info lengkap",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

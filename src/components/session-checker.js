@@ -1,3 +1,4 @@
+// src/components/session-checker.js
 import React, { useState } from "react";
 import {
   AlertCircle,
@@ -8,12 +9,14 @@ import {
   SmartphoneNfc,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import createWahaClient from "@/lib/wahaClient";
 
-// Component untuk mengecek dan mengelola session WAHA
+// Initialize WAHA API client
+const wahaClient = createWahaClient();
+
 const SessionChecker = () => {
-  // WAHA API configuration
-  const WAHA_API_BASE_URL = "https://wabot.youvit.co.id/api";
-  const SESSION_NAME = "hasbi-test";
+  // Session name from config
+  const SESSION_NAME = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi-test";
 
   // State untuk menyimpan status dan loading state
   const [sessionStatus, setSessionStatus] = useState(null);
@@ -23,40 +26,19 @@ const SessionChecker = () => {
   const [showQr, setShowQr] = useState(false);
   const [debugInfo, setDebugInfo] = useState(null);
 
-  // Fungsi untuk check session status - dengan detailed debugging
+  // Fungsi untuk check session status
   const checkSession = async () => {
     setIsLoading(true);
     setError(null);
     setShowQr(false);
     setDebugInfo(null);
 
-    // URL yang kita coba akses
-    const apiUrl = `${WAHA_API_BASE_URL}/sessions/${SESSION_NAME}/status`;
-    console.log(`🔍 Checking session status at: ${apiUrl}`);
-
     try {
-      // Real API call ke WAHA endpoint
-      const response = await fetch(apiUrl);
+      // API call menggunakan WAHA client
+      const data = await wahaClient.session.getStatus(SESSION_NAME);
 
-      const debug = {
-        url: apiUrl,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries([...response.headers.entries()]),
-      };
-
-      console.log("📋 API Response Debug:", debug);
-      setDebugInfo(debug);
-
-      if (!response.ok) {
-        console.log(`⚠️ API returned error status: ${response.status}`);
-        setError(`API returned ${response.status}`);
-        toast.error(`Error: API returned ${response.status}`);
-        return; // Exit without throwing
-      }
-
-      const data = await response.json();
       console.log("✅ Session data:", data);
+      setDebugInfo({ data });
 
       setSessionStatus({
         active: data.accountStatus === "authenticated",
@@ -72,55 +54,86 @@ const SessionChecker = () => {
       }
     } catch (err) {
       console.log("❌ Session check error:", err.message);
-      setError(`Gagal ngecek session: ${err.message}`);
+      setError(`Gagal check session: ${err.message}`);
       toast.error("Failed to check session status");
+      setDebugInfo({ error: err.message });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Coba check langsung sessions info (tanpa status)
+  // Test API connection
+  const testConnection = async () => {
+    setIsLoading(true);
+    setError(null);
+    setDebugInfo(null);
+
+    try {
+      const result = await wahaClient.util.testConnection();
+      setDebugInfo(result);
+
+      if (result.success) {
+        toast.success("API connection successful!");
+      } else {
+        setError(`API connection test failed: ${result.status}`);
+        toast.error("API connection test failed");
+      }
+    } catch (err) {
+      console.log("❌ Connection test error:", err.message);
+      setError(`Connection test failed: ${err.message}`);
+      toast.error("Connection test failed");
+      setDebugInfo({ error: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cek semua sessions
   const checkAllSessions = async () => {
     setIsLoading(true);
     setError(null);
     setDebugInfo(null);
 
-    // URL yang kita coba akses
-    const apiUrl = `${WAHA_API_BASE_URL}/sessions`;
-    console.log(`🔍 Checking all sessions at: ${apiUrl}`);
-
     try {
-      const response = await fetch(apiUrl);
+      // Get all sessions, including stopped ones
+      const data = await wahaClient.session.getAll(true);
 
-      const debug = {
-        url: apiUrl,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries([...response.headers.entries()]),
-      };
-
-      console.log("📋 API Response Debug:", debug);
-      setDebugInfo(debug);
-
-      if (!response.ok) {
-        console.log(`⚠️ API returned error status: ${response.status}`);
-        setError(`API returned ${response.status}`);
-        toast.error(`Error: API returned ${response.status}`);
-        return; // Exit without throwing
-      }
-
-      const data = await response.json();
       console.log("✅ All sessions data:", data);
-      setDebugInfo({
-        ...debug,
-        data: data,
-      });
+      setDebugInfo({ allSessions: data });
 
       toast.success("Sessions info retrieved!");
     } catch (err) {
       console.log("❌ Sessions check error:", err.message);
-      setError(`Gagal ngecek sessions: ${err.message}`);
+      setError(`Gagal check sessions: ${err.message}`);
       toast.error("Failed to check sessions");
+      setDebugInfo({ error: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Start a new session or get QR code
+  const startNewSession = async () => {
+    setIsLoading(true);
+    setError(null);
+    setDebugInfo(null);
+
+    try {
+      // Try to start the session
+      await wahaClient.session.start(SESSION_NAME);
+      toast.success("Session started, fetching QR code...");
+
+      // Get QR code
+      const qrCode = await wahaClient.session.getQrCode(SESSION_NAME);
+      setQrCodeData(qrCode);
+      setShowQr(true);
+
+      toast.success("Scan QR code with your WhatsApp");
+    } catch (err) {
+      console.log("❌ Start session error:", err.message);
+      setError(`Gagal start session: ${err.message}`);
+      toast.error("Failed to start session");
+      setDebugInfo({ error: err.message });
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +148,7 @@ const SessionChecker = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-8">
           <Loader className="h-10 w-10 text-green-500 animate-spin mb-4" />
-          <p className="text-gray-600">Sedang ngecek session...</p>
+          <p className="text-gray-600">Checking session...</p>
         </div>
       ) : error ? (
         <div className="py-8 text-red-500">
@@ -161,6 +174,12 @@ const SessionChecker = () => {
               Try Again
             </button>
             <button
+              className="px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600"
+              onClick={testConnection}
+            >
+              Test API Connection
+            </button>
+            <button
               className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
               onClick={checkAllSessions}
             >
@@ -177,7 +196,7 @@ const SessionChecker = () => {
                 <div>
                   <p className="font-bold text-lg">WhatsApp Connected</p>
                   <p className="text-gray-500 text-sm">
-                    Siap untuk kirim messages!
+                    Ready to send messages!
                   </p>
                 </div>
               </div>
@@ -187,7 +206,7 @@ const SessionChecker = () => {
                 <div>
                   <p className="font-bold text-lg">Connecting...</p>
                   <p className="text-gray-500 text-sm">
-                    WhatsApp sedang mencoba connect.
+                    WhatsApp is connecting.
                   </p>
                 </div>
               </div>
@@ -197,7 +216,7 @@ const SessionChecker = () => {
                 <div>
                   <p className="font-bold text-lg">QR Code Scanned</p>
                   <p className="text-gray-500 text-sm">
-                    Tunggu proses otentikasi...
+                    Waiting for authentication...
                   </p>
                 </div>
               </div>
@@ -207,7 +226,7 @@ const SessionChecker = () => {
                 <div>
                   <p className="font-bold text-lg">WhatsApp Disconnected</p>
                   <p className="text-gray-500 text-sm">
-                    Kamu perlu login lagi ke WhatsApp.
+                    You need to log in again.
                   </p>
                 </div>
               </div>
@@ -278,10 +297,33 @@ const SessionChecker = () => {
             </div>
           )}
         </div>
+      ) : showQr && qrCodeData ? (
+        <div className="text-center py-6">
+          <h3 className="text-lg font-medium mb-4">
+            Scan this QR Code with WhatsApp
+          </h3>
+          <div className="p-4 bg-white inline-block mb-4">
+            <img
+              src={`data:image/png;base64,${qrCodeData}`}
+              alt="WhatsApp QR Code"
+              className="w-64 h-64"
+            />
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Open WhatsApp on your phone, tap Menu or Settings and select
+            WhatsApp Web
+          </p>
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            onClick={checkSession}
+          >
+            I've scanned the code
+          </button>
+        </div>
       ) : (
         <div className="text-center py-8">
           <p className="text-gray-600 mb-4">
-            Klik tombol di bawah untuk check WhatsApp connection
+            Click the button below to check WhatsApp connection
           </p>
           <div className="flex flex-col space-y-3">
             <button
@@ -293,9 +335,23 @@ const SessionChecker = () => {
 
             <button
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+              onClick={testConnection}
+            >
+              Test API Connection
+            </button>
+
+            <button
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
               onClick={checkAllSessions}
             >
               List All Sessions
+            </button>
+
+            <button
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition"
+              onClick={startNewSession}
+            >
+              Start New Session
             </button>
           </div>
         </div>

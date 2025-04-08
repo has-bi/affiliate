@@ -1,3 +1,4 @@
+// src/components/message-sender.js
 import React, { useState } from "react";
 import {
   AlertCircle,
@@ -11,12 +12,15 @@ import {
   RotateCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import createWahaClient from "@/lib/wahaClient";
+
+// Initialize WAHA API client
+const wahaClient = createWahaClient();
 
 // Component untuk kirim pesan WhatsApp
 const MessageSender = () => {
-  // WAHA API configuration
-  const WAHA_API_BASE_URL = "https://wabot.youvit.co.id/api";
-  const SESSION_NAME = "hasbi-test";
+  // Session name from config
+  const SESSION_NAME = process.env.NEXT_PUBLIC_WAHA_SESSION || "default";
 
   // Message mode
   const [bulkMode, setBulkMode] = useState(false);
@@ -36,25 +40,6 @@ const MessageSender = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [totalNumbers, setTotalNumbers] = useState(0);
   const [isCancelled, setIsCancelled] = useState(false);
-
-  // Format phone number for WAHA API
-  const formatChatId = (number) => {
-    // Remove any non-digit characters
-    let digits = number.replace(/\D/g, "");
-
-    // Remove leading '0' if present
-    if (digits.startsWith("0")) {
-      digits = digits.substring(1);
-    }
-
-    // Add country code if not present
-    if (!digits.startsWith("62")) {
-      digits = "62" + digits;
-    }
-
-    // Add @c.us suffix as required by WAHA API
-    return `${digits}@c.us`;
-  };
 
   // Parse multiple phone numbers from text area
   const parsePhoneNumbers = (input) => {
@@ -84,70 +69,6 @@ const MessageSender = () => {
     return JSON.stringify(messageIdObj);
   };
 
-  // Function to send WhatsApp message to a single recipient
-  const sendSingleMessage = async (chatId, messageText) => {
-    // API endpoint for sending message
-    const apiUrl = `${WAHA_API_BASE_URL}/sendText`;
-    console.log(`🔍 Sending message to ${chatId} via: ${apiUrl}`);
-
-    // Prepare payload according to WAHA API format
-    const payload = {
-      chatId: chatId,
-      text: messageText,
-      session: SESSION_NAME,
-    };
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      // Try to parse response body
-      let responseBody;
-      try {
-        const text = await response.text();
-        try {
-          responseBody = JSON.parse(text);
-        } catch {
-          responseBody = { raw: text };
-        }
-      } catch (parseErr) {
-        console.log("Could not parse response body:", parseErr);
-        responseBody = { error: parseErr.message };
-      }
-
-      if (!response.ok) {
-        return {
-          success: false,
-          phone: chatId,
-          error: `API returned ${response.status}`,
-          details: responseBody,
-        };
-      }
-
-      return {
-        success: true,
-        phone: chatId,
-        messageId: responseBody?.id
-          ? extractMessageId(responseBody.id)
-          : "Unknown ID",
-        timestamp: new Date().toLocaleString(),
-        details: responseBody,
-      };
-    } catch (err) {
-      return {
-        success: false,
-        phone: chatId,
-        error: err.message,
-        details: null,
-      };
-    }
-  };
-
   // Function to handle single message submission
   const handleSingleMessage = async (e) => {
     e.preventDefault();
@@ -162,31 +83,32 @@ const MessageSender = () => {
     setSendResult(null);
     setApiResponse(null);
 
-    // Format chat ID according to WAHA API requirements
-    const chatId = formatChatId(phoneNumber);
-
     try {
-      const result = await sendSingleMessage(chatId, message);
+      // Use our API client to send the message
+      const result = await wahaClient.message.sendText(
+        phoneNumber,
+        message,
+        SESSION_NAME
+      );
+
       setApiResponse({
         request: {
-          url: `${WAHA_API_BASE_URL}/sendText`,
-          payload: {
-            chatId: chatId,
-            text: message,
-            session: SESSION_NAME,
-          },
+          chatId: wahaClient.util.formatChatId(phoneNumber),
+          text: message,
+          session: SESSION_NAME,
         },
-        response: result.details,
+        response: result,
       });
 
-      if (result.success) {
-        setSendResult(result);
-        toast.success("Message sent successfully!");
-        setMessage(""); // Clear message field after successful send
-      } else {
-        setError(`Failed to send message: ${result.error}`);
-        toast.error("Failed to send message");
-      }
+      setSendResult({
+        success: true,
+        phone: wahaClient.util.formatChatId(phoneNumber),
+        messageId: extractMessageId(result.id),
+        timestamp: new Date().toLocaleString(),
+      });
+
+      toast.success("Message sent successfully!");
+      setMessage(""); // Clear message field after successful send
     } catch (err) {
       console.log("❌ Send message error:", err.message);
       setError(`Failed to send message: ${err.message}`);
@@ -214,74 +136,48 @@ const MessageSender = () => {
     setTotalNumbers(phoneNumbers.length);
     setIsCancelled(false);
 
-    const results = [];
+    try {
+      // Prepare messages array for bulk sending
+      const messages = phoneNumbers.map((phone) => ({
+        chatId: phone,
+        text: message,
+        type: "text",
+      }));
 
-    // Send messages with delay
-    for (let i = 0; i < phoneNumbers.length; i++) {
-      // Check if operation was cancelled
-      if (isCancelled) {
-        console.log("Bulk sending cancelled");
-        break;
-      }
-
-      setCurrentIndex(i);
-
-      const phone = phoneNumbers[i];
-      const chatId = formatChatId(phone);
-
-      try {
-        // Send message
-        const result = await sendSingleMessage(chatId, message);
-        results.push(result);
-        setBulkResults([...results]);
-
-        if (result.success) {
-          console.log(`✅ Message sent to ${chatId}`);
-        } else {
-          console.log(`❌ Failed to send to ${chatId}: ${result.error}`);
-        }
-      } catch (err) {
-        console.log(`❌ Error sending to ${chatId}: ${err.message}`);
-        results.push({
-          success: false,
-          phone: chatId,
-          error: err.message,
-          timestamp: new Date().toLocaleString(),
-        });
-        setBulkResults([...results]);
-      }
-
-      // Apply delay between messages (except for the last one)
-      if (i < phoneNumbers.length - 1 && !isCancelled) {
-        console.log(`⏱️ Delaying ${delay} seconds before next message`);
-        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
-      }
-    }
-
-    setIsLoading(false);
-
-    // Set final results
-    const successCount = results.filter((r) => r.success).length;
-    const failCount = results.length - successCount;
-
-    if (isCancelled) {
-      toast.warning(
-        `Sending cancelled. Sent ${successCount} messages, failed ${failCount}, remaining ${
-          phoneNumbers.length - results.length
-        }`
+      // Send bulk messages using our API client
+      const results = await wahaClient.message.sendBulk(
+        messages,
+        delay * 1000,
+        SESSION_NAME
       );
-    } else if (failCount === 0) {
-      toast.success(`All ${successCount} messages sent successfully!`);
-    } else if (successCount === 0) {
-      toast.error(`Failed to send all ${failCount} messages`);
-    } else {
-      toast.success(`Sent ${successCount} messages, failed ${failCount}`);
+
+      // Update bulk results as we receive them
+      setBulkResults(results);
+
+      // Set final success/fail message
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.length - successCount;
+
+      if (failCount === 0) {
+        toast.success(`All ${successCount} messages sent successfully!`);
+      } else if (successCount === 0) {
+        toast.error(`Failed to send all ${failCount} messages`);
+      } else {
+        toast.success(`Sent ${successCount} messages, failed ${failCount}`);
+      }
+    } catch (err) {
+      console.log("❌ Bulk send error:", err.message);
+      setError(`Failed to send bulk messages: ${err.message}`);
+      toast.error("Failed to send bulk messages");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Cancel bulk sending
   const cancelBulkSending = () => {
     setIsCancelled(true);
+    wahaClient.message.cancelBulk();
     toast.warning("Cancelling after current message completes...");
   };
 
@@ -357,7 +253,7 @@ const MessageSender = () => {
                 onChange={(e) => setBulkPhoneNumbers(e.target.value)}
                 placeholder="Enter phone numbers, one per line or comma-separated"
                 rows={5}
-                className="w-full p-2 border border-gray-300 rounded-md text-gray-800  focus:ring-green-500 focus:border-green-500"
+                className="w-full p-2 border border-gray-300 rounded-md text-gray-800 focus:ring-green-500 focus:border-green-500"
                 required
               />
               <p className="mt-1 text-xs text-gray-500">
@@ -380,7 +276,9 @@ const MessageSender = () => {
               />
               <p className="mt-1 text-xs text-gray-500">
                 Will be formatted as:{" "}
-                {phoneNumber ? formatChatId(phoneNumber) : "62xxxxx@c.us"}
+                {phoneNumber
+                  ? wahaClient.util.formatChatId(phoneNumber)
+                  : "62xxxxx@c.us"}
               </p>
             </div>
           )}
@@ -548,7 +446,7 @@ const MessageSender = () => {
                     className={result.success ? "bg-green-50" : "bg-red-50"}
                   >
                     <td className="py-2 px-3 font-mono text-xs">
-                      {result.phone}
+                      {result.chatId}
                     </td>
                     <td className="py-2 px-3">
                       {result.success ? (
