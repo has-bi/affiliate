@@ -23,16 +23,16 @@ export default function Home() {
       <Toaster position="top-right" />
 
       {/* Navbar */}
-      <nav className="bg-green-600 text-white p-4 shadow-md">
+      <nav className="bg-youvit-orange text-white p-4 shadow-md">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
             <CheckCircle className="h-6 w-6 mr-2" />
             <h1 className="text-xl font-bold">WAHA Dashboard Youvit</h1>
           </div>
 
-          <div className="text-sm text-green-100">
+          <div className="text-sm text-white/90">
             <span>WhatsApp API Status:</span>
-            <span className="ml-2 bg-green-500 py-1 px-2 rounded-full text-white font-medium">
+            <span className="ml-2 bg-youvit-green py-1 px-2 rounded-full text-white font-medium">
               Connected
             </span>
           </div>
@@ -46,7 +46,7 @@ export default function Home() {
             onClick={() => setActiveTab(TABS.SESSIONS)}
             className={`flex items-center py-3 px-4 font-medium text-sm border-b-2 -mb-px ${
               activeTab === TABS.SESSIONS
-                ? "border-green-600 text-green-600"
+                ? "border-youvit-orange text-youvit-orange"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -58,7 +58,7 @@ export default function Home() {
             onClick={() => setActiveTab(TABS.MESSAGES)}
             className={`flex items-center py-3 px-4 font-medium text-sm border-b-2 -mb-px ${
               activeTab === TABS.MESSAGES
-                ? "border-green-600 text-green-600"
+                ? "border-youvit-orange text-youvit-orange"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -70,7 +70,7 @@ export default function Home() {
             onClick={() => setActiveTab(TABS.TEMPLATES)}
             className={`flex items-center py-3 px-4 font-medium text-sm border-b-2 -mb-px ${
               activeTab === TABS.TEMPLATES
-                ? "border-green-600 text-green-600"
+                ? "border-youvit-orange text-youvit-orange"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
