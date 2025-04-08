@@ -1,10 +1,10 @@
-// components/molecules/BroadcastProgress/index.js
+// src/components/molecules/BroadcastProgress/index.js
 "use client";
 
 import React from "react";
-import Card from "../../atoms/Card";
-import Button from "../../atoms/Button";
-import Badge from "../../atoms/Badge";
+import Card from "../../../components/atoms/Card";
+import Button from "../../../components/atoms/Button";
+import Badge from "../../../components/atoms/Badge";
 
 const BroadcastProgress = ({
   isBroadcasting,

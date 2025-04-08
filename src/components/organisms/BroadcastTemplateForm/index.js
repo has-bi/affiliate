@@ -1,14 +1,14 @@
-// components/organisms/BroadcastTemplateForm/index.js
+// src/components/organisms/BroadcastTemplateForm/index.js
 "use client";
 
 import React, { useState, useCallback } from "react";
-import Card from "../../atoms/Card";
-import Button from "../../atoms/Button";
-import TemplateSelector from "../../molecules/TemplateSelector";
-import ParameterForm from "../../molecules/ParameterForm";
-import MessagePreview from "../../molecules/MessagePreview";
-import RecipientInput from "../../molecules/RecipientInput";
-import BroadcastProgress from "../../molecules/BroadcastProgress";
+import Card from "../../../components/atoms/Card";
+import Button from "../../../components/atoms/Button";
+import TemplateSelector from "../../../components/molecules/TemplateSelector";
+import ParameterForm from "../../../components/molecules/ParameterForm";
+import MessagePreview from "../../../components/molecules/MessagePreview";
+import RecipientInput from "../../../components/molecules/RecipientInput";
+import BroadcastProgress from "../../../components/molecules/BroadcastProgress";
 import { useTemplate } from "../../../hooks/useTemplate";
 import { useBroadcastDelay } from "../../../hooks/useBroadcastDelay";
 import { useSession } from "../../../hooks/useSession";
@@ -136,16 +136,16 @@ const BroadcastTemplateForm = () => {
     // Message function to be called for each recipient
     const sendMessageToRecipient = async (recipient) => {
       try {
-        // Use the API client to send the message
-        const response = await fetch("/api/waha/messages", {
+        // Use the new API endpoint to send the message
+        const response = await fetch("/api/sendText", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            chatId: recipient, // Already formatted with @c.us in parseRecipients()
+            text: message,
             session: selectedSession,
-            recipients: recipient,
-            message: message,
           }),
         });
 
@@ -187,16 +187,16 @@ const BroadcastTemplateForm = () => {
     // Message function to be called for each recipient
     const sendMessageToRecipient = async (recipient) => {
       try {
-        // Use the API client to send the message
-        const response = await fetch("/api/waha/messages", {
+        // Use the new API endpoint to send the message
+        const response = await fetch("/api/sendText", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            chatId: recipient,
+            text: message,
             session: selectedSession,
-            recipients: recipient,
-            message: message,
           }),
         });
 

@@ -1,9 +1,9 @@
-// components/molecules/RecipientInput/index.js
+// src/components/molecules/RecipientInput/index.js
 "use client";
 
 import React from "react";
-import Card from "../../atoms/Card";
-import Button from "../../atoms/Button";
+import Card from "../../../components/atoms/Card";
+import Button from "../../../components/atoms/Button";
 
 const RecipientInput = ({
   recipients,
