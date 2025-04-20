@@ -13,9 +13,12 @@
     "googleapis": "^148.0.0",
     "lucide-react": "^0.483.0",
     "next": "15.2.3",
+    "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hot-toast": "^2.5.2"
+    "react-hot-toast": "^2.5.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

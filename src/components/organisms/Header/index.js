@@ -11,7 +11,7 @@ const Header = () => {
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard" },
-    { name: "Simple Broadcasts", href: "/broadcasts" },
+    { name: "Scheduled Messages", href: "/schedules" },
     { name: "Template Broadcasts", href: "/template-broadcast" },
   ];
 

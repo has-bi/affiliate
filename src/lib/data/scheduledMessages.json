@@ -1,0 +1,64 @@
+{
+  "scheduledMessages": [
+    {
+      "id": "schedule-dcae790c-be0a-4e23-871b-4752e6a413a9",
+      "createdAt": "2025-04-20T10:01:37.000Z",
+      "updatedAt": "2025-04-20T10:04:00.186Z",
+      "status": "active",
+      "history": [
+        {
+          "success": 1,
+          "failed": 0,
+          "details": [
+            {
+              "recipient": "6282284477640@c.us",
+              "success": true,
+              "messageId": {
+                "fromMe": true,
+                "remote": "6282284477640@c.us",
+                "id": "3EB0F572F3B5C69C6D2478",
+                "_serialized": "true_6282284477640@c.us_3EB0F572F3B5C69C6D2478"
+              }
+            }
+          ],
+          "runAt": "2025-04-20T10:02:00.264Z"
+        },
+        {
+          "success": 1,
+          "failed": 0,
+          "details": [
+            {
+              "recipient": "6282284477640@c.us",
+              "success": true,
+              "messageId": {
+                "fromMe": true,
+                "remote": "6282284477640@c.us",
+                "id": "3EB0CB4D6E352CFD1FB4E6",
+                "_serialized": "true_6282284477640@c.us_3EB0CB4D6E352CFD1FB4E6"
+              }
+            }
+          ],
+          "runAt": "2025-04-20T10:04:00.185Z"
+        }
+      ],
+      "name": "Test recurring",
+      "templateId": "video_promo",
+      "paramValues": {
+        "video_link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "brief_link": "https://docs.google.com/document/d/1llfkE-QOAXYmzY1n42VFGOfX2E3tG4nCg6Neb8BsvLM/edit?tab=t.0#heading=h.dhgbxiog6dhz"
+      },
+      "recipients": [
+        "6282284477640@c.us"
+      ],
+      "scheduleType": "recurring",
+      "scheduleConfig": {
+        "cronExpression": "0,2,4,6,8,10 17 * * *",
+        "startDate": "2025-04-19T17:00:00.000Z",
+        "endDate": "2025-04-20T16:59:59.000Z"
+      },
+      "sessionName": "hasbi-test",
+      "nextRun": "2025-04-20T10:06:00.000Z",
+      "lastRun": "2025-04-20T10:04:00.185Z"
+    }
+  ]
+}
