@@ -1,18 +1,22 @@
-// components/organisms/Header/index.js
+// Update in src/components/organisms/Header/index.js
+
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut, User } from "lucide-react";
 
 const Header = () => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard" },
-    { name: "Scheduled Messages", href: "/schedules" },
     { name: "Template Broadcasts", href: "/template-broadcast" },
+    { name: "Scheduled Messages", href: "/schedules" },
   ];
 
   return (
@@ -51,6 +55,24 @@ const Header = () => {
               </div>
             </div>
           </div>
+
+          {/* User menu */}
+          {user && (
+            <div className="hidden sm:ml-6 sm:flex sm:items-center">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-700 mr-3">
+                  {user.name || user.username}
+                </span>
+                <button
+                  onClick={logout}
+                  className="p-1 rounded-full text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  title="Sign out"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Mobile menu button */}
           <div className="flex items-center sm:hidden">
@@ -124,6 +146,18 @@ const Header = () => {
               </Link>
             );
           })}
+
+          {user && (
+            <button
+              onClick={logout}
+              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
+            >
+              <div className="flex items-center">
+                <LogOut className="h-5 w-5 mr-2" />
+                Sign out
+              </div>
+            </button>
+          )}
         </div>
       </div>
     </header>
