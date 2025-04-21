@@ -14,8 +14,8 @@ export async function POST(request) {
       );
     }
 
-    // Verify credentials
-    const isValid = await verifyCredentials(username, password);
+    // Simple verification
+    const isValid = verifyCredentials(username, password);
 
     if (!isValid) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(request) {
       );
     }
 
-    // Set a simple session cookie - no token, just a flag
+    // Set a simple session cookie
     const response = NextResponse.json({ success: true });
     response.cookies.set("is_logged_in", "true", {
       httpOnly: true,
