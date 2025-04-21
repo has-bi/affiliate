@@ -11,11 +11,5 @@ export async function GET(request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Get user from token
-  const user = getUserFromToken(token);
-  if (!user) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
-
   return NextResponse.json({ user });
 }

@@ -1,6 +1,5 @@
 // scripts/hashPassword.js
-
-const bcrypt = require("bcryptjs");
+const bcryptjs = require("bcryptjs");
 
 // Get password from command line argument
 const password = process.argv[2];
@@ -11,7 +10,7 @@ if (!password) {
 }
 
 // Hash the password
-const hashedPassword = bcrypt.hashSync(password, 10);
+const hashedPassword = bcryptjs.hashSync(password, 10);
 
 console.log("Your hashed password:");
 console.log(hashedPassword);
