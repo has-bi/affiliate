@@ -23,6 +23,7 @@ const BroadcastForm = () => {
     clearResult,
   } = useBroadcast();
   const [selectedSession, setSelectedSession] = useState("");
+  const [showSpreadsheetSelector, setShowSpreadsheetSelector] = useState(false);
 
   // Set default session either from env or first available
   useEffect(() => {
@@ -41,6 +42,13 @@ const BroadcastForm = () => {
     setSelectedSession(e.target.value);
     // Clear any previous results when changing session
     clearResult();
+  };
+
+  // Add handler for spreadsheet recipients
+  const handleSpreadsheetRecipients = (selectedRecipients) => {
+    // Format and set recipients
+    setRecipients(selectedRecipients.join("\n"));
+    setShowSpreadsheetSelector(false);
   };
 
   // Send broadcast message

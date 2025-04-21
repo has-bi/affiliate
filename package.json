@@ -12,6 +12,7 @@
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
+    "google-spreadsheet": "^4.1.4",
     "googleapis": "^148.0.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.483.0",

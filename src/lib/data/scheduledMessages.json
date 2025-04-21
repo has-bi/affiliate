@@ -3,7 +3,7 @@
     {
       "id": "schedule-dcae790c-be0a-4e23-871b-4752e6a413a9",
       "createdAt": "2025-04-20T10:01:37.000Z",
-      "updatedAt": "2025-04-20T10:04:00.186Z",
+      "updatedAt": "2025-04-21T10:22:40.387Z",
       "status": "active",
       "history": [
         {
@@ -57,7 +57,7 @@
         "endDate": "2025-04-20T16:59:59.000Z"
       },
       "sessionName": "hasbi-test",
-      "nextRun": "2025-04-20T10:06:00.000Z",
+      "nextRun": "2025-04-22T10:00:00.000Z",
       "lastRun": "2025-04-20T10:04:00.185Z"
     }
   ]
