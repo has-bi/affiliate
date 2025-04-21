@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
 
     try {
+      console.log("Sending login request...");
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -45,15 +46,18 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      console.log("Login response:", data);
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        console.log("Login failed:", data.error);
+        return { success: false, error: data.error || "Login failed" };
       }
 
+      console.log("Login successful, setting user state");
       setUser(data.user);
-      router.push("/dashboard");
       return { success: true };
     } catch (error) {
+      console.error("Login error:", error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

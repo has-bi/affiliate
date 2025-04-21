@@ -1,38 +1,48 @@
 // src/app/login/page.js
-
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login, loading, user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      router.push("/dashboard");
-    }
-  }, [user, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!username || !password) {
-      setError("Please enter both username and password");
+      setError("Please enter username and password");
       return;
     }
 
-    const result = await login(username, password);
-    if (!result.success) {
-      setError(result.error);
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      // If login successful, redirect to dashboard
+      window.location.href = "/dashboard";
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An unexpected error occurred");
+      setLoading(false);
     }
   };
 
@@ -50,8 +60,7 @@ export default function LoginPage() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
+            <div className="bg-red-50 p-4 rounded-md text-red-700">
               <span>{error}</span>
             </div>
           )}

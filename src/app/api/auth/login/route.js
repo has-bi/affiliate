@@ -1,13 +1,12 @@
 // src/app/api/auth/login/route.js
-
 import { NextResponse } from "next/server";
-import { verifyCredentials, generateToken } from "@/lib/auth";
+import { verifyCredentials } from "@/lib/auth";
 
 export async function POST(request) {
   try {
     const { username, password } = await request.json();
 
-    // Validate input
+    // Basic validation
     if (!username || !password) {
       return NextResponse.json(
         { error: "Username and password are required" },
@@ -16,33 +15,21 @@ export async function POST(request) {
     }
 
     // Verify credentials
-    const user = await verifyCredentials(username, password);
-    if (!user) {
+    const isValid = await verifyCredentials(username, password);
+
+    if (!isValid) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    // Generate token
-    const token = generateToken(user);
-
-    // Create response with token
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-      },
-    });
-
-    // Set cookie
-    response.cookies.set("auth-token", token, {
+    // Set a simple session cookie - no token, just a flag
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("is_logged_in", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: "/",
     });
 

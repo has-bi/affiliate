@@ -1,8 +1,8 @@
 // src/app/api/auth/logout/route.js
-
 import { NextResponse } from "next/server";
 
 export async function POST() {
+  // Create a success response
   const response = NextResponse.json({ success: true });
 
   // Clear the auth cookie
