@@ -1,24 +1,11 @@
 // src/lib/auth.js
-import bcryptjs from "bcryptjs";
 
-// Simple credentials verification
-export async function verifyCredentials(username, password) {
-  // Get admin credentials from environment variables with fallbacks
+// Verify credentials with simple comparison
+export function verifyCredentials(username, password) {
+  // Set your credentials directly or use environment variables
   const adminUsername = process.env.ADMIN_USERNAME || "***REMOVED***";
-  const adminPasswordHash =
-    process.env.ADMIN_PASSWORD_HASH ||
-    "$2a$10$RerEOYjwPAaZsc8gu7iAU.tZBax0P0aMgm6wLJs.bCaSdY86i.4xe";
+  const adminPassword = process.env.ADMIN_PASSWORD || "your-simple-password";
 
-  // Basic username check
-  if (username !== adminUsername) {
-    return false;
-  }
-
-  // Verify password with bcryptjs
-  try {
-    return await bcryptjs.compare(password, adminPasswordHash);
-  } catch (error) {
-    console.error("Password verification error:", error);
-    return false;
-  }
+  // Direct string comparison
+  return username === adminUsername && password === adminPassword;
 }

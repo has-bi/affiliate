@@ -1,15 +1,21 @@
 // src/app/api/auth/me/route.js
-
 import { NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
 
 export async function GET(request) {
-  // Get the token from cookie
-  const token = request.cookies.get("auth-token")?.value;
+  // Check for the login cookie
+  const isLoggedIn = request.cookies.get("is_logged_in")?.value === "true";
 
-  if (!token) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!isLoggedIn) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  return NextResponse.json({ user });
+  // Return basic info - since this is a personal app, we can hardcode it
+  // or use environment variables
+  return NextResponse.json({
+    authenticated: true,
+    user: {
+      username: process.env.ADMIN_USERNAME || "admin",
+      role: "admin",
+    },
+  });
 }
