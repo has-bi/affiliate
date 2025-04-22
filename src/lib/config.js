@@ -1,4 +1,4 @@
-// lib/config.js
+// src/lib/config.js
 
 /**
  * Application configuration

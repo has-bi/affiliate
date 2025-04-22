@@ -1,12 +1,9 @@
-// app/api/waha/sessions/route.js
+// src/app/api/sessions/route.js
 import { NextResponse } from "next/server";
 
-/**
- * GET /api/waha/sessions
- * Fetch all WAHA sessions
- */
 export async function GET() {
-  const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+  const wahaApiUrl =
+    process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
 
   try {
     // Forward request to actual WAHA API

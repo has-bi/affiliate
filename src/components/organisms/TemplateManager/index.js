@@ -1,165 +1,196 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TemplateList from "@/components/molecules/TemplateList";
-import TemplateDetail from "@/components/molecules/TemplateDetail";
-import { formatMessageContent } from "@/lib/templateUtils";
-import toast from "react-hot-toast"; // Import toast if available, or remove if not
+import TemplateForm from "@/components/molecules/TemplateForm";
+import TemplatePreview from "@/components/molecules/TemplatePreview";
+import { useTemplate } from "@/hooks/useTemplate";
+import {
+  Plus,
+  MessageSquare,
+  Download,
+  Upload,
+  Search,
+  ChevronDown,
+} from "lucide-react";
 
-/**
- * TemplateManager - Main organism for managing templates, combining list and detail views
- */
-const TemplateManager = ({ initialTemplates, initialSelectedId }) => {
+const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
   const router = useRouter();
-  const [templates, setTemplates] = useState(initialTemplates || []);
-  const [selectedId, setSelectedId] = useState(initialSelectedId);
-  const [isLoading, setIsLoading] = useState(false);
+  const initializedRef = useRef(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Get the selected template
-  const selectedTemplate = templates.find((t) => t.id === selectedId);
+  const {
+    templates,
+    isLoading,
+    error,
+    selectedTemplateId,
+    selectedTemplate,
+    searchTerm,
+    filterCategory,
+    filteredTemplates,
+    categories,
+    setSearchTerm,
+    setFilterCategory,
+    selectTemplate,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    duplicateTemplate,
+    exportTemplates,
+    importTemplates,
+  } = useTemplate(initialTemplates);
 
-  // Format the content of the selected template
-  const formattedContent = selectedTemplate
-    ? formatMessageContent(selectedTemplate.content)
-    : "";
-
-  // Fetch all templates from API
-  const fetchTemplates = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/templates");
-      if (!response.ok) throw new Error("Failed to fetch templates");
-
-      const data = await response.json();
-      setTemplates(data);
-    } catch (error) {
-      console.error("Error fetching templates:", error);
-      toast?.error("Failed to load templates");
-    } finally {
-      setIsLoading(false);
+  // Set initial selected ID only once
+  useEffect(() => {
+    if (!initializedRef.current && selectedId && !selectedTemplateId) {
+      selectTemplate(selectedId);
+      initializedRef.current = true;
     }
-  };
-
-  // Handle selecting a template
-  const handleSelectTemplate = (id) => {
-    setSelectedId(id);
-    // Update URL without full page refresh
-    router.push(`/templates?id=${id}`, { scroll: false });
-  };
+  }, [selectedId, selectedTemplateId, selectTemplate]);
 
   // Handle creating a new template
-  const handleCreateTemplate = () => {
-    router.push("/templates/new");
+  const handleCreateNew = () => {
+    createTemplate();
+    setIsEditing(true);
   };
 
-  // Handle editing a template
-  const handleEditTemplate = (id) => {
-    router.push(`/templates/edit/${id}`);
+  // Handle edit template
+  const handleEditTemplate = (templateId) => {
+    selectTemplate(templateId);
+    setIsEditing(true);
   };
 
-  // Handle cloning a template
-  const handleCloneTemplate = async (id) => {
-    try {
-      // First get the template to duplicate
-      const response = await fetch(`/api/templates/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch template");
+  // Handle save template
+  const handleSaveTemplate = (formData) => {
+    const success = formData.id
+      ? updateTemplate(formData)
+      : createTemplate(formData);
 
-      const template = await response.json();
-
-      // Create a new template based on the existing one
-      const duplicateData = {
-        name: `${template.name} (Copy)`,
-        description: template.description,
-        content: template.content,
-        category: template.category,
-        parameters: template.parameters.map((p) => ({
-          id: p.id,
-          name: p.name,
-          type: p.type || "text",
-          placeholder: p.placeholder || "",
-          required: p.required,
-        })),
-      };
-
-      const createResponse = await fetch("/api/templates", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(duplicateData),
-      });
-
-      if (!createResponse.ok) throw new Error("Failed to clone template");
-
-      const newTemplate = await createResponse.json();
-
-      // Refresh templates list and select the new template
-      await fetchTemplates();
-      handleSelectTemplate(newTemplate.id);
-
-      toast?.success("Template cloned successfully");
-    } catch (error) {
-      console.error("Error cloning template:", error);
-      toast?.error("Failed to clone template");
+    if (success) {
+      setIsEditing(false);
+      toast.success(formData.id ? "Template updated" : "Template created");
     }
   };
 
-  // Handle deleting a template
-  const handleDeleteTemplate = async (id) => {
-    if (!confirm("Are you sure you want to delete this template?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/templates/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Failed to delete template");
-
-      // Refresh templates
-      await fetchTemplates();
-
-      // If the deleted template was selected, clear selection
-      if (selectedId === id) {
-        setSelectedId(null);
-        router.push("/templates", { scroll: false });
-      }
-
-      toast?.success("Template deleted successfully");
-    } catch (error) {
-      console.error("Error deleting template:", error);
-      toast?.error("Failed to delete template");
-    }
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setIsEditing(false);
   };
 
-  // Handle using a template
-  const handleUseTemplate = (id) => {
-    router.push(`/templates/use/${id}`);
+  // Handle import file selection
+  const handleImportFile = (event) => {
+    importTemplates(event.target.files[0]);
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1">
-        <TemplateList
-          templates={templates}
-          selectedId={selectedId}
-          onSelectTemplate={handleSelectTemplate}
-          onCreateTemplate={handleCreateTemplate}
-          onEditTemplate={handleEditTemplate}
-          onCloneTemplate={handleCloneTemplate}
-          onDeleteTemplate={handleDeleteTemplate}
-        />
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Header */}
+      <div className="bg-green-600 px-6 py-4 flex justify-between items-center">
+        <h2 className="text-white text-lg font-medium flex items-center">
+          <MessageSquare className="h-5 w-5 mr-2" />
+          Message Templates
+        </h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleCreateNew}
+            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New Template
+          </button>
+          <button
+            onClick={exportTemplates}
+            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </button>
+          <input
+            type="file"
+            id="import-templates"
+            className="hidden"
+            accept=".json"
+            onChange={handleImportFile}
+          />
+          <label
+            htmlFor="import-templates"
+            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50 cursor-pointer"
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            Import
+          </label>
+        </div>
       </div>
 
-      <div className="lg:col-span-2">
-        <TemplateDetail
-          template={selectedTemplate}
-          formattedContent={formattedContent}
-          onEdit={handleEditTemplate}
-          onUse={handleUseTemplate}
-        />
+      {/* Main Content */}
+      <div className="flex h-[600px]">
+        {/* Left Sidebar - Template List */}
+        <div className="w-1/3 border-r border-gray-200 flex flex-col">
+          {/* Search and Filters */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="relative mb-3">
+              <input
+                type="text"
+                placeholder="Search templates..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
+            </div>
+
+            <div className="flex">
+              <div className="relative inline-block w-full">
+                <select
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md pl-3 pr-8 py-2 text-sm"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                >
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category === "all"
+                        ? "All Categories"
+                        : category.charAt(0).toUpperCase() + category.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="h-4 w-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Template List */}
+          <div className="flex-1 overflow-y-auto">
+            <TemplateList
+              templates={filteredTemplates}
+              selectedId={selectedTemplateId}
+              onSelect={selectTemplate}
+              onEdit={handleEditTemplate}
+              onDelete={deleteTemplate}
+              onDuplicate={duplicateTemplate}
+              isLoading={isLoading}
+            />
+          </div>
+        </div>
+
+        {/* Right Content - Template Details */}
+        <div className="w-2/3 flex flex-col">
+          {isEditing ? (
+            <TemplateForm
+              template={selectedTemplate}
+              onSave={handleSaveTemplate}
+              onCancel={handleCancelEdit}
+            />
+          ) : (
+            <TemplatePreview
+              template={selectedTemplate}
+              onEdit={handleEditTemplate}
+              onDelete={deleteTemplate}
+              onDuplicate={duplicateTemplate}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

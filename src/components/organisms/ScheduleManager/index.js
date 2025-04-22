@@ -1,106 +1,35 @@
-// src/components/organisms/ScheduleManager/index.js
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Calendar,
   Clock,
-  AlertCircle,
-  CheckCircle,
-  Edit,
-  Trash,
   Play,
   Pause,
+  Edit,
+  Trash,
   Eye,
+  Plus,
+  AlertCircle,
 } from "lucide-react";
-import Card from "../../atoms/Card";
-import Button from "../../atoms/Button";
-import Badge from "../../atoms/Badge";
+import { useRouter } from "next/navigation";
+import Card from "@/components/atoms/Card";
+import Button from "@/components/atoms/Button";
+import Badge from "@/components/atoms/Badge";
+import { useSchedule } from "@/hooks/useSchedule";
 
+/**
+ * Component for managing scheduled messages
+ */
 const ScheduleManager = () => {
-  const [schedules, setSchedules] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const router = useRouter();
+  const { schedules, isLoading, error, deleteSchedule, toggleScheduleStatus } =
+    useSchedule();
 
-  useEffect(() => {
-    fetchSchedules();
-  }, []);
-
-  const fetchSchedules = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/schedules");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch schedules");
-      }
-
-      const data = await response.json();
-      setSchedules(data);
-    } catch (err) {
-      console.error("Error fetching schedules:", err);
-      setError(err.message || "Failed to load schedules");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteSchedule = async (id) => {
-    if (!confirm("Are you sure you want to delete this schedule?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/schedules/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete schedule");
-      }
-
-      // Remove from local state
-      setSchedules(schedules.filter((s) => s.id !== id));
-    } catch (err) {
-      console.error("Error deleting schedule:", err);
-      alert("Failed to delete schedule: " + err.message);
-    }
-  };
-
-  const handleToggleStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === "active" ? "paused" : "active";
-
-    try {
-      const response = await fetch(`/api/schedules/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update schedule status");
-      }
-
-      const updatedSchedule = await response.json();
-
-      // Update local state
-      setSchedules(schedules.map((s) => (s.id === id ? updatedSchedule : s)));
-    } catch (err) {
-      console.error("Error updating schedule status:", err);
-      alert("Failed to update schedule: " + err.message);
-    }
-  };
-
-  // Function to format date for display
+  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    return new Date(dateString).toLocaleString();
   };
 
   // Get status badge variant
@@ -121,6 +50,21 @@ const ScheduleManager = () => {
     }
   };
 
+  // View schedule details
+  const handleViewSchedule = (id) => {
+    router.push(`/schedules/${id}`);
+  };
+
+  // Edit a schedule
+  const handleEditSchedule = (id) => {
+    router.push(`/schedules/${id}/edit`);
+  };
+
+  // Create new schedule
+  const handleCreateSchedule = () => {
+    router.push("/schedules/new");
+  };
+
   return (
     <Card>
       <Card.Header className="flex justify-between items-center">
@@ -128,8 +72,10 @@ const ScheduleManager = () => {
         <Button
           variant="primary"
           size="sm"
-          onClick={() => (window.location.href = "/schedules/new")}
+          onClick={handleCreateSchedule}
+          className="flex items-center"
         >
+          <Plus className="h-4 w-4 mr-1" />
           Create New Schedule
         </Button>
       </Card.Header>
@@ -151,11 +97,7 @@ const ScheduleManager = () => {
           <div className="text-center py-10 bg-gray-50 rounded-md">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-2">No scheduled messages found</p>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => (window.location.href = "/schedules/new")}
-            >
+            <Button variant="primary" size="sm" onClick={handleCreateSchedule}>
               Create Your First Schedule
             </Button>
           </div>
@@ -226,9 +168,7 @@ const ScheduleManager = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() =>
-                            (window.location.href = `/schedules/${schedule.id}`)
-                          }
+                          onClick={() => handleViewSchedule(schedule.id)}
                           className="text-blue-600 hover:text-blue-900"
                           title="View Details"
                         >
@@ -236,9 +176,7 @@ const ScheduleManager = () => {
                         </button>
 
                         <button
-                          onClick={() =>
-                            (window.location.href = `/schedules/${schedule.id}/edit`)
-                          }
+                          onClick={() => handleEditSchedule(schedule.id)}
                           className="text-indigo-600 hover:text-indigo-900"
                           title="Edit Schedule"
                         >
@@ -249,9 +187,7 @@ const ScheduleManager = () => {
                           schedule.status
                         ) && (
                           <button
-                            onClick={() =>
-                              handleToggleStatus(schedule.id, schedule.status)
-                            }
+                            onClick={() => toggleScheduleStatus(schedule.id)}
                             className={
                               schedule.status === "active"
                                 ? "text-amber-600 hover:text-amber-900"
@@ -272,7 +208,7 @@ const ScheduleManager = () => {
                         )}
 
                         <button
-                          onClick={() => handleDeleteSchedule(schedule.id)}
+                          onClick={() => deleteSchedule(schedule.id)}
                           className="text-red-600 hover:text-red-900"
                           title="Delete Schedule"
                         >
