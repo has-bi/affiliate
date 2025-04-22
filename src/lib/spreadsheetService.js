@@ -73,8 +73,6 @@ export const getNewAffiliates = async () => {
       }
     }
 
-    console.log("Header values:", headerValues);
-
     // Find the indices of key columns
     const timestampIndex = headerValues.findIndex((h) => h === "Timestamp");
     const statusIndex = headerValues.findIndex((h) => h === "Status");

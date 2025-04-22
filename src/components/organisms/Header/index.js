@@ -18,6 +18,7 @@ const Header = () => {
     { name: "Template Broadcasts", href: "/template-broadcast" },
     { name: "Scheduled Messages", href: "/schedules" },
     { name: "Affiliate Onboarding", href: "/affiliate-onboarding" },
+    { name: "Templates", href: "/templates" },
   ];
 
   return (
