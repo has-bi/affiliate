@@ -1,61 +1,65 @@
-// app/templates/page.js
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import TemplatesPageTemplate from "@/components/templates/TemplatesPageTemplate";
-import prisma from "@/lib/prisma";
+"use client";
 
-// Server component to fetch templates
-async function getTemplates() {
-  try {
-    const templates = await prisma.template.findMany({
-      include: {
-        parameters: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import TemplateManager from "@/components/organisms/TemplateManager";
+import PageLayout from "@/components/templates/PageLayout";
+import { Plus } from "lucide-react";
+import Button from "@/components/atoms/Button";
 
-    return templates;
-  } catch (error) {
-    console.error("Error fetching templates:", error);
-    return [];
-  }
-}
+export default function TemplatesClientPage() {
+  const searchParams = useSearchParams();
+  const [templates, setTemplates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const hasFetchedRef = useRef(false);
 
-// Server component to validate template ID
-async function validateTemplateId(id) {
-  if (!id) return null;
+  // Get the id param once
+  const selectedId = searchParams ? parseInt(searchParams.get("id"), 10) : null;
 
-  const templateId = parseInt(id, 10);
-  if (isNaN(templateId)) return null;
+  // Fetch templates only once
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      const fetchTemplates = async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch("/api/templates");
+          if (response.ok) {
+            const data = await response.json();
+            setTemplates(data);
+          }
+        } catch (error) {
+          console.error("Error fetching templates:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
-  // Check if template exists
-  const template = await prisma.template.findUnique({
-    where: { id: templateId },
-  });
+      fetchTemplates();
+      hasFetchedRef.current = true;
+    }
+  }, []);
 
-  return template ? templateId : null;
-}
-
-export default async function TemplatesPage({ searchParams }) {
-  // Get the requested template ID from URL params
-  const requestedId = searchParams.id;
-
-  // Fetch all templates
-  const templates = await getTemplates();
-
-  // Validate the requested template ID
-  const validatedId = await validateTemplateId(requestedId);
-
-  // If an invalid ID was provided, return 404
-  if (requestedId && !validatedId) {
-    notFound();
-  }
+  // Define page actions
+  const pageActions = (
+    <Button variant="primary" href="/templates/new">
+      <Plus className="h-4 w-4 mr-1" />
+      New Template
+    </Button>
+  );
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TemplatesPageTemplate templates={templates} selectedId={validatedId} />
-    </Suspense>
+    <PageLayout
+      title="Message Templates"
+      description="Create and manage message templates for your WhatsApp campaigns"
+      actions={pageActions}
+    >
+      {isLoading ? (
+        <div className="flex justify-center items-center p-12">
+          <div className="animate-spin h-8 w-8 border-4 border-green-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+        <TemplateManager templates={templates} selectedId={selectedId} />
+      )}
+    </PageLayout>
   );
 }

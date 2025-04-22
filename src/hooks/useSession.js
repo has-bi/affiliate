@@ -1,14 +1,12 @@
-// hooks/useSession.js
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import wahaClient from "../lib/wahaClient";
 
 export function useSession() {
   const [sessions, setSessions] = useState([]);
+  const [currentSession, setCurrentSession] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentAction, setCurrentAction] = useState("");
 
   // Fetch all sessions
   const fetchSessions = useCallback(async () => {
@@ -16,7 +14,13 @@ export function useSession() {
     setError(null);
 
     try {
-      const data = await wahaClient.getAllSessions();
+      const response = await fetch("/api/sessions");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions");
+      }
+
+      const data = await response.json();
       setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching sessions:", err);
@@ -26,94 +30,125 @@ export function useSession() {
     }
   }, []);
 
-  // Get a specific session
-  const getSession = useCallback(async (sessionName) => {
-    setCurrentAction(`fetch-${sessionName}`);
+  // Fetch a specific session
+  const fetchSession = useCallback(async (sessionName) => {
+    if (!sessionName) return null;
+
+    setIsLoading(true);
     setError(null);
 
     try {
-      const session = await wahaClient.getSession(sessionName);
+      const response = await fetch(`/api/sessions/${sessionName}`);
 
-      // Update the sessions state with the new data
-      setSessions((prevSessions) => {
-        const index = prevSessions.findIndex((s) => s.name === sessionName);
-        if (index === -1) {
-          return [...prevSessions, session];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch session ${sessionName}`);
+      }
+
+      const session = await response.json();
+
+      // Update the sessions list with this session
+      setSessions((prev) => {
+        const exists = prev.some((s) => s.name === session.name);
+        if (exists) {
+          return prev.map((s) => (s.name === session.name ? session : s));
+        } else {
+          return [...prev, session];
         }
-
-        const newSessions = [...prevSessions];
-        newSessions[index] = session;
-        return newSessions;
       });
 
+      setCurrentSession(session);
       return session;
     } catch (err) {
       console.error(`Error fetching session ${sessionName}:`, err);
       setError(err.message || `Failed to fetch session ${sessionName}`);
       return null;
     } finally {
-      setCurrentAction("");
+      setIsLoading(false);
     }
   }, []);
 
   // Create a new session
-  const createSession = useCallback(async (sessionName, config = {}) => {
-    setCurrentAction(`create-${sessionName}`);
+  const createSession = useCallback(async (sessionName) => {
+    if (!sessionName) return null;
+
+    setIsLoading(true);
     setError(null);
 
     try {
-      const newSession = await wahaClient.createSession(sessionName, config);
+      const response = await fetch(`/api/sessions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: sessionName }),
+      });
 
-      // Add the new session to the list
-      setSessions((prevSessions) => [...prevSessions, newSession]);
+      if (!response.ok) {
+        throw new Error(`Failed to create session ${sessionName}`);
+      }
 
+      const newSession = await response.json();
+      setSessions((prev) => [...prev, newSession]);
+      setCurrentSession(newSession);
       return newSession;
     } catch (err) {
       console.error(`Error creating session ${sessionName}:`, err);
       setError(err.message || `Failed to create session ${sessionName}`);
       return null;
     } finally {
-      setCurrentAction("");
+      setIsLoading(false);
     }
   }, []);
 
   // Delete a session
-  const deleteSession = useCallback(async (sessionName) => {
-    setCurrentAction(`delete-${sessionName}`);
-    setError(null);
+  const deleteSession = useCallback(
+    async (sessionName) => {
+      if (!sessionName) return false;
 
-    try {
-      await wahaClient.deleteSession(sessionName);
+      setIsLoading(true);
+      setError(null);
 
-      // Remove the session from the list
-      setSessions((prevSessions) =>
-        prevSessions.filter((session) => session.name !== sessionName)
-      );
+      try {
+        const response = await fetch(`/api/sessions/${sessionName}`, {
+          method: "DELETE",
+        });
 
-      return true;
-    } catch (err) {
-      console.error(`Error deleting session ${sessionName}:`, err);
-      setError(err.message || `Failed to delete session ${sessionName}`);
-      return false;
-    } finally {
-      setCurrentAction("");
-    }
-  }, []);
+        if (!response.ok) {
+          throw new Error(`Failed to delete session ${sessionName}`);
+        }
 
-  // Initial fetch of sessions on mount
+        setSessions((prev) => prev.filter((s) => s.name !== sessionName));
+
+        if (currentSession?.name === sessionName) {
+          setCurrentSession(null);
+        }
+
+        return true;
+      } catch (err) {
+        console.error(`Error deleting session ${sessionName}:`, err);
+        setError(err.message || `Failed to delete session ${sessionName}`);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentSession]
+  );
+
+  // Initialize sessions on mount
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
   return {
     sessions,
+    currentSession,
     isLoading,
     error,
-    currentAction,
     fetchSessions,
-    getSession,
+    fetchSession,
     createSession,
     deleteSession,
-    isActionInProgress: !!currentAction,
+    setCurrentSession,
   };
 }

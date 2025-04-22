@@ -1,22 +1,36 @@
-// components/atoms/Card/index.js
+// src/components/atoms/Card/index.js
 "use client";
 
 import React from "react";
+import { shadows, borderRadius, spacing } from "@/lib/designSystem";
 
 const Card = ({
   children,
   className = "",
-  padding = "p-4",
+  variant = "default",
+  padding = true,
   border = true,
   shadow = true,
   rounded = true,
   ...props
 }) => {
+  // Variant styles
+  const variantStyles = {
+    default: "bg-white",
+    primary: "bg-primary-50 border-primary-200",
+    success: "bg-success-100 border-success-200",
+    warning: "bg-warning-100 border-warning-200",
+    danger: "bg-danger-100 border-danger-200",
+    info: "bg-info-100 border-info-200",
+  };
+
+  const variantStyle = variantStyles[variant] || variantStyles.default;
+
   return (
     <div
       className={`
-        bg-white
-        ${padding}
+        ${variantStyle}
+        ${padding ? "p-4" : ""}
         ${border ? "border border-gray-200" : ""}
         ${rounded ? "rounded-lg" : ""}
         ${shadow ? "shadow-sm" : ""}
@@ -48,6 +62,14 @@ const CardTitle = ({ children, className = "", ...props }) => {
   );
 };
 
+const CardDescription = ({ children, className = "", ...props }) => {
+  return (
+    <p className={`text-sm text-gray-500 mt-1 ${className}`} {...props}>
+      {children}
+    </p>
+  );
+};
+
 const CardContent = ({ children, className = "", ...props }) => {
   return (
     <div className={className} {...props}>
@@ -69,6 +91,7 @@ const CardFooter = ({ children, className = "", ...props }) => {
 
 Card.Header = CardHeader;
 Card.Title = CardTitle;
+Card.Description = CardDescription;
 Card.Content = CardContent;
 Card.Footer = CardFooter;
 

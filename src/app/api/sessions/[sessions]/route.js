@@ -1,13 +1,10 @@
-// app/api/waha/sessions/[session]/route.js
+// src/app/api/sessions/[session]/route.js
 import { NextResponse } from "next/server";
 
-/**
- * GET /api/waha/sessions/[session]
- * Fetch info for a specific WAHA session
- */
 export async function GET(request, { params }) {
   const { session } = params;
-  const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+  const wahaApiUrl =
+    process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
 
   try {
     // Forward request to actual WAHA API
@@ -37,13 +34,10 @@ export async function GET(request, { params }) {
   }
 }
 
-/**
- * POST /api/waha/sessions/[session]
- * Create or update a WAHA session
- */
 export async function POST(request, { params }) {
   const { session } = params;
-  const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+  const wahaApiUrl =
+    process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
 
   try {
     const body = await request.json();
@@ -77,13 +71,10 @@ export async function POST(request, { params }) {
   }
 }
 
-/**
- * DELETE /api/waha/sessions/[session]
- * Delete a WAHA session
- */
 export async function DELETE(request, { params }) {
   const { session } = params;
-  const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+  const wahaApiUrl =
+    process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
 
   try {
     // Forward request to actual WAHA API
