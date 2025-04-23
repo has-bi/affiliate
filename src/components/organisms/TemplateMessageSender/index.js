@@ -22,6 +22,7 @@ import {
   Users,
   PlusCircle,
   X,
+  Calendar,
 } from "lucide-react";
 
 /**
@@ -183,7 +184,7 @@ export default function TemplateMessageSender() {
     setPreviewMode((prev) => !prev);
   };
 
-  // Go to next step
+  // Add these functions to your component
   const handleNextStep = () => {
     if (step === 1) {
       // Validate template selection
@@ -218,10 +219,19 @@ export default function TemplateMessageSender() {
 
       setError(null);
       setStep(3);
+    } else if (step === 3) {
+      // Validate recipients
+      const recipients = getAllRecipients();
+      if (recipients.length === 0) {
+        setError("Silakan pilih minimal satu penerima pesan");
+        return;
+      }
+
+      setError(null);
+      setStep(4);
     }
   };
 
-  // Go to previous step
   const handlePrevStep = () => {
     setError(null);
     setStep((prev) => Math.max(1, prev - 1));
@@ -310,7 +320,7 @@ export default function TemplateMessageSender() {
     }
   };
 
-  // Render step 1: Select Template and Session
+  // Add these rendering functions to your component
   const renderStep1 = () => (
     <div className="space-y-4">
       {/* Session selection */}
@@ -397,7 +407,6 @@ export default function TemplateMessageSender() {
     </div>
   );
 
-  // Render step 2: Fill Parameters
   const renderStep2 = () => (
     <div className="space-y-4">
       <h3 className="text-lg font-medium text-gray-700">
@@ -579,124 +588,373 @@ atau: 08123456789, 08987654321"
         </div>
       )}
 
-      {/* Summary */}
-      <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">
-          Ringkasan Pesan
-        </h4>
-        <div className="space-y-2">
-          <div>
-            <span className="text-xs text-gray-500">Template:</span>
-            <span className="block font-medium">{selectedTemplate?.name}</span>
-          </div>
-          <div>
-            <span className="text-xs text-gray-500">Jumlah Penerima:</span>
-            <span className="block font-medium">
-              {getAllRecipients().length}
-            </span>
-          </div>
-          <div>
-            <span className="text-xs text-gray-500">Sesi WhatsApp:</span>
-            <span className="block font-medium">{sessionName}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation and send buttons */}
+      {/* Navigation buttons */}
       <div className="flex justify-between mt-6">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={handlePrevStep}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="secondary" onClick={handlePrevStep}>
           Kembali
         </Button>
         <Button
           type="button"
           variant="primary"
-          onClick={handleSend}
-          disabled={isSubmitting || getAllRecipients().length === 0}
-          isLoading={isSubmitting}
-          leftIcon={!isSubmitting && <Send className="h-4 w-4 mr-1" />}
+          onClick={handleNextStep}
+          disabled={getAllRecipients().length === 0}
         >
-          {isSubmitting ? "Mengirim..." : "Kirim Pesan"}
+          Lanjutkan
         </Button>
       </div>
     </div>
   );
 
-  return (
+  // Render step 4: Review & Send/Schedule
+  const renderStep4 = () => (
     <div className="space-y-6">
-      {/* Step indicator */}
-      <div className="mb-6">
-        <div className="flex items-center">
+      <h3 className="text-lg font-medium text-gray-700">
+        Review & Kirim Pesan
+      </h3>
+
+      {/* Preview Box */}
+      <div className="border border-gray-200 rounded-md overflow-hidden">
+        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+          <h4 className="font-medium text-gray-700">Preview Pesan</h4>
+        </div>
+        <div className="p-4">
           <div
-            className={`flex-1 relative pb-6 ${
-              step > 1 ? "text-indigo-600" : "text-gray-900"
-            }`}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  step === 1
-                    ? "bg-indigo-600 text-white"
-                    : step > 1
-                    ? "bg-indigo-100 text-indigo-600"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                1
-              </div>
-            </div>
-            <div className="border-t-2 border-gray-200 absolute top-4 left-1/2 right-0"></div>
-            <div className="text-center mt-10 text-sm font-medium">
-              Pilih Template
-            </div>
-          </div>
-          <div
-            className={`flex-1 relative pb-6 ${
-              step > 2 ? "text-indigo-600" : "text-gray-900"
-            }`}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  step === 2
-                    ? "bg-indigo-600 text-white"
-                    : step > 2
-                    ? "bg-indigo-100 text-indigo-600"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                2
-              </div>
-            </div>
-            <div className="border-t-2 border-gray-200 absolute top-4 left-0 right-1/2"></div>
-            <div className="border-t-2 border-gray-200 absolute top-4 left-1/2 right-0"></div>
-            <div className="text-center mt-10 text-sm font-medium">
-              Isi Parameter
-            </div>
-          </div>
-          <div className="flex-1 relative pb-6">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  step === 3
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                3
-              </div>
-            </div>
-            <div className="border-t-2 border-gray-200 absolute top-4 right-1/2 left-0"></div>
-            <div className="text-center mt-10 text-sm font-medium">
-              Pilih Penerima
-            </div>
-          </div>
+            className="prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: getPreviewHTML() }}
+          />
         </div>
       </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-50 p-4 rounded-md">
+          <h5 className="text-sm font-medium text-gray-700 mb-2">Template</h5>
+          <p>{selectedTemplate?.name}</p>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-md">
+          <h5 className="text-sm font-medium text-gray-700 mb-2">Session</h5>
+          <p>{sessionName}</p>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-md">
+          <h5 className="text-sm font-medium text-gray-700 mb-2">Recipients</h5>
+          <p>{getAllRecipients().length} penerima</p>
+        </div>
+      </div>
+
+      {/* Scheduling Options */}
+      <div className="mt-6">
+        <div className="flex items-center space-x-4 mb-4">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="sendOption"
+              checked={!isScheduling}
+              onChange={() => setIsScheduling(false)}
+              className="h-4 w-4 text-indigo-600"
+            />
+            <span className="ml-2">Kirim Sekarang</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="sendOption"
+              checked={isScheduling}
+              onChange={() => setIsScheduling(true)}
+              className="h-4 w-4 text-indigo-600"
+            />
+            <span className="ml-2">Jadwalkan Pengiriman</span>
+          </label>
+        </div>
+
+        {isScheduling && (
+          <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipe Jadwal
+              </label>
+              <div className="flex space-x-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="type"
+                    value="once"
+                    checked={scheduleConfig.type === "once"}
+                    onChange={handleScheduleConfigChange}
+                    className="h-4 w-4 text-indigo-600"
+                  />
+                  <span className="ml-2">Satu Kali</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="type"
+                    value="recurring"
+                    checked={scheduleConfig.type === "recurring"}
+                    onChange={handleScheduleConfigChange}
+                    className="h-4 w-4 text-indigo-600"
+                  />
+                  <span className="ml-2">Berulang</span>
+                </label>
+              </div>
+            </div>
+
+            {scheduleConfig.type === "once" ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Tanggal
+                  </label>
+                  <input
+                    type="date"
+                    id="date"
+                    name="date"
+                    value={scheduleConfig.date}
+                    onChange={handleScheduleConfigChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    min={new Date().toISOString().split("T")[0]}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="time"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Waktu
+                  </label>
+                  <input
+                    type="time"
+                    id="time"
+                    name="time"
+                    value={scheduleConfig.time}
+                    onChange={handleScheduleConfigChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="cronExpression"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Cron Expression
+                  </label>
+                  <input
+                    type="text"
+                    id="cronExpression"
+                    name="cronExpression"
+                    value={scheduleConfig.cronExpression}
+                    onChange={handleScheduleConfigChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="0 9 * * 1"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Format: menit jam hari-bulan bulan hari-minggu (0 9 * * 1 =
+                    Setiap Senin jam 9 pagi)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="startDate"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Tanggal Mulai
+                    </label>
+                    <input
+                      type="date"
+                      id="startDate"
+                      name="startDate"
+                      value={scheduleConfig.startDate}
+                      onChange={handleScheduleConfigChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      min={new Date().toISOString().split("T")[0]}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="endDate"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Tanggal Selesai (Opsional)
+                    </label>
+                    <input
+                      type="date"
+                      id="endDate"
+                      name="endDate"
+                      value={scheduleConfig.endDate}
+                      onChange={handleScheduleConfigChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      min={
+                        scheduleConfig.startDate ||
+                        new Date().toISOString().split("T")[0]
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-between mt-6">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handlePrevStep}
+            disabled={isSubmitting}
+          >
+            Kembali
+          </Button>
+
+          {isScheduling ? (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSchedule}
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              leftIcon={!isSubmitting && <Calendar className="h-4 w-4 mr-1" />}
+            >
+              {isSubmitting ? "Menjadwalkan..." : "Jadwalkan Pesan"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="success"
+              onClick={handleSend}
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              leftIcon={!isSubmitting && <Send className="h-4 w-4 mr-1" />}
+            >
+              {isSubmitting ? "Mengirim..." : "Kirim Sekarang"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Add the scheduling-related state and handlers
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState({
+    type: "once", // 'once' or 'recurring'
+    date: "",
+    time: "09:00",
+    cronExpression: "0 9 * * 1", // Default to every Monday at 9 AM
+    startDate: "",
+    endDate: "",
+  });
+
+  // Add this handler for schedule config changes
+  const handleScheduleConfigChange = (e) => {
+    const { name, value } = e.target;
+    setScheduleConfig((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Add this handler for scheduling messages
+  const handleSchedule = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    // Validate schedule config
+    if (scheduleConfig.type === "once" && !scheduleConfig.date) {
+      setError("Silakan pilih tanggal pengiriman");
+      return;
+    }
+
+    if (scheduleConfig.type === "recurring" && !scheduleConfig.cronExpression) {
+      setError("Cron expression harus diisi");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSendResult(null);
+
+    try {
+      const allRecipients = getAllRecipients();
+
+      // Prepare schedule data
+      let scheduleData = {
+        name: `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
+        templateId: selectedTemplate.id,
+        paramValues: paramValues,
+        recipients: allRecipients,
+        scheduleType: scheduleConfig.type,
+        sessionName: sessionName,
+      };
+
+      // Add schedule config based on type
+      if (scheduleConfig.type === "once") {
+        // Combine date and time
+        const dateTime = new Date(
+          `${scheduleConfig.date}T${scheduleConfig.time}:00`
+        );
+        scheduleData.scheduleConfig = { date: dateTime.toISOString() };
+      } else {
+        // Recurring schedule
+        scheduleData.scheduleConfig = {
+          cronExpression: scheduleConfig.cronExpression,
+          startDate: scheduleConfig.startDate
+            ? new Date(`${scheduleConfig.startDate}T00:00:00`).toISOString()
+            : new Date().toISOString(),
+          endDate: scheduleConfig.endDate
+            ? new Date(`${scheduleConfig.endDate}T23:59:59`).toISOString()
+            : null,
+        };
+      }
+
+      console.log(
+        "Sending schedule data:",
+        JSON.stringify(scheduleData, null, 2)
+      );
+
+      // Send to schedules API
+      const response = await fetch("/api/schedules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scheduleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to schedule message");
+      }
+
+      const result = await response.json();
+      setSendResult({
+        scheduled: true,
+        scheduleId: result.id,
+        nextRun: result.nextRun,
+      });
+    } catch (err) {
+      console.error("Error scheduling message:", err);
+      setError(err.message || "Failed to schedule message");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Update the sendResult component to handle both immediate send and scheduled messages
+  return (
+    <div className="space-y-6">
+      {/* Step indicator - Keep your existing step indicator code */}
 
       {/* Error message */}
       {error && (
@@ -706,33 +964,47 @@ atau: 08123456789, 08987654321"
         </div>
       )}
 
-      {/* Send result */}
+      {/* Send result - Update this part */}
       {sendResult && (
         <div className="bg-green-50 p-4 rounded-md text-green-700">
           <div className="flex items-center mb-3">
             <Check className="h-6 w-6 mr-2" />
-            <h3 className="text-lg font-medium">Pesan Terkirim</h3>
+            <h3 className="text-lg font-medium">
+              {sendResult.scheduled
+                ? "Pesan Berhasil Dijadwalkan"
+                : "Pesan Terkirim"}
+            </h3>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white p-3 rounded-md shadow-sm">
-              <p className="text-sm text-gray-500">Total</p>
-              <p className="text-xl font-bold">
-                {sendResult.totalSent + sendResult.totalFailed}
+
+          {sendResult.scheduled ? (
+            <div className="mb-3">
+              <p>Pesan berhasil dijadwalkan untuk dikirim pada:</p>
+              <p className="font-medium mt-1">
+                {new Date(sendResult.nextRun).toLocaleString()}
               </p>
             </div>
-            <div className="bg-white p-3 rounded-md shadow-sm">
-              <p className="text-sm text-green-500">Sukses</p>
-              <p className="text-xl font-bold text-green-600">
-                {sendResult.totalSent}
-              </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white p-3 rounded-md shadow-sm">
+                <p className="text-sm text-gray-500">Total</p>
+                <p className="text-xl font-bold">
+                  {sendResult.totalSent + sendResult.totalFailed}
+                </p>
+              </div>
+              <div className="bg-white p-3 rounded-md shadow-sm">
+                <p className="text-sm text-green-500">Sukses</p>
+                <p className="text-xl font-bold text-green-600">
+                  {sendResult.totalSent}
+                </p>
+              </div>
+              <div className="bg-white p-3 rounded-md shadow-sm">
+                <p className="text-sm text-red-500">Gagal</p>
+                <p className="text-xl font-bold text-red-600">
+                  {sendResult.totalFailed}
+                </p>
+              </div>
             </div>
-            <div className="bg-white p-3 rounded-md shadow-sm">
-              <p className="text-sm text-red-500">Gagal</p>
-              <p className="text-xl font-bold text-red-600">
-                {sendResult.totalFailed}
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Reset button */}
           <div className="mt-4 flex justify-end">
@@ -744,6 +1016,15 @@ atau: 08123456789, 08987654321"
                 setSelectedContacts([]);
                 setManualRecipients("");
                 setParamValues({});
+                setIsScheduling(false);
+                setScheduleConfig({
+                  type: "once",
+                  date: "",
+                  time: "09:00",
+                  cronExpression: "0 9 * * 1",
+                  startDate: "",
+                  endDate: "",
+                });
               }}
             >
               Kirim Pesan Baru
@@ -759,6 +1040,7 @@ atau: 08123456789, 08987654321"
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
           </Card.Content>
         </Card>
       )}

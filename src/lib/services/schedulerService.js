@@ -19,7 +19,18 @@ class SchedulerService {
   // Initialize scheduler and load all active jobs
   async init() {
     console.log("Initializing scheduler service...");
-    this.loadAllJobs();
+    console.log(
+      "Server timezone:",
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    );
+    console.log("Current server time:", new Date().toISOString());
+
+    try {
+      await this.loadAllJobs();
+      console.log("Successfully loaded all scheduled jobs");
+    } catch (error) {
+      console.error("Error initializing scheduler:", error);
+    }
   }
 
   // Load all scheduled jobs from storage
@@ -47,6 +58,9 @@ class SchedulerService {
 
     try {
       let job;
+      console.log(
+        `Creating job for schedule type: ${scheduleData.scheduleType}`
+      );
 
       if (scheduleData.scheduleType === "once") {
         // One-time schedule
@@ -64,18 +78,47 @@ class SchedulerService {
         job = schedule.scheduleJob(date, () => {
           this.executeSchedule(scheduleData.id);
         });
+
+        console.log(`One-time job scheduled for: ${date.toISOString()}`);
       } else if (scheduleData.scheduleType === "recurring") {
         // Recurring schedule with cron expression
         const { cronExpression, startDate, endDate } =
           scheduleData.scheduleConfig;
+        console.log(`Creating recurring job with cron: ${cronExpression}`);
 
+        // Create job scheduling options
         const options = {};
         if (startDate) options.start = new Date(startDate);
         if (endDate) options.end = new Date(endDate);
 
-        job = schedule.scheduleJob(cronExpression, () => {
-          this.executeSchedule(scheduleData.id);
-        });
+        // Create the recurring job with detailed error handling
+        try {
+          // Parse cron expression to validate
+          if (!cronExpression || cronExpression.split(" ").length !== 5) {
+            throw new Error(`Invalid cron expression: ${cronExpression}`);
+          }
+
+          job = schedule.scheduleJob(cronExpression, () => {
+            console.log(
+              `Executing recurring job for schedule ${scheduleData.id}`
+            );
+            this.executeSchedule(scheduleData.id);
+          });
+
+          if (!job) {
+            throw new Error("Failed to create job, null returned");
+          }
+        } catch (cronError) {
+          console.error(
+            `Error with cron expression "${cronExpression}":`,
+            cronError
+          );
+          updateSchedule(scheduleData.id, {
+            status: "failed",
+            error: `Invalid cron expression: ${cronError.message}`,
+          });
+          return;
+        }
       }
 
       if (job) {
@@ -83,6 +126,7 @@ class SchedulerService {
 
         // Calculate next run
         const nextRun = job.nextInvocation();
+        console.log(`Next run for schedule ${scheduleData.id}: ${nextRun}`);
 
         // Update schedule with active status and next run date
         updateSchedule(scheduleData.id, {
@@ -90,13 +134,20 @@ class SchedulerService {
           nextRun: nextRun ? nextRun.toISOString() : null,
         });
 
-        console.log(
-          `Schedule ${scheduleData.id} created successfully. Next run: ${nextRun}`
-        );
+        console.log(`Schedule ${scheduleData.id} created successfully.`);
+      } else {
+        console.error(`Failed to create job for schedule ${scheduleData.id}`);
+        updateSchedule(scheduleData.id, {
+          status: "failed",
+          error: "Failed to create schedule job",
+        });
       }
     } catch (error) {
       console.error(`Error scheduling job ${scheduleData.id}:`, error);
-      updateSchedule(scheduleData.id, { status: "failed" });
+      updateSchedule(scheduleData.id, {
+        status: "failed",
+        error: error.message || "Unknown error",
+      });
     }
   }
 
@@ -114,7 +165,9 @@ class SchedulerService {
 
   // Execute a scheduled job
   async executeSchedule(scheduleId) {
-    console.log(`Executing schedule ${scheduleId}`);
+    console.log(
+      `Executing schedule ${scheduleId} at ${new Date().toISOString()}`
+    );
 
     try {
       // Get fresh schedule data
@@ -125,8 +178,10 @@ class SchedulerService {
         return;
       }
 
+      console.log(`Found schedule data:`, JSON.stringify(scheduleData));
+
       // Get template data
-      const template = getTemplateById(scheduleData.templateId);
+      const template = await getTemplateById(scheduleData.templateId);
 
       if (!template) {
         console.error(
@@ -143,10 +198,7 @@ class SchedulerService {
       }
 
       // Fill template with parameters
-      const message = fillTemplate(
-        scheduleData.templateId,
-        scheduleData.paramValues
-      );
+      const message = fillTemplate(template.content, scheduleData.paramValues);
 
       if (!message) {
         console.error(`Failed to fill template for schedule ${scheduleId}`);
@@ -246,6 +298,7 @@ class SchedulerService {
         const job = this.jobs.get(scheduleId);
         if (job) {
           const nextRun = job.nextInvocation();
+          console.log(`Updated next run time for ${scheduleId}: ${nextRun}`);
           updateSchedule(scheduleId, {
             nextRun: nextRun ? nextRun.toISOString() : null,
           });
@@ -275,6 +328,11 @@ class SchedulerService {
     }
     return false;
   }
+}
+
+export async function initializeSchedules() {
+  await schedulerService.init();
+  return true;
 }
 
 // Singleton instance
