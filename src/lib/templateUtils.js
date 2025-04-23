@@ -38,7 +38,7 @@ export async function getTemplates() {
         parameters: true,
       },
       orderBy: {
-        name: "asc",
+        updatedAt: "desc",
       },
     });
 
@@ -105,11 +105,40 @@ export function extractParametersFromContent(content) {
 
 /**
  * Fill template with parameter values
+ * @param {number|string} templateId - Template ID
+ * @param {Object} paramValues - Parameter values object
+ * @returns {Promise<string|null>} - Filled template content or null if error
+ */
+export async function fillTemplate(templateId, paramValues = {}) {
+  try {
+    const template = await getTemplateById(templateId);
+
+    if (!template) {
+      throw new Error(`Template ${templateId} not found`);
+    }
+
+    let filledContent = template.content;
+
+    // Replace each parameter placeholder with its value
+    Object.entries(paramValues).forEach(([paramId, value]) => {
+      const regex = new RegExp(`\\{${paramId}\\}`, "g");
+      filledContent = filledContent.replace(regex, value || `{${paramId}}`);
+    });
+
+    return filledContent;
+  } catch (error) {
+    console.error(`Error filling template ${templateId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fill template content with parameter values (synchronous version)
  * @param {string} content - Template content with placeholders
  * @param {Object} paramValues - Parameter values object
  * @returns {string} - Filled template content
  */
-export function fillTemplate(content, paramValues = {}) {
+export function fillTemplateContent(content, paramValues = {}) {
   if (!content) return "";
 
   let filledContent = content;
@@ -158,45 +187,59 @@ export function validateTemplateParams(parameters, paramValues) {
 }
 
 /**
- * Generate a unique ID for a new template
- * @returns {string} - Unique template ID
+ * Get all important links
+ * Used in ParameterForm component for quick link selection
+ * @returns {Array} - Array of link objects
  */
-export function generateTemplateId() {
-  return `template-${Date.now()}`;
+export function getAllImportantLinks() {
+  try {
+    // In a real implementation, you could fetch this from a database
+    // Here we're just returning some mock data
+    return [
+      {
+        id: "youvit_homepage",
+        name: "Youvit Homepage",
+        url: "https://youvit.id",
+        category: "website",
+        description: "Official Youvit website",
+      },
+      {
+        id: "product_brief",
+        name: "Brief & Product Knowledge",
+        url: "https://bit.ly/youvitaffiliateprogram",
+        category: "product",
+        description: "Detail informasi lengkap tentang produk Youvit",
+      },
+      {
+        id: "affiliate_form",
+        name: "Formulir Pendaftaran Affiliate",
+        url: "https://forms.youvit.co.id/affiliate-signup",
+        category: "affiliate",
+        description: "Link formulir untuk registrasi affiliate baru",
+      },
+      {
+        id: "sample_request",
+        name: "Form Request Sample",
+        url: "https://bit.ly/sampleyouvitindo",
+        category: "product",
+        description: "Formulir pengajuan sample produk Youvit",
+      },
+    ];
+  } catch (error) {
+    console.error("Error getting important links:", error);
+    return [];
+  }
 }
 
 /**
- * Parse templates from imported JSON file
- * @param {File} file - JSON file to parse
- * @returns {Promise<Array>} - Promise resolving to array of templates
+ * Get links by category
+ * @param {string} category - Category to filter by
+ * @returns {Array} - Array of link objects filtered by category
  */
-export function parseTemplatesFromFile(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      reject(new Error("No file provided"));
-      return;
-    }
+export function getLinksByCategory(category) {
+  const allLinks = getAllImportantLinks();
 
-    const reader = new FileReader();
+  if (!category) return allLinks;
 
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target.result);
-
-        if (json.templates && Array.isArray(json.templates)) {
-          resolve(json.templates);
-        } else {
-          reject(new Error("Invalid template format"));
-        }
-      } catch (error) {
-        reject(new Error("Error parsing JSON file"));
-      }
-    };
-
-    reader.onerror = () => {
-      reject(new Error("Error reading file"));
-    };
-
-    reader.readAsText(file);
-  });
+  return allLinks.filter((link) => link.category === category);
 }
