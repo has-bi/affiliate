@@ -57,6 +57,9 @@ export function createSchedule(scheduleData) {
     ...scheduleData,
   };
 
+  // Log the created schedule for debugging
+  console.log("Created new schedule:", JSON.stringify(newSchedule, null, 2));
+
   scheduledMessages.push(newSchedule);
   return newSchedule;
 }
