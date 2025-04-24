@@ -888,35 +888,27 @@ atau: 08123456789, 08987654321"
     try {
       const allRecipients = getAllRecipients();
 
-      // Prepare schedule data
+      // Prepare schedule data for database
       let scheduleData = {
         name: `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
-        templateId: selectedTemplate.id,
+        templateId: selectedTemplate.id, // Make sure this is an integer
         paramValues: paramValues,
         recipients: allRecipients,
         scheduleType: scheduleConfig.type,
         sessionName: sessionName,
+        scheduleConfig: {
+          cronExpression:
+            scheduleConfig.type === "recurring"
+              ? scheduleConfig.cronExpression
+              : null,
+          date:
+            scheduleConfig.type === "once"
+              ? new Date(
+                  `${scheduleConfig.date}T${scheduleConfig.time}:00`
+                ).toISOString()
+              : null,
+        },
       };
-
-      // Add schedule config based on type
-      if (scheduleConfig.type === "once") {
-        // Combine date and time
-        const dateTime = new Date(
-          `${scheduleConfig.date}T${scheduleConfig.time}:00`
-        );
-        scheduleData.scheduleConfig = { date: dateTime.toISOString() };
-      } else {
-        // Recurring schedule
-        scheduleData.scheduleConfig = {
-          cronExpression: scheduleConfig.cronExpression,
-          startDate: scheduleConfig.startDate
-            ? new Date(`${scheduleConfig.startDate}T00:00:00`).toISOString()
-            : new Date().toISOString(),
-          endDate: scheduleConfig.endDate
-            ? new Date(`${scheduleConfig.endDate}T23:59:59`).toISOString()
-            : null,
-        };
-      }
 
       console.log(
         "Sending schedule data:",

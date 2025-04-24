@@ -9,16 +9,27 @@ import prisma from "@/lib/prisma";
  */
 export async function getTemplateById(templateId) {
   try {
-    // Convert string ID to number if needed
+    // Convert string ID to number if needed for database
     const id =
       typeof templateId === "string" ? parseInt(templateId, 10) : templateId;
 
-    if (isNaN(id)) return null;
+    if (isNaN(id)) {
+      console.error(`Invalid template ID: ${templateId}`);
+      return null;
+    }
+
+    console.log(`[getTemplateById] Fetching template with ID: ${id}`);
 
     const template = await prisma.template.findUnique({
       where: { id },
       include: { parameters: true },
     });
+
+    if (template) {
+      console.log(`[getTemplateById] Found template: ${template.name}`);
+    } else {
+      console.log(`[getTemplateById] Template not found: ${templateId}`);
+    }
 
     return template;
   } catch (error) {
@@ -104,51 +115,40 @@ export function extractParametersFromContent(content) {
 }
 
 /**
- * Fill template with parameter values
- * @param {number|string} templateId - Template ID
- * @param {Object} paramValues - Parameter values object
- * @returns {Promise<string|null>} - Filled template content or null if error
- */
-export async function fillTemplate(templateId, paramValues = {}) {
-  try {
-    const template = await getTemplateById(templateId);
-
-    if (!template) {
-      throw new Error(`Template ${templateId} not found`);
-    }
-
-    let filledContent = template.content;
-
-    // Replace each parameter placeholder with its value
-    Object.entries(paramValues).forEach(([paramId, value]) => {
-      const regex = new RegExp(`\\{${paramId}\\}`, "g");
-      filledContent = filledContent.replace(regex, value || `{${paramId}}`);
-    });
-
-    return filledContent;
-  } catch (error) {
-    console.error(`Error filling template ${templateId}:`, error);
-    return null;
-  }
-}
-
-/**
- * Fill template content with parameter values (synchronous version)
+ * Fill template content with parameter values
  * @param {string} content - Template content with placeholders
  * @param {Object} paramValues - Parameter values object
  * @returns {string} - Filled template content
  */
 export function fillTemplateContent(content, paramValues = {}) {
-  if (!content) return "";
+  if (!content) {
+    console.error("[fillTemplateContent] No content provided");
+    return "";
+  }
+
+  console.log(
+    "[fillTemplateContent] Original content:",
+    content.substring(0, 100) + "..."
+  );
+  console.log("[fillTemplateContent] Parameters:", paramValues);
 
   let filledContent = content;
 
   // Replace each parameter placeholder with its value
   Object.entries(paramValues).forEach(([paramId, value]) => {
     const regex = new RegExp(`\\{${paramId}\\}`, "g");
+    const occurrences = (filledContent.match(regex) || []).length;
+    console.log(
+      `[fillTemplateContent] Found ${occurrences} occurrences of {${paramId}}`
+    );
+
     filledContent = filledContent.replace(regex, value || `{${paramId}}`);
   });
 
+  console.log(
+    "[fillTemplateContent] Final content:",
+    filledContent.substring(0, 100) + "..."
+  );
   return filledContent;
 }
 

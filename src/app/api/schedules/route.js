@@ -1,70 +1,67 @@
 // src/app/api/schedules/route.js
 import { NextResponse } from "next/server";
-import {
-  getAllSchedules,
-  createSchedule,
-  getScheduleById,
-} from "../../../lib/scheduleUtils";
-import schedulerService from "../../../lib/services/schedulerService";
+import prisma from "@/lib/prisma";
+import schedulerService from "@/lib/services/schedulerService";
 
-// Initialize scheduler when the API is first accessed
-let isInitialized = false;
-const initScheduler = async () => {
-  if (!isInitialized) {
-    await schedulerService.init();
-    isInitialized = true;
-  }
-};
-
-// GET /api/schedules - Get all schedules
 export async function GET() {
-  await initScheduler();
+  console.log("API: Fetching schedules...");
 
   try {
-    const schedules = getAllSchedules();
-    return NextResponse.json(schedules);
-  } catch (error) {
-    console.error("Error fetching schedules:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch schedules" },
-      { status: 500 }
+    const schedules = await prisma.schedule.findMany({
+      include: {
+        parameters: true,
+        recipients: true,
+        history: {
+          orderBy: {
+            runAt: "desc",
+          },
+          take: 10,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    console.log("API: Found schedules:", schedules.length);
+
+    // Transform the data to match the expected format
+    const transformedSchedules = schedules.map((schedule) => {
+      const transformed = {
+        id: schedule.id,
+        name: schedule.name,
+        templateId: schedule.templateId,
+        scheduleType: schedule.scheduleType,
+        scheduleConfig: {
+          cronExpression: schedule.cronExpression,
+          date: schedule.scheduledDate,
+        },
+        sessionName: schedule.sessionName,
+        status: schedule.status,
+        paramValues: Object.fromEntries(
+          schedule.parameters.map((p) => [p.paramId, p.paramValue])
+        ),
+        recipients: schedule.recipients.map((r) => r.recipient),
+        nextRun: schedule.nextRun,
+        lastRun: schedule.lastRun,
+        history: schedule.history,
+        createdAt: schedule.createdAt,
+        updatedAt: schedule.updatedAt,
+      };
+
+      console.log("API: Transformed schedule:", transformed);
+      return transformed;
+    });
+
+    console.log(
+      "API: Returning transformed schedules:",
+      transformedSchedules.length
     );
-  }
-}
-
-// POST /api/schedules - Create a new schedule
-export async function POST(request) {
-  await initScheduler();
-
-  try {
-    const data = await request.json();
-
-    // Validate required fields
-    if (
-      !data.name ||
-      !data.templateId ||
-      !data.recipients ||
-      !data.scheduleType ||
-      !data.scheduleConfig ||
-      !data.sessionName
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Create the schedule
-    const newSchedule = createSchedule(data);
-
-    // Schedule the job
-    schedulerService.scheduleJob(newSchedule);
-
-    return NextResponse.json(newSchedule, { status: 201 });
+    return NextResponse.json(transformedSchedules);
   } catch (error) {
-    console.error("Error creating schedule:", error);
+    console.error("API: Error fetching schedules:", error);
     return NextResponse.json(
-      { error: "Failed to create schedule" },
+      { error: "Failed to fetch schedules", details: error.message },
       { status: 500 }
     );
   }

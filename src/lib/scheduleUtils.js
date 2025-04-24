@@ -1,111 +1,164 @@
 // src/lib/scheduleUtils.js
-import fs from "fs";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import prisma from "@/lib/prisma";
 
-// Instead of using a file, we'll use in-memory storage for now
-// You can replace this with proper database storage later
-let scheduledMessages = [];
-
-// Initialize the scheduled messages
-export function initSchedules() {
+// Get all scheduled messages
+export async function getAllSchedules() {
   try {
-    // In a real implementation, you would fetch this from your database
-    const defaultSchedules = [];
-    scheduledMessages = defaultSchedules;
-    return true;
-  } catch (error) {
-    console.error("Error initializing schedules:", error);
-    return false;
-  }
-}
+    const schedules = await prisma.schedule.findMany({
+      include: {
+        parameters: true,
+        recipients: true,
+        history: true,
+      },
+    });
 
-// Load all scheduled messages
-export function getAllSchedules() {
-  try {
-    return scheduledMessages;
+    return schedules.map((schedule) => ({
+      id: schedule.id,
+      name: schedule.name,
+      templateId: schedule.templateId,
+      scheduleType: schedule.scheduleType,
+      scheduleConfig: {
+        cronExpression: schedule.cronExpression,
+        date: schedule.scheduledDate,
+      },
+      sessionName: schedule.sessionName,
+      status: schedule.status,
+      paramValues: Object.fromEntries(
+        schedule.parameters.map((p) => [p.paramId, p.paramValue])
+      ),
+      recipients: schedule.recipients.map((r) => r.recipient),
+      nextRun: schedule.nextRun,
+      lastRun: schedule.lastRun,
+      history: schedule.history,
+    }));
   } catch (error) {
-    console.error("Error loading schedules:", error);
+    console.error("Error loading schedules from database:", error);
     return [];
   }
 }
 
-// Save all scheduled messages
-export function saveAllSchedules(schedules) {
-  try {
-    scheduledMessages = schedules;
-    return true;
-  } catch (error) {
-    console.error("Error saving schedules:", error);
-    return false;
-  }
-}
-
 // Get a specific schedule by ID
-export function getScheduleById(id) {
-  return scheduledMessages.find((schedule) => schedule.id === id) || null;
-}
+export async function getScheduleById(id) {
+  try {
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        parameters: true,
+        recipients: true,
+        history: true,
+      },
+    });
 
-// Create a new schedule
-export function createSchedule(scheduleData) {
-  const newSchedule = {
-    id: `schedule-${uuidv4()}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    status: "pending",
-    history: [],
-    ...scheduleData,
-  };
+    if (!schedule) return null;
 
-  // Log the created schedule for debugging
-  console.log("Created new schedule:", JSON.stringify(newSchedule, null, 2));
-
-  scheduledMessages.push(newSchedule);
-  return newSchedule;
+    return {
+      id: schedule.id,
+      name: schedule.name,
+      templateId: schedule.templateId,
+      scheduleType: schedule.scheduleType,
+      scheduleConfig: {
+        cronExpression: schedule.cronExpression,
+        date: schedule.scheduledDate,
+      },
+      sessionName: schedule.sessionName,
+      status: schedule.status,
+      paramValues: Object.fromEntries(
+        schedule.parameters.map((p) => [p.paramId, p.paramValue])
+      ),
+      recipients: schedule.recipients.map((r) => r.recipient),
+      nextRun: schedule.nextRun,
+      lastRun: schedule.lastRun,
+      history: schedule.history,
+    };
+  } catch (error) {
+    console.error(`Error getting schedule ${id}:`, error);
+    return null;
+  }
 }
 
 // Update a schedule
-export function updateSchedule(id, scheduleData) {
-  const index = scheduledMessages.findIndex((schedule) => schedule.id === id);
+export async function updateSchedule(id, data) {
+  try {
+    const updateData = {
+      ...data,
+      updatedAt: new Date(),
+    };
 
-  if (index === -1) return null;
+    const updated = await prisma.schedule.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        parameters: true,
+        recipients: true,
+      },
+    });
 
-  const updatedSchedule = {
-    ...scheduledMessages[index],
-    ...scheduleData,
-    updatedAt: new Date().toISOString(),
-  };
-
-  scheduledMessages[index] = updatedSchedule;
-  return updatedSchedule;
-}
-
-// Delete a schedule
-export function deleteSchedule(id) {
-  const initialLength = scheduledMessages.length;
-  scheduledMessages = scheduledMessages.filter(
-    (schedule) => schedule.id !== id
-  );
-  return scheduledMessages.length !== initialLength;
+    return {
+      id: updated.id,
+      name: updated.name,
+      templateId: updated.templateId,
+      scheduleType: updated.scheduleType,
+      scheduleConfig: {
+        cronExpression: updated.cronExpression,
+        date: updated.scheduledDate,
+      },
+      sessionName: updated.sessionName,
+      status: updated.status,
+      paramValues: Object.fromEntries(
+        updated.parameters.map((p) => [p.paramId, p.paramValue])
+      ),
+      recipients: updated.recipients.map((r) => r.recipient),
+      nextRun: updated.nextRun,
+      lastRun: updated.lastRun,
+    };
+  } catch (error) {
+    console.error(`Error updating schedule ${id}:`, error);
+    return null;
+  }
 }
 
 // Add history entry to a schedule
-export function addScheduleHistory(id, historyEntry) {
-  const index = scheduledMessages.findIndex((schedule) => schedule.id === id);
+export async function addScheduleHistory(id, historyEntry) {
+  try {
+    const schedule = await prisma.schedule.update({
+      where: { id: parseInt(id) },
+      data: {
+        lastRun: new Date(),
+        history: {
+          create: {
+            successCount: historyEntry.success,
+            failedCount: historyEntry.failed,
+            details: historyEntry.details,
+          },
+        },
+      },
+      include: {
+        parameters: true,
+        recipients: true,
+        history: {
+          orderBy: {
+            runAt: "desc",
+          },
+          take: 10,
+        },
+      },
+    });
 
-  if (index === -1) return null;
-
-  if (!scheduledMessages[index].history) {
-    scheduledMessages[index].history = [];
+    return {
+      id: schedule.id,
+      name: schedule.name,
+      templateId: schedule.templateId,
+      scheduleType: schedule.scheduleType,
+      scheduleConfig: {
+        cronExpression: schedule.cronExpression,
+        date: schedule.scheduledDate,
+      },
+      sessionName: schedule.sessionName,
+      status: schedule.status,
+      history: schedule.history,
+    };
+  } catch (error) {
+    console.error(`Error adding history to schedule ${id}:`, error);
+    return null;
   }
-
-  scheduledMessages[index].history.push({
-    ...historyEntry,
-    runAt: new Date().toISOString(),
-  });
-
-  scheduledMessages[index].lastRun = new Date().toISOString();
-  scheduledMessages[index].updatedAt = new Date().toISOString();
-
-  return scheduledMessages[index];
 }
