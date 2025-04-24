@@ -1,291 +1,344 @@
-// Update in src/components/organisms/Header/index.js
-
+// src/components/organisms/Header/index.js
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, ChevronDown } from "lucide-react";
+import { useSession } from "@/hooks/useSession";
+import {
+  LogOut,
+  ChevronDown,
+  Wifi,
+  WifiOff,
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  Settings,
+  FileText,
+  Send,
+  Clock,
+  History,
+  UserPlus,
+} from "lucide-react";
 
-const Header = () => {
-  const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+// Navigation schema --------------------------------------------------
+const NAVIGATION = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    name: "Messages",
+    href: "/messages",
+    icon: MessageSquare,
+    children: [
+      { name: "Templates", href: "/messages/templates", icon: FileText },
+      { name: "Broadcast", href: "/messages/broadcast", icon: Send },
+      { name: "Scheduled", href: "/messages/scheduled", icon: Clock },
+      { name: "History", href: "/messages/history", icon: History },
+    ],
+  },
+  {
+    name: "Contacts",
+    href: "/contacts",
+    icon: Users,
+    children: [
+      { name: "Affiliates", href: "/contacts/affiliates", icon: Users },
+      { name: "Onboarding", href: "/contacts/onboarding", icon: UserPlus },
+    ],
+  },
+  {
+    name: "Settings",
+    href: "/settings",
+    icon: Settings,
+  },
+];
 
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Scheduled Messages", href: "/schedules" },
-    { name: "Affiliate Onboarding", href: "/affiliate-onboarding" },
-    {
-      name: "Templates",
-      href: "/templates/list",
-      submenu: [
-        { name: "List Templates", href: "/templates/list" },
-        { name: "Create Template", href: "/templates/new" },
-        { name: "Send Template", href: "/templates/send" },
-        { name: "Seed Database", href: "/templates/seed" },
-      ],
-    },
-  ];
+// Helper components --------------------------------------------------
+const getSessionName = (s) =>
+  s?.name ??
+  s?.displayName ??
+  s?.session ??
+  s?.device?.name ??
+  s?.id ??
+  "Unknown";
+
+const DesktopNavItem = ({ item, isActive }) => {
+  if (item.children) {
+    return (
+      <div className="relative group">
+        <button
+          className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
+          ${
+            isActive
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+          }`}
+        >
+          <item.icon className="h-5 w-5" />
+          {item.name}
+          <ChevronDown className="h-4 w-4" />
+        </button>
+
+        {/* Sub‑menu */}
+        <div className="absolute left-0 mt-2 hidden w-56 rounded-md bg-white shadow-lg group-hover:block">
+          {item.children.map((sub) => {
+            const isSubActive = usePathname() === sub.href;
+            return (
+              <Link
+                key={sub.name}
+                href={sub.href}
+                className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors
+                ${
+                  isSubActive
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {sub.icon && <sub.icon className="h-4 w-4" />} {sub.name}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <header className="bg-white shadow">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-blue-600">
-                WAHA Control
-              </span>
-            </div>
+    <Link
+      href={item.href}
+      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
+      ${
+        isActive
+          ? "bg-indigo-50 text-indigo-700"
+          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+      }`}
+    >
+      <item.icon className="h-5 w-5" /> {item.name}
+    </Link>
+  );
+};
 
-            {/* Desktop navigation */}
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              <div className="flex space-x-4">
-                {navigation.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.submenu &&
-                      item.submenu.some(
-                        (subItem) => pathname === subItem.href
-                      ));
+export default function Header() {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const { sessions } = useSession();
 
-                  // If item has submenu, render dropdown
-                  if (item.submenu) {
-                    return (
-                      <div className="relative group" key={item.name}>
-                        <button
-                          className={`
-                            px-3 py-2 rounded-md text-sm font-medium flex items-center
-                            ${
-                              isActive
-                                ? "bg-blue-100 text-blue-700"
-                                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                            }
-                          `}
-                        >
-                          {item.name}
-                          <ChevronDown className="ml-1 h-4 w-4" />
-                        </button>
+  const connectedSessions = sessions.filter((s) =>
+    ["CONNECTED", "WORKING"].includes(s.status)
+  );
+  const sessionNames = connectedSessions.map(getSessionName);
 
-                        <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden group-hover:block">
-                          <div className="py-1 rounded-md bg-white shadow-xs">
-                            {item.submenu.map((subItem) => {
-                              const isSubItemActive = pathname === subItem.href;
-                              return (
-                                <Link
-                                  key={subItem.name}
-                                  href={subItem.href}
-                                  className={`
-                                    block px-4 py-2 text-sm
-                                    ${
-                                      isSubItemActive
-                                        ? "bg-blue-50 text-blue-700"
-                                        : "text-gray-700 hover:bg-gray-100"
-                                    }
-                                  `}
-                                >
-                                  {subItem.name}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
+  console.log("THIS IS THE NAME OF THE", sessions);
 
-                  // Otherwise render normal link
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`
-                        px-3 py-2 rounded-md text-sm font-medium
-                        ${
-                          isActive
-                            ? "bg-blue-100 text-blue-700"
-                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                        }
-                      `}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
+  return (
+    <header className="sticky top-0 z-30 w-full border-b bg-white/80 backdrop-blur">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Left ▾ Logo + Desktop nav */}
+        <div className="flex items-center gap-8">
+          <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
+            WA Control
+          </Link>
+
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex md:gap-1">
+            {NAVIGATION.map((item) => (
+              <DesktopNavItem
+                key={item.name}
+                item={item}
+                isActive={pathname.startsWith(item.href)}
+              />
+            ))}
+          </nav>
+        </div>
+
+        {/* Right ▾ status + user + hamburger */}
+        {/* Right – session indicator, user, hamburger */}
+        <div className="flex items-center gap-4">
+          {/* Desktop session indicator */}
+          <div
+            className="hidden items-center gap-1 md:flex"
+            title={sessionNames.join(", ") || undefined}
+          >
+            {connectedSessions.length ? (
+              <>
+                <Wifi className="h-5 w-5 text-green-500" />
+                <span className="truncate text-sm text-gray-700 max-w-[12rem]">
+                  {sessionNames.length
+                    ? sessionNames.join(", ")
+                    : `${connectedSessions.length} active session${
+                        connectedSessions.length > 1 ? "s" : ""
+                      }`}
+                </span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-5 w-5 text-gray-400" />
+                <span className="text-sm text-gray-500">
+                  No active sessions
+                </span>
+              </>
+            )}
           </div>
 
           {/* User menu */}
           {user && (
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              <div className="flex items-center">
-                <span className="text-sm text-gray-700 mr-3">
-                  {user.name || user.username}
-                </span>
-                <button
-                  onClick={logout}
-                  className="p-1 rounded-full text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  title="Sign out"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
-              </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 rounded-full p-1 text-gray-500 transition-colors hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <span className="hidden text-sm md:block">
+                {user.name || user.username}
+              </span>
+              <LogOut className="h-5 w-5" title="Sign out" />
+            </button>
+          )}
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen((o) => !o)}
+            className="md:hidden"
+            aria-label="Toggle navigation"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-6 w-6"
+            >
+              {mobileOpen ? (
+                <path d="M18 6 6 18M6 6l12 12" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile nav */}
+      {mobileOpen && (
+        <nav className="md:hidden">
+          <div className="space-y-1 border-t bg-white px-4 pb-4 pt-2">
+            {/* Session indicator (mobile) */}
+            <div className="flex items-center gap-2 border-b pb-2">
+              {connectedSessions.length ? (
+                <>
+                  <Wifi className="h-5 w-5 text-green-500" />
+                  <span className="text-sm">
+                    {connectedSessions.length} active session
+                    {connectedSessions.length > 1 && "s"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-500">
+                    No active sessions
+                  </span>
+                </>
+              )}
             </div>
-          )}
 
-          {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-              aria-controls="mobile-menu"
-              aria-expanded="false"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <span className="sr-only">Open main menu</span>
-              {/* Icon when menu is closed */}
-              <svg
-                className={`${isMobileMenuOpen ? "hidden" : "block"} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-              {/* Icon when menu is open */}
-              <svg
-                className={`${isMobileMenuOpen ? "block" : "hidden"} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu, toggle based on menu state */}
-      <div
-        className={`${isMobileMenuOpen ? "block" : "hidden"} sm:hidden`}
-        id="mobile-menu"
-      >
-        <div className="pt-2 pb-3 space-y-1">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.submenu &&
-                item.submenu.some((subItem) => pathname === subItem.href));
-
-            // If has submenu, render collapsible section
-            if (item.submenu) {
-              const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
-
-              return (
-                <div key={item.name}>
-                  <button
-                    className={`
-                      w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium
-                      ${
-                        isActive
-                          ? "bg-blue-100 text-blue-700"
-                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      }
-                    `}
-                    onClick={() => setIsSubmenuOpen(!isSubmenuOpen)}
-                  >
-                    <span>{item.name}</span>
-                    <ChevronDown
-                      className={`h-5 w-5 transition-transform ${
-                        isSubmenuOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {isSubmenuOpen && (
-                    <div className="pl-4 mt-1 mb-1 space-y-1">
-                      {item.submenu.map((subItem) => {
-                        const isSubItemActive = pathname === subItem.href;
-                        return (
-                          <Link
-                            key={subItem.name}
-                            href={subItem.href}
-                            className={`
-                              block px-3 py-2 rounded-md text-base font-medium
-                              ${
-                                isSubItemActive
-                                  ? "bg-blue-50 text-blue-700"
-                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                              }
-                            `}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                            {subItem.name}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            // Otherwise render normal link
-            return (
-              <Link
+            {/* Nav items */}
+            {NAVIGATION.map((item) => (
+              <MobileNavItem
                 key={item.name}
-                href={item.href}
-                className={`
-                  block px-3 py-2 rounded-md text-base font-medium
-                  ${
-                    isActive
-                      ? "bg-blue-100 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }
-                `}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
+                item={item}
+                pathname={pathname}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ))}
 
-          {user && (
-            <button
-              onClick={() => {
-                logout();
-                setIsMobileMenuOpen(false);
-              }}
-              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
-            >
-              <div className="flex items-center">
-                <LogOut className="h-5 w-5 mr-2" />
-                Sign out
-              </div>
-            </button>
-          )}
-        </div>
-      </div>
+            {/* Logout */}
+            {user && (
+              <button
+                onClick={() => {
+                  logout();
+                  setMobileOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium text-red-600 transition-colors hover:bg-red-50"
+              >
+                <LogOut className="h-5 w-5" /> Sign out
+              </button>
+            )}
+          </div>
+        </nav>
+      )}
     </header>
   );
-};
+}
 
-export default Header;
+// Mobile nav item (with accordion support) ---------------------------
+function MobileNavItem({ item, pathname, onNavigate }) {
+  const [open, setOpen] = useState(false);
+
+  const active = pathname.startsWith(item.href);
+
+  if (item.children) {
+    return (
+      <div>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+          ${
+            active
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          <item.icon className="h-5 w-5" /> {item.name}
+          <ChevronDown
+            className={`ml-auto h-5 w-5 transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {open && (
+          <div className="ml-6 space-y-1">
+            {item.children.map((sub) => (
+              <Link
+                key={sub.name}
+                href={sub.href}
+                onClick={onNavigate}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors
+                ${
+                  pathname === sub.href
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {sub.icon && <sub.icon className="h-4 w-4" />} {sub.name}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+      ${
+        active
+          ? "bg-indigo-50 text-indigo-700"
+          : "text-gray-600 hover:bg-gray-50"
+      }`}
+    >
+      <item.icon className="h-5 w-5" /> {item.name}
+    </Link>
+  );
+}

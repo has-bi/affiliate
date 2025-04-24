@@ -19,6 +19,7 @@
     "googleapis": "^148.0.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.483.0",
+    "net": "^1.0.2",
     "next": "15.2.3",
     "node-cron": "^3.0.3",
     "node-schedule": "^2.1.1",

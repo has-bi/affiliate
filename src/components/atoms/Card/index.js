@@ -2,34 +2,20 @@
 "use client";
 
 import React from "react";
-import { shadows, borderRadius, spacing } from "@/lib/designSystem";
 
 const Card = ({
   children,
   className = "",
-  variant = "default",
   padding = true,
   border = true,
   shadow = true,
   rounded = true,
   ...props
 }) => {
-  // Variant styles
-  const variantStyles = {
-    default: "bg-white",
-    primary: "bg-primary-50 border-primary-200",
-    success: "bg-success-100 border-success-200",
-    warning: "bg-warning-100 border-warning-200",
-    danger: "bg-danger-100 border-danger-200",
-    info: "bg-info-100 border-info-200",
-  };
-
-  const variantStyle = variantStyles[variant] || variantStyles.default;
-
   return (
     <div
       className={`
-        ${variantStyle}
+        bg-white
         ${padding ? "p-4" : ""}
         ${border ? "border border-gray-200" : ""}
         ${rounded ? "rounded-lg" : ""}
@@ -46,7 +32,7 @@ const Card = ({
 const CardHeader = ({ children, className = "", ...props }) => {
   return (
     <div
-      className={`border-b border-gray-200 pb-3 mb-4 ${className}`}
+      className={`border-b border-gray-200 px-4 py-3 ${className}`}
       {...props}
     >
       {children}
@@ -62,17 +48,9 @@ const CardTitle = ({ children, className = "", ...props }) => {
   );
 };
 
-const CardDescription = ({ children, className = "", ...props }) => {
-  return (
-    <p className={`text-sm text-gray-500 mt-1 ${className}`} {...props}>
-      {children}
-    </p>
-  );
-};
-
 const CardContent = ({ children, className = "", ...props }) => {
   return (
-    <div className={className} {...props}>
+    <div className={`px-4 py-3 ${className}`} {...props}>
       {children}
     </div>
   );
@@ -81,7 +59,7 @@ const CardContent = ({ children, className = "", ...props }) => {
 const CardFooter = ({ children, className = "", ...props }) => {
   return (
     <div
-      className={`border-t border-gray-200 pt-3 mt-4 ${className}`}
+      className={`border-t border-gray-200 px-4 py-3 ${className}`}
       {...props}
     >
       {children}
@@ -91,7 +69,6 @@ const CardFooter = ({ children, className = "", ...props }) => {
 
 Card.Header = CardHeader;
 Card.Title = CardTitle;
-Card.Description = CardDescription;
 Card.Content = CardContent;
 Card.Footer = CardFooter;
 

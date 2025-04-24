@@ -1,3 +1,4 @@
+// app/messages/templates/page.js
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -41,7 +42,7 @@ export default function TemplatesClientPage() {
 
   // Define page actions
   const pageActions = (
-    <Button variant="primary" href="/templates/new">
+    <Button variant="primary" href="/messages/templates/new">
       <Plus className="h-4 w-4 mr-1" />
       New Template
     </Button>
@@ -55,7 +56,7 @@ export default function TemplatesClientPage() {
     >
       {isLoading ? (
         <div className="flex justify-center items-center p-12">
-          <div className="animate-spin h-8 w-8 border-4 border-green-500 border-t-transparent rounded-full"></div>
+          <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
         </div>
       ) : (
         <TemplateManager templates={templates} selectedId={selectedId} />
