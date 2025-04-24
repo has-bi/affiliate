@@ -685,7 +685,19 @@ or 6281234567890, 6289876543210"
                       id="cronExpression"
                       name="cronExpression"
                       value={formData.scheduleConfig.cronExpression}
-                      onChange={handleScheduleConfigChange}
+                      onChange={(e) => {
+                        // Automatically replace "star" with "*"
+                        const cleanedValue = e.target.value.replace(
+                          /\bstar\b/g,
+                          "*"
+                        );
+                        handleScheduleConfigChange({
+                          target: {
+                            name: "cronExpression",
+                            value: cleanedValue,
+                          },
+                        });
+                      }}
                       className={`w-full px-3 py-2 border ${
                         errors.cronExpression
                           ? "border-red-500"
@@ -716,6 +728,10 @@ or 6281234567890, 6289876543210"
                 )}
                 <p className="mt-1 text-xs text-gray-500">
                   Format: minute hour day-of-month month day-of-week
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Use asterisk (*) for "every". Example: "50-59/3 10 * * *" runs
+                  every 3 minutes from :50 to :59 at 10 AM.
                 </p>
               </div>
 

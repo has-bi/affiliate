@@ -1,3 +1,4 @@
+// src/components/organisms/ScheduleManager/index.js
 "use client";
 
 import React from "react";
@@ -18,9 +19,6 @@ import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import { useSchedule } from "@/hooks/useSchedule";
 
-/**
- * Component for managing scheduled messages
- */
 const ScheduleManager = () => {
   const router = useRouter();
   const { schedules, isLoading, error, deleteSchedule, toggleScheduleStatus } =
@@ -93,7 +91,7 @@ const ScheduleManager = () => {
             <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-500">Loading schedules...</p>
           </div>
-        ) : schedules.length === 0 ? (
+        ) : !schedules || schedules.length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-md">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-2">No scheduled messages found</p>

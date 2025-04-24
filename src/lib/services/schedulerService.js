@@ -1,12 +1,12 @@
 // src/lib/services/schedulerService.js
-import schedule from "node-schedule"; // Need to install node-schedule package
+import schedule from "node-schedule";
 import {
   getAllSchedules,
   updateSchedule,
   addScheduleHistory,
   getScheduleById,
 } from "../scheduleUtils";
-import { fillTemplate, getTemplateById } from "../templateUtils";
+import { getTemplateById, fillTemplateContent } from "../templateUtils";
 import { formatPhoneNumber } from "../utils";
 
 class SchedulerService {
@@ -24,6 +24,23 @@ class SchedulerService {
       Intl.DateTimeFormat().resolvedOptions().timeZone
     );
     console.log("Current server time:", new Date().toISOString());
+    console.log("Local time:", new Date().toLocaleString());
+
+    // Test cron schedule
+    console.log("Creating a test cron job...");
+    const testJob = schedule.scheduleJob("* * * * *", () => {
+      console.log(
+        `[TEST CRON] Running every minute at ${new Date().toLocaleString()}`
+      );
+    });
+
+    if (testJob) {
+      console.log("Test cron job created successfully");
+      const nextRun = testJob.nextInvocation();
+      console.log(`Test job next run: ${nextRun.toLocaleString()}`);
+    } else {
+      console.log("Failed to create test cron job");
+    }
 
     try {
       await this.loadAllJobs();
@@ -34,15 +51,18 @@ class SchedulerService {
   }
 
   // Load all scheduled jobs from storage
-  loadAllJobs() {
-    const schedules = getAllSchedules();
+  async loadAllJobs() {
+    console.log("Loading schedules from database...");
+    const schedules = await getAllSchedules();
 
     // Filter only active/pending schedules
     const activeSchedules = schedules.filter(
       (s) => s.status === "active" || s.status === "pending"
     );
 
-    console.log(`Loading ${activeSchedules.length} schedule(s)`);
+    console.log(
+      `Loading ${activeSchedules.length} active schedule(s) from database`
+    );
 
     activeSchedules.forEach((scheduleData) => {
       this.scheduleJob(scheduleData);
@@ -59,8 +79,10 @@ class SchedulerService {
     try {
       let job;
       console.log(
-        `Creating job for schedule type: ${scheduleData.scheduleType}`
+        `\n======= Creating job for schedule ${scheduleData.id} =======`
       );
+      console.log(`Schedule type: ${scheduleData.scheduleType}`);
+      console.log(`Schedule config:`, scheduleData.scheduleConfig);
 
       if (scheduleData.scheduleType === "once") {
         // One-time schedule
@@ -88,19 +110,32 @@ class SchedulerService {
 
         // Create job scheduling options
         const options = {};
-        if (startDate) options.start = new Date(startDate);
-        if (endDate) options.end = new Date(endDate);
+        if (startDate) {
+          options.start = new Date(startDate);
+          console.log(`Start date: ${options.start.toISOString()}`);
+        }
+        if (endDate) {
+          options.end = new Date(endDate);
+          console.log(`End date: ${options.end.toISOString()}`);
+        }
 
         // Create the recurring job with detailed error handling
         try {
           // Parse cron expression to validate
-          if (!cronExpression || cronExpression.split(" ").length !== 5) {
-            throw new Error(`Invalid cron expression: ${cronExpression}`);
+          const cronParts = cronExpression.split(" ");
+          if (!cronExpression || cronParts.length !== 5) {
+            throw new Error(
+              `Invalid cron expression: "${cronExpression}" - must have 5 parts`
+            );
           }
 
-          job = schedule.scheduleJob(cronExpression, () => {
+          console.log(`Cron expression parts: [${cronParts.join(", ")}]`);
+
+          job = schedule.scheduleJob(cronExpression, options, () => {
             console.log(
-              `Executing recurring job for schedule ${scheduleData.id}`
+              `\n>>> Recurring job triggered for schedule ${
+                scheduleData.id
+              } at ${new Date().toISOString()} <<<`
             );
             this.executeSchedule(scheduleData.id);
           });
@@ -108,6 +143,8 @@ class SchedulerService {
           if (!job) {
             throw new Error("Failed to create job, null returned");
           }
+
+          console.log(`Recurring job created successfully`);
         } catch (cronError) {
           console.error(
             `Error with cron expression "${cronExpression}":`,
@@ -126,7 +163,16 @@ class SchedulerService {
 
         // Calculate next run
         const nextRun = job.nextInvocation();
-        console.log(`Next run for schedule ${scheduleData.id}: ${nextRun}`);
+        if (nextRun) {
+          console.log(
+            `Next run for schedule ${scheduleData.id}: ${nextRun.toISOString()}`
+          );
+          console.log(`Next run in your timezone: ${nextRun.toLocaleString()}`);
+        } else {
+          console.log(
+            `Unable to calculate next run for schedule ${scheduleData.id}`
+          );
+        }
 
         // Update schedule with active status and next run date
         updateSchedule(scheduleData.id, {
@@ -135,6 +181,7 @@ class SchedulerService {
         });
 
         console.log(`Schedule ${scheduleData.id} created successfully.`);
+        console.log(`=================================================\n`);
       } else {
         console.error(`Failed to create job for schedule ${scheduleData.id}`);
         updateSchedule(scheduleData.id, {
@@ -165,31 +212,38 @@ class SchedulerService {
 
   // Execute a scheduled job
   async executeSchedule(scheduleId) {
-    console.log(
-      `Executing schedule ${scheduleId} at ${new Date().toISOString()}`
-    );
+    console.log(`\n=========== EXECUTING SCHEDULE ${scheduleId} ===========`);
+    console.log(`Current time: ${new Date().toISOString()}`);
+    console.log(`Local time: ${new Date().toLocaleString()}`);
 
     try {
-      // Get fresh schedule data
-      const scheduleData = getScheduleById(scheduleId);
+      // Get fresh schedule data - need to await since it's from database
+      const scheduleData = await getScheduleById(scheduleId);
 
       if (!scheduleData) {
-        console.error(`Schedule ${scheduleId} not found`);
+        console.error(`[ERROR] Schedule ${scheduleId} not found`);
         return;
       }
 
-      console.log(`Found schedule data:`, JSON.stringify(scheduleData));
+      console.log(`Schedule name: ${scheduleData.name}`);
+      console.log(`Template ID: ${scheduleData.templateId}`);
+      console.log(`Recipients:`, scheduleData.recipients);
 
-      // Get template data
+      // Get template data - need to await since it's from database
+      console.log(`Fetching template...`);
       const template = await getTemplateById(scheduleData.templateId);
 
       if (!template) {
         console.error(
-          `Template ${scheduleData.templateId} not found for schedule ${scheduleId}`
+          `[ERROR] Template ${scheduleData.templateId} not found for schedule ${scheduleId}`
         );
-        addScheduleHistory(scheduleId, {
+
+        // Add safety check for recipients array
+        const recipientCount = scheduleData.recipients?.length || 0;
+
+        await addScheduleHistory(scheduleId, {
           success: 0,
-          failed: scheduleData.recipients.length,
+          failed: recipientCount,
           details: [
             { error: `Template not found: ${scheduleData.templateId}` },
           ],
@@ -197,131 +251,241 @@ class SchedulerService {
         return;
       }
 
+      console.log(`Template found: ${template.name}`);
+
       // Fill template with parameters
-      const message = fillTemplate(template.content, scheduleData.paramValues);
+      console.log(
+        `Filling template with parameters:`,
+        scheduleData.paramValues
+      );
+      const message = fillTemplateContent(
+        template.content,
+        scheduleData.paramValues
+      );
 
       if (!message) {
-        console.error(`Failed to fill template for schedule ${scheduleId}`);
-        addScheduleHistory(scheduleId, {
+        console.error(
+          `[ERROR] Failed to fill template for schedule ${scheduleId}`
+        );
+        await addScheduleHistory(scheduleId, {
           success: 0,
-          failed: scheduleData.recipients.length,
+          failed: scheduleData.recipients?.length || 0,
           details: [{ error: "Failed to fill template" }],
         });
         return;
       }
 
-      // Send messages to all recipients
-      const results = await Promise.allSettled(
-        scheduleData.recipients.map(async (recipient) => {
-          try {
-            // Format phone number if needed
-            const formattedChatId = recipient.includes("@c.us")
-              ? recipient
-              : `${formatPhoneNumber(recipient)}@c.us`;
+      console.log(`Message prepared successfully`);
+      console.log(`Message preview: ${message.substring(0, 100)}...`);
 
-            // Send message directly to WAHA API
-            const wahaApiUrl =
-              process.env.NEXT_PUBLIC_WAHA_API_URL ||
-              "https://wabot.youvit.co.id";
-            const response = await fetch(`${wahaApiUrl}/api/sendText`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-              body: JSON.stringify({
+      // Send messages to all recipients
+      console.log(
+        `Preparing to send messages to ${
+          scheduleData.recipients?.length || 0
+        } recipients...`
+      );
+
+      // Safety check for recipients
+      if (!scheduleData.recipients || scheduleData.recipients.length === 0) {
+        console.error(`[ERROR] No recipients found for schedule ${scheduleId}`);
+        await addScheduleHistory(scheduleId, {
+          success: 0,
+          failed: 0,
+          details: [{ error: "No recipients found" }],
+        });
+        return;
+      }
+
+      console.log(`Starting message sending process...`);
+
+      try {
+        const results = await Promise.allSettled(
+          scheduleData.recipients.map(async (recipient) => {
+            try {
+              console.log(`Processing recipient: ${recipient}`);
+
+              // Format phone number if needed
+              const formattedChatId = recipient.includes("@c.us")
+                ? recipient
+                : `${formatPhoneNumber(recipient)}@c.us`;
+
+              console.log(`Formatted chat ID: ${formattedChatId}`);
+
+              // Send message directly to WAHA API
+              const wahaApiUrl =
+                process.env.NEXT_PUBLIC_WAHA_API_URL ||
+                "https://wabot.youvit.co.id";
+
+              const wahaSessionName =
+                process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi-test";
+
+              const requestBody = {
                 chatId: formattedChatId,
                 text: message,
                 session: scheduleData.sessionName,
-              }),
-            });
+              };
 
-            if (!response.ok) {
-              let errorMessage = "Failed to send message";
+              console.log(`Making API request to ${wahaApiUrl}/api/sendText`);
+              console.log(
+                `Request body:`,
+                JSON.stringify(requestBody, null, 2)
+              );
+              console.log(`Session name: ${scheduleData.sessionName}`);
+
+              const response = await fetch(`${wahaApiUrl}/api/sendText`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/json",
+                },
+                body: JSON.stringify(requestBody),
+              });
+
+              console.log(`Response status: ${response.status}`);
+
+              let responseData;
+
               try {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorMessage;
-              } catch (e) {
-                // If response is not JSON, try to get text
-                errorMessage = (await response.text()) || errorMessage;
+                responseData = await response.json();
+                console.log(
+                  `Response data:`,
+                  JSON.stringify(responseData, null, 2)
+                );
+              } catch (parseError) {
+                console.error(`Failed to parse response JSON:`, parseError);
+                const responseText = await response.text();
+                console.log(`Raw response text:`, responseText);
+                throw new Error(`Invalid JSON response: ${responseText}`);
               }
-              throw new Error(errorMessage);
+
+              if (!response.ok) {
+                // Get more detailed error information
+                const errorMessage =
+                  responseData.error ||
+                  responseData.message ||
+                  "Failed to send message";
+                console.error(
+                  `[ERROR] API response error for ${formattedChatId}:`
+                );
+                console.error(`- Status: ${response.status}`);
+                console.error(`- Error message: ${errorMessage}`);
+                console.error(`- Full response:`, responseData);
+
+                // Check for specific error types
+                if (response.status === 404) {
+                  throw new Error(`Session not found: ${session}`);
+                } else if (response.status === 400) {
+                  throw new Error(`Bad request: ${errorMessage}`);
+                } else if (response.status === 401 || response.status === 403) {
+                  throw new Error(`Authentication error: ${errorMessage}`);
+                } else {
+                  throw new Error(errorMessage);
+                }
+              }
+
+              console.log(`✅ Message sent successfully to ${formattedChatId}`);
+              return {
+                recipient: formattedChatId,
+                success: true,
+                messageId: responseData.id || "unknown",
+              };
+            } catch (error) {
+              console.error(`❌ Failed to send to ${recipient}:`);
+              console.error(`- Error type: ${error.constructor.name}`);
+              console.error(`- Error message: ${error.message}`);
+              console.error(`- Error stack:`, error.stack);
+
+              return {
+                recipient,
+                success: false,
+                error: error.message || "Failed to send message",
+              };
             }
+          })
+        );
 
-            const result = await response.json();
+        console.log(`All messages processed. Analyzing results...`);
 
-            return {
-              recipient: formattedChatId,
-              success: true,
-              messageId: result.id || "unknown",
-            };
-          } catch (error) {
-            return {
-              recipient,
-              success: false,
-              error: error.message || "Failed to send message",
-            };
+        // Process results
+        const successResults = results.filter(
+          (r) => r.status === "fulfilled" && r.value.success
+        );
+        const failedResults = results.filter(
+          (r) =>
+            r.status === "rejected" ||
+            (r.status === "fulfilled" && !r.value.success)
+        );
+
+        console.log(`Results summary:`);
+        console.log(`- Total processed: ${results.length}`);
+        console.log(`- Successful: ${successResults.length}`);
+        console.log(`- Failed: ${failedResults.length}`);
+
+        // Update history
+        const historyEntry = {
+          success: successResults.length,
+          failed: failedResults.length,
+          details: [
+            ...successResults.map((r) => r.value),
+            ...failedResults.map((r) =>
+              r.status === "rejected"
+                ? { success: false, error: r.reason?.message || r.reason }
+                : r.value
+            ),
+          ],
+        };
+
+        console.log(`Creating history entry:`, historyEntry);
+        await addScheduleHistory(scheduleId, historyEntry);
+
+        // Update status for one-time schedules
+        if (scheduleData.scheduleType === "once") {
+          console.log(
+            `One-time schedule ${scheduleId} completed, marking as complete`
+          );
+          await updateSchedule(scheduleId, { status: "completed" });
+          this.jobs.delete(scheduleId);
+        } else {
+          // Update next run time for recurring schedules
+          const job = this.jobs.get(scheduleId);
+          if (job) {
+            const nextRun = job.nextInvocation();
+            if (nextRun) {
+              console.log(
+                `Next run time for ${scheduleId}: ${nextRun.toISOString()}`
+              );
+              console.log(
+                `Next run in local time: ${nextRun.toLocaleString()}`
+              );
+            } else {
+              console.log(
+                `[WARNING] Unable to calculate next run for ${scheduleId}`
+              );
+            }
+            await updateSchedule(scheduleId, {
+              nextRun: nextRun ? nextRun.toISOString() : null,
+            });
           }
-        })
-      );
-
-      // Process results
-      const successResults = results.filter(
-        (r) => r.status === "fulfilled" && r.value.success
-      );
-      const failedResults = results.filter(
-        (r) =>
-          r.status === "rejected" ||
-          (r.status === "fulfilled" && !r.value.success)
-      );
-
-      // Update history
-      addScheduleHistory(scheduleId, {
-        success: successResults.length,
-        failed: failedResults.length,
-        details: [
-          ...successResults.map((r) => r.value),
-          ...failedResults.map((r) =>
-            r.status === "rejected"
-              ? { success: false, error: r.reason }
-              : r.value
-          ),
-        ],
-      });
-
-      // Update status for one-time schedules
-      if (scheduleData.scheduleType === "once") {
-        updateSchedule(scheduleId, { status: "completed" });
-        this.jobs.delete(scheduleId);
-      } else {
-        // Update next run time for recurring schedules
-        const job = this.jobs.get(scheduleId);
-        if (job) {
-          const nextRun = job.nextInvocation();
-          console.log(`Updated next run time for ${scheduleId}: ${nextRun}`);
-          updateSchedule(scheduleId, {
-            nextRun: nextRun ? nextRun.toISOString() : null,
-          });
         }
-      }
 
-      console.log(
-        `Schedule ${scheduleId} executed. Success: ${successResults.length}, Failed: ${failedResults.length}`
-      );
+        console.log(`=========== EXECUTION COMPLETE ===========\n`);
+      } catch (error) {
+        console.error(`[ERROR] Error in sending process:`, error);
+        console.error(`Error stack:`, error.stack);
+        throw error; // Re-throw to be caught by outer try-catch
+      }
     } catch (error) {
-      console.error(`Error executing schedule ${scheduleId}:`, error);
-      addScheduleHistory(scheduleId, {
-        success: 0,
-        failed: 1,
-        details: [{ error: error.message || "Unknown error during execution" }],
-      });
-      updateSchedule(scheduleId, { status: "failed" });
+      console.error(`[ERROR] Error in sending process:`, error);
+      console.error(`Error type: ${error.constructor.name}`);
+      console.error(`Error message: ${error.message}`);
+      console.error(`Error stack:`, error.stack);
+      throw error;
     }
   }
 
   // Recreate job with updated data
-  updateJob(scheduleId) {
-    const scheduleData = getScheduleById(scheduleId);
+  async updateJob(scheduleId) {
+    const scheduleData = await getScheduleById(scheduleId);
     if (scheduleData) {
       this.scheduleJob(scheduleData);
       return true;
@@ -330,12 +494,19 @@ class SchedulerService {
   }
 }
 
+// Singleton instance
+const schedulerService = new SchedulerService();
+
+// Initialize immediately when the module is loaded
+console.log("[SchedulerService] Initializing scheduler on module load...");
+schedulerService.init().catch((error) => {
+  console.error("[SchedulerService] Failed to initialize:", error);
+});
+
 export async function initializeSchedules() {
+  console.log("[SchedulerService] Manual initialization requested");
   await schedulerService.init();
   return true;
 }
-
-// Singleton instance
-const schedulerService = new SchedulerService();
 
 export default schedulerService;
