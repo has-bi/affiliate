@@ -28,6 +28,8 @@ model Parameter {
   type        String    @default("text")
   placeholder String?
   required    Boolean   @default(false)
+  isDynamic   Boolean   @default(false)  // NEW: Flag to identify dynamic parameters
+  source      String?   // NEW: Source of dynamic data (e.g., "contact.name")
   template    Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
   templateId  Int       @map("template_id")
   

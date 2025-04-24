@@ -1,3 +1,4 @@
+// src/components/organisms/TemplateMessageSender/index.js
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,7 +7,9 @@ import { useSession } from "@/hooks/useSession";
 import {
   formatMessageContent,
   validateTemplateParams,
-} from "@/lib/templateUtils";
+  fillDynamicParameters,
+  getFinalMessageForContact,
+} from "@/lib/templateParameterUtils";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import ContactSelector from "@/components/molecules/ContactSelector";
@@ -23,6 +26,7 @@ import {
   PlusCircle,
   X,
   Calendar,
+  Info,
 } from "lucide-react";
 
 /**
@@ -83,27 +87,20 @@ export default function TemplateMessageSender() {
     setSelectedTemplateId(e.target.value ? parseInt(e.target.value, 10) : null);
   };
 
-  // Handle parameter value change
+  // Handle parameter value change - only for static parameters
   const handleParamChange = (paramId, value) => {
-    setParamValues((prev) => ({
-      ...prev,
-      [paramId]: value,
-    }));
-  };
+    // Only handle static parameters
+    if (selectedTemplate) {
+      const isStaticParam = selectedTemplate.parameters.find(
+        (p) => p.id === paramId && !p.isDynamic
+      );
 
-  // Auto-fill parameter for selected contacts
-  const fillParametersFromContacts = () => {
-    if (!selectedTemplate || selectedContacts.length === 0) return;
-
-    // Get name parameter if it exists
-    const nameParam = selectedTemplate.parameters.find((p) => p.id === "name");
-
-    if (nameParam && selectedContacts.length === 1) {
-      // If only one contact is selected, we can auto-fill their name
-      setParamValues((prev) => ({
-        ...prev,
-        name: selectedContacts[0].name,
-      }));
+      if (isStaticParam) {
+        setParamValues((prev) => ({
+          ...prev,
+          [paramId]: value,
+        }));
+      }
     }
   };
 
@@ -111,20 +108,28 @@ export default function TemplateMessageSender() {
   const handleContactsSelected = (contacts) => {
     setSelectedContacts(contacts);
     setShowContactSelector(false);
-
-    // Auto-fill parameters based on contact data
-    if (contacts.length === 1) {
-      fillParametersFromContacts();
-    }
   };
 
-  // Get final message with parameters filled in
-  const getFinalMessage = () => {
+  // Get final message for a specific contact
+  const getFinalMessageForContact = (contact) => {
     if (!selectedTemplate) return "";
 
     let content = selectedTemplate.content;
 
-    // Replace parameter placeholders with values
+    // First replace dynamic parameters with contact data
+    if (selectedTemplate.parameters) {
+      selectedTemplate.parameters
+        .filter((p) => p.isDynamic)
+        .forEach((param) => {
+          const regex = new RegExp(`\\{${param.id}\\}`, "g");
+
+          // Get value from contact based on param source
+          const value = contact[param.id] || "";
+          content = content.replace(regex, value || `{${param.id}}`);
+        });
+    }
+
+    // Then replace static parameters with user-provided values
     Object.entries(paramValues).forEach(([key, value]) => {
       const regex = new RegExp(`\\{${key}\\}`, "g");
       content = content.replace(regex, value || `{${key}}`);
@@ -133,9 +138,26 @@ export default function TemplateMessageSender() {
     return content;
   };
 
-  // Get preview HTML with formatting
+  // Get preview for the first selected contact or generic preview
   const getPreviewHTML = () => {
-    return formatMessageContent(getFinalMessage());
+    if (!selectedTemplate) return "";
+
+    // If we have selected contacts, show preview for the first one
+    if (selectedContacts.length > 0) {
+      const previewMessage = getFinalMessageForContact(selectedContacts[0]);
+      return formatMessageContent(previewMessage);
+    }
+
+    // Otherwise show generic preview with all parameters as placeholders
+    let content = selectedTemplate.content;
+
+    // Replace static parameters with values
+    Object.entries(paramValues).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{${key}\\}`, "g");
+      content = content.replace(regex, value || `{${key}}`);
+    });
+
+    return formatMessageContent(content);
   };
 
   // Parse manual recipients

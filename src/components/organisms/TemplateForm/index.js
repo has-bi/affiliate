@@ -3,15 +3,16 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Plus, AlertCircle, CheckCircle } from "lucide-react";
+import { Save, Plus, AlertCircle, CheckCircle, Info } from "lucide-react";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import Input from "@/components/atoms/Input";
 import TemplateParameter from "@/components/molecules/TemplateParameter";
 import {
-  extractParametersFromContent,
+  extractParametersFromTemplateContent,
   formatMessageContent,
-} from "@/lib/templateUtils";
+  DYNAMIC_PARAMETERS,
+} from "@/lib/templateParameterUtils";
 
 /**
  * TemplateForm - Form for creating and editing templates
@@ -68,6 +69,8 @@ const TemplateForm = ({ initialTemplate = null }) => {
           type: p.type || "text",
           placeholder: p.placeholder || "",
           required: p.required || false,
+          isDynamic: p.isDynamic || false,
+          source: p.source || "",
         })),
       });
 
@@ -101,7 +104,8 @@ const TemplateForm = ({ initialTemplate = null }) => {
 
   // Auto-extract parameters from content
   const handleExtractParams = () => {
-    const extractedParams = extractParametersFromContent(formData.content);
+    const { dynamic, static: staticParams } =
+      extractParametersFromTemplateContent(formData.content);
 
     // Keep existing parameters that match extracted IDs
     const existingParams = {};
@@ -110,12 +114,24 @@ const TemplateForm = ({ initialTemplate = null }) => {
     });
 
     // Create updated parameter list
-    const updatedParams = extractedParams.map((param) => {
+    const updatedParams = [];
+
+    // Add dynamic parameters
+    dynamic.forEach((param) => {
       if (existingParams[param.id]) {
-        // Keep existing parameter information
-        return existingParams[param.id];
+        updatedParams.push(existingParams[param.id]);
+      } else {
+        updatedParams.push(param);
       }
-      return param;
+    });
+
+    // Add static parameters
+    staticParams.forEach((param) => {
+      if (existingParams[param.id]) {
+        updatedParams.push(existingParams[param.id]);
+      } else {
+        updatedParams.push(param);
+      }
     });
 
     setFormData((prev) => ({
@@ -146,6 +162,7 @@ const TemplateForm = ({ initialTemplate = null }) => {
       type: "text",
       placeholder: "",
       required: false,
+      isDynamic: false,
     };
 
     setFormData((prev) => ({
@@ -222,7 +239,7 @@ const TemplateForm = ({ initialTemplate = null }) => {
 
       // Redirect after a short delay
       setTimeout(() => {
-        router.push(`/templates?id=${savedTemplate.id}`);
+        router.push(`/messages/templates?id=${savedTemplate.id}`);
         router.refresh();
       }, 1500);
     } catch (error) {
@@ -232,6 +249,10 @@ const TemplateForm = ({ initialTemplate = null }) => {
       setIsSubmitting(false);
     }
   };
+
+  // Separate parameters by type
+  const dynamicParameters = formData.parameters.filter((p) => p.isDynamic);
+  const staticParameters = formData.parameters.filter((p) => !p.isDynamic);
 
   return (
     <Card>
@@ -348,8 +369,11 @@ const TemplateForm = ({ initialTemplate = null }) => {
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use {"{parameter_name}"} to define parameters. Example: Hi{" "}
-              {"{name}"}, your order {"{order_id}"} has been processed.
+              Use {"{parameter_name}"} to define parameters. Examples:
+              <br />- {"{name}"} for recipient name (auto-filled from contact
+              data)
+              <br />- {"{video_link}"}, {"{product_price}"}, etc. for static
+              content
             </p>
           </div>
 
@@ -366,11 +390,55 @@ const TemplateForm = ({ initialTemplate = null }) => {
             </div>
           </div>
 
-          {/* Parameters section */}
+          {/* Dynamic Parameters (Auto-filled) */}
+          {dynamicParameters.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center mb-3">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Dynamic Parameters (Auto-filled)
+                </h3>
+                <Info
+                  className="h-4 w-4 ml-2 text-gray-400"
+                  title="These parameters are automatically filled from contact data"
+                />
+              </div>
+              <div className="bg-blue-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-blue-700">
+                  These parameters will be automatically filled with contact
+                  information when sending messages.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {dynamicParameters.map((param, index) => (
+                  <div
+                    key={index}
+                    className="border border-blue-200 rounded-md p-3 bg-blue-50"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-blue-800">
+                        {param.name}
+                      </span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                        Auto-filled
+                      </span>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Parameter ID: <code>{param.id}</code>
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Source: {param.source || `contact.${param.id}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Static Parameters (User-filled) */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-medium text-gray-700">
-                Parameters ({formData.parameters.length})
+                Static Parameters ({staticParameters.length})
               </h3>
               <button
                 type="button"
@@ -382,14 +450,14 @@ const TemplateForm = ({ initialTemplate = null }) => {
               </button>
             </div>
 
-            {formData.parameters.length === 0 ? (
+            {staticParameters.length === 0 ? (
               <div className="text-sm text-gray-500 bg-gray-50 p-4 text-center rounded-md">
-                No parameters defined. Use the "Extract Parameters" button to
-                auto-detect parameters from your message content.
+                No static parameters defined. Use the "Extract Parameters"
+                button or add manually.
               </div>
             ) : (
               <div className="space-y-3">
-                {formData.parameters.map((param, index) => (
+                {staticParameters.map((param, index) => (
                   <TemplateParameter
                     key={index}
                     parameter={param}

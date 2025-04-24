@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../../../../components/organisms/Header";
-import Card from "../../../../components/atoms/Card";
-import ScheduleForm from "../../../../components/molecules/ScheduleForm";
+import Header from "../../../../../components/organisms/Header";
+import Card from "../../../../../components/atoms/Card";
+import ScheduleForm from "../../../../../components/molecules/ScheduleForm";
 import { AlertCircle } from "lucide-react";
 
 export default function EditSchedulePage({ params }) {

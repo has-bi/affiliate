@@ -1,7 +1,7 @@
 // src/app/schedules/page.js
 import React from "react";
-import ScheduleManager from "../../components/organisms/ScheduleManager";
-import Header from "../../components/organisms/Header";
+import ScheduleManager from "../../../components/organisms/ScheduleManager";
+import Header from "../../../components/organisms/Header";
 
 export const metadata = {
   title: "Scheduled Messages | WAHA Control Panel",

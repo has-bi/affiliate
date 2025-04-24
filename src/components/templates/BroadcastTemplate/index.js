@@ -3,7 +3,7 @@
 
 import React from "react";
 import Header from "../../organisms/Header";
-import BroadcastForm from "../../organisms/BroadcastForm";
+import BroadcastForm from "@/components/organisms/BroadcastForm";
 
 const BroadcastTemplate = () => {
   return (
