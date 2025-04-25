@@ -51,6 +51,8 @@ export async function POST(request) {
               type: param.type || "text",
               placeholder: param.placeholder || "",
               required: param.required || false,
+              isDynamic: param.isDynamic || false, // Added
+              source: param.source || null, // Added
             })) || [],
         },
       },

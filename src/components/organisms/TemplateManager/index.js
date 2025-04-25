@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TemplateList from "@/components/molecules/TemplateList";
-import TemplateForm from "@/components/molecules/TemplateForm";
+import TemplateParameter from "@/components/molecules/TemplateParameter";
 import TemplatePreview from "@/components/molecules/TemplatePreview";
 import { useTemplate } from "@/hooks/useTemplate";
 import {
@@ -177,7 +177,7 @@ const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
         {/* Right Content - Template Details */}
         <div className="w-2/3 flex flex-col">
           {isEditing ? (
-            <TemplateForm
+            <TemplateParameter
               template={selectedTemplate}
               onSave={handleSaveTemplate}
               onCancel={handleCancelEdit}
