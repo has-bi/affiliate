@@ -26,14 +26,6 @@ class SchedulerService {
     console.log("Current server time:", new Date().toISOString());
     console.log("Local time:", new Date().toLocaleString());
 
-    if (testJob) {
-      console.log("Test cron job created successfully");
-      const nextRun = testJob.nextInvocation();
-      console.log(`Test job next run: ${nextRun.toLocaleString()}`);
-    } else {
-      console.log("Failed to create test cron job");
-    }
-
     try {
       await this.loadAllJobs();
       console.log("Successfully loaded all scheduled jobs");

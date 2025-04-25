@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
 import { useSession } from "@/hooks/useSession";
 import { useTemplateMessageSender } from "@/hooks/useTemplateMessageSender";
-import { formatMessageContent } from "@/lib/templateParameterUtils";
+import { formatMessageContent } from "@/lib/templateUtils";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import { AlertCircle, Check } from "lucide-react";
@@ -17,6 +17,8 @@ import Step3 from "@/components/molecules/RecipientSelector/Step3";
 import Step4 from "@/components/molecules/ReviewAndSend/Step4";
 
 export default function TemplateMessageSender() {
+  console.log("🚀 TemplateMessageSender: Rendering");
+
   // Session state
   const { sessions, isLoading: isLoadingSessions } = useSession();
   const [sessionName, setSessionName] = useState("");
@@ -46,6 +48,7 @@ export default function TemplateMessageSender() {
     getPreviewHTML,
     togglePreview,
     handleContactsSelected,
+    getFinalMessageForContact,
   } = useTemplateMessageSender(templates, selectedTemplateId);
 
   // Form state
@@ -67,23 +70,58 @@ export default function TemplateMessageSender() {
     endDate: "",
   });
 
+  // Debug logging
+  useEffect(() => {
+    console.log("📊 State Debug:", {
+      step,
+      selectedTemplateId,
+      selectedTemplate: selectedTemplate ? "exists" : "null",
+      sessionName,
+      paramValues,
+      selectedContacts: selectedContacts.length,
+      manualRecipients,
+      scheduleConfig,
+      isScheduling,
+    });
+  }, [
+    step,
+    selectedTemplateId,
+    selectedTemplate,
+    sessionName,
+    paramValues,
+    selectedContacts,
+    manualRecipients,
+    scheduleConfig,
+    isScheduling,
+  ]);
+
   // Fetch templates on mount
   useEffect(() => {
     const loadTemplates = async () => {
-      const data = await fetchTemplates();
-      setTemplates(data);
+      try {
+        console.log("📥 Fetching templates...");
+        const data = await fetchTemplates();
+        console.log("✅ Templates fetched:", data.length);
+        setTemplates(data);
+      } catch (error) {
+        console.error("❌ Error fetching templates:", error);
+      }
     };
     loadTemplates();
   }, [fetchTemplates]);
 
   // Handle template change (wrapper for the hook function)
   const handleTemplateChangeWrapper = (e) => {
+    console.log("🔄 Template change event:", e.target.value);
     const newId = handleTemplateChange(e);
+    console.log("📝 New template ID:", newId);
     setSelectedTemplateId(newId);
   };
 
   // Handle navigation
   const handleNextStep = () => {
+    console.log(`➡️ Moving to next step from step ${step}`);
+
     if (step === 1) {
       if (!selectedTemplate) {
         setError("Silakan pilih template terlebih dahulu");
@@ -123,6 +161,7 @@ export default function TemplateMessageSender() {
       setStep(3);
     } else if (step === 3) {
       const recipients = getAllRecipients();
+      console.log("📋 Recipients before step 4:", recipients);
       if (recipients.length === 0) {
         setError("Silakan pilih minimal satu penerima pesan");
         return;
@@ -133,6 +172,7 @@ export default function TemplateMessageSender() {
   };
 
   const handlePrevStep = () => {
+    console.log(`⬅️ Moving to previous step from step ${step}`);
     setError(null);
     setStep((prev) => Math.max(1, prev - 1));
   };
@@ -140,14 +180,20 @@ export default function TemplateMessageSender() {
   // Handle send messages
   const handleSend = async (e) => {
     e.preventDefault();
+    console.log("📤 Handling send...");
 
-    if (!validateForm(sessionName)) return;
+    if (!validateForm(sessionName)) {
+      console.log("❌ Form validation failed");
+      return;
+    }
 
     setIsSubmitting(true);
     setSendResult(null);
 
     try {
       const allRecipients = getAllRecipients();
+      console.log("📋 All recipients:", allRecipients);
+
       const messages =
         selectedContacts.length > 0
           ? selectedContacts.map((contact) => ({
@@ -159,15 +205,15 @@ export default function TemplateMessageSender() {
               message: selectedTemplate.content,
             }));
 
+      console.log("💬 Messages to send:", messages);
+
       const response = await fetch("/api/messages/bulk", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session: sessionName,
           recipients: allRecipients,
-          message: messages[0].message, // For now, send the same message
+          message: messages[0].message,
           delay: 3000,
         }),
       });
@@ -178,9 +224,10 @@ export default function TemplateMessageSender() {
       }
 
       const result = await response.json();
+      console.log("✅ Send result:", result);
       setSendResult(result);
     } catch (err) {
-      console.error("Error sending message:", err);
+      console.error("❌ Error sending message:", err);
       setError(err.message || "Failed to send message");
     } finally {
       setIsSubmitting(false);
@@ -190,6 +237,7 @@ export default function TemplateMessageSender() {
   // Handle scheduling messages
   const handleSchedule = async (e) => {
     e.preventDefault();
+    console.log("📅 Handling schedule...");
 
     if (!validateForm(sessionName)) return;
 
@@ -198,6 +246,7 @@ export default function TemplateMessageSender() {
 
     try {
       const allRecipients = getAllRecipients();
+      console.log("📋 Schedule recipients:", allRecipients);
 
       let scheduleData = {
         name: `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
@@ -220,27 +269,45 @@ export default function TemplateMessageSender() {
         },
       };
 
+      console.log("📝 Schedule data:", scheduleData);
+
       const response = await fetch("/api/schedules", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scheduleData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to schedule message");
+        let errorMessage = "Failed to schedule message";
+
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error("Failed to parse error response:", e);
+          // If response is not JSON, try to get text
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch (textError) {
+            console.error("Failed to get error text:", textError);
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log("✅ Schedule result:", result);
       setSendResult({
         scheduled: true,
         scheduleId: result.id,
         nextRun: result.nextRun,
       });
     } catch (err) {
-      console.error("Error scheduling message:", err);
+      console.error("❌ Error scheduling message:", err);
       setError(err.message || "Failed to schedule message");
     } finally {
       setIsSubmitting(false);
@@ -250,12 +317,14 @@ export default function TemplateMessageSender() {
   // Handle schedule config change
   const handleScheduleConfigChange = (e) => {
     const { name, value } = e.target;
+    console.log(`⚙️ Schedule config change: ${name} = ${value}`);
     setScheduleConfig((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  // Render the step components with additional debugging props
   return (
     <div className="space-y-6">
       {/* Step indicator */}
