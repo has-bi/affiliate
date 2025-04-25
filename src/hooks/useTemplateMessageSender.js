@@ -3,9 +3,17 @@ import { useState, useEffect } from "react";
 import {
   formatMessageContent,
   validateTemplateParams,
-} from "@/lib/templateParameterUtils";
+  fillTemplateContent,
+  fillDynamicParameters,
+  getFinalMessageForContact,
+} from "@/lib/templateUtils";
 
 export function useTemplateMessageSender(templates, selectedTemplateId) {
+  console.log("🔧 useTemplateMessageSender: Hook called with:", {
+    templates: templates?.length || 0,
+    selectedTemplateId,
+  });
+
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [paramValues, setParamValues] = useState({});
   const [selectedContacts, setSelectedContacts] = useState([]);
@@ -15,10 +23,12 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
 
   // Update selected template when ID changes
   useEffect(() => {
+    console.log("🔄 Template ID changed:", selectedTemplateId);
     if (selectedTemplateId) {
       const template = templates.find(
         (t) => t.id === parseInt(selectedTemplateId, 10)
       );
+      console.log("📝 Found template:", template ? "yes" : "no");
       setSelectedTemplate(template || null);
       setParamValues({});
     } else {
@@ -28,11 +38,14 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
 
   // Handle template selection
   const handleTemplateChange = (e) => {
-    return e.target.value ? parseInt(e.target.value, 10) : null;
+    const value = e.target.value ? parseInt(e.target.value, 10) : null;
+    console.log("🔀 Handle template change, value:", value);
+    return value;
   };
 
   // Handle parameter value change - only for static parameters
   const handleParamChange = (paramId, value) => {
+    console.log(`📝 Parameter change: ${paramId} = ${value}`);
     if (selectedTemplate) {
       const isStaticParam = selectedTemplate.parameters.find(
         (p) => p.id === paramId && !p.isDynamic
@@ -48,40 +61,43 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
   };
 
   // Get final message for a specific contact
-  const getFinalMessageForContact = (contact) => {
-    if (!selectedTemplate) return "";
-
-    let content = selectedTemplate.content;
-
-    // First replace dynamic parameters with contact data
-    if (selectedTemplate.parameters) {
-      selectedTemplate.parameters
-        .filter((p) => p.isDynamic)
-        .forEach((param) => {
-          const regex = new RegExp(`\\{${param.id}\\}`, "g");
-          const value = contact[param.id] || "";
-          content = content.replace(regex, value || `{${param.id}}`);
-        });
+  const getFinalMessageForContactLocal = (contact) => {
+    console.log("💬 Getting final message for contact:", contact);
+    if (!selectedTemplate || !selectedTemplate.content) {
+      console.log("❌ No template or content available");
+      return "";
     }
 
-    // Then replace static parameters with user-provided values
-    Object.entries(paramValues).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{${key}\\}`, "g");
-      content = content.replace(regex, value || `{${key}}`);
-    });
-
-    return content;
+    try {
+      const message = getFinalMessageForContact(
+        selectedTemplate.content,
+        contact,
+        paramValues
+      );
+      console.log("✅ Final message generated");
+      return message;
+    } catch (error) {
+      console.error("❌ Error generating final message:", error);
+      return "";
+    }
   };
 
   // Parse manual recipients
   const parseManualRecipients = () => {
-    if (!manualRecipients.trim()) return [];
+    console.log("📋 Parsing manual recipients");
+    if (!manualRecipients.trim()) {
+      console.log("📭 No manual recipients to parse");
+      return [];
+    }
 
-    return manualRecipients
+    const parsed = manualRecipients
       .split(/[\n,]/)
       .map((num) => num.trim())
       .filter((num) => num.length > 0)
       .map(formatPhoneNumber);
+
+    console.log("✅ Parsed recipients:", parsed);
+    return parsed;
   };
 
   // Format phone number to WhatsApp format
@@ -98,33 +114,48 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
 
   // Get all recipients
   const getAllRecipients = () => {
-    const contactPhones = selectedContacts.map((contact) =>
-      formatPhoneNumber(contact.phone)
-    );
-    const manualPhones = parseManualRecipients();
-    return [...new Set([...contactPhones, ...manualPhones])];
+    console.log("📋 Getting all recipients");
+    try {
+      const contactPhones = selectedContacts.map((contact) =>
+        formatPhoneNumber(contact.phone)
+      );
+      const manualPhones = parseManualRecipients();
+      const allRecipients = [...new Set([...contactPhones, ...manualPhones])];
+      console.log("✅ All recipients:", allRecipients);
+      return allRecipients;
+    } catch (error) {
+      console.error("❌ Error getting all recipients:", error);
+      return [];
+    }
   };
 
   // Validate form
   const validateForm = (sessionName) => {
+    console.log("🔍 Validating form");
     setError(null);
 
     // Validate template selection
     if (!selectedTemplate) {
-      setError("Silakan pilih template terlebih dahulu");
+      const errorMsg = "Silakan pilih template terlebih dahulu";
+      console.log("❌ Validation failed:", errorMsg);
+      setError(errorMsg);
       return false;
     }
 
     // Validate session
     if (!sessionName) {
-      setError("Silakan pilih session WhatsApp");
+      const errorMsg = "Silakan pilih session WhatsApp";
+      console.log("❌ Validation failed:", errorMsg);
+      setError(errorMsg);
       return false;
     }
 
     // Validate recipients
     const allRecipients = getAllRecipients();
     if (allRecipients.length === 0) {
-      setError("Pilih setidaknya satu penerima");
+      const errorMsg = "Pilih setidaknya satu penerima";
+      console.log("❌ Validation failed:", errorMsg);
+      setError(errorMsg);
       return false;
     }
 
@@ -136,41 +167,78 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
       );
 
       if (!isValid) {
-        setError(`Parameter error: ${errors.join(", ")}`);
+        const errorMsg = `Parameter error: ${errors.join(", ")}`;
+        console.log("❌ Validation failed:", errorMsg);
+        setError(errorMsg);
         return false;
       }
     }
 
+    console.log("✅ Form validation passed");
     return true;
   };
 
   // Get preview for the first selected contact or generic preview
   const getPreviewHTML = () => {
-    if (!selectedTemplate) return "";
+    console.log("🖼️ Getting preview HTML");
+    try {
+      if (!selectedTemplate || !selectedTemplate.content) {
+        console.log("❌ No template or content for preview");
+        return "";
+      }
 
-    if (selectedContacts.length > 0) {
-      const previewMessage = getFinalMessageForContact(selectedContacts[0]);
-      return formatMessageContent(previewMessage);
+      if (selectedContacts.length > 0) {
+        const previewMessage = getFinalMessageForContactLocal(
+          selectedContacts[0]
+        );
+        const html = formatMessageContent(previewMessage);
+        console.log("✅ Preview HTML generated with contact");
+        return html;
+      }
+
+      const tempContent = fillTemplateContent(
+        selectedTemplate.content,
+        paramValues
+      );
+      const html = formatMessageContent(tempContent);
+      console.log("✅ Preview HTML generated without contact");
+      return html;
+    } catch (error) {
+      console.error("❌ Error generating preview HTML:", error);
+      return "";
     }
-
-    let content = selectedTemplate.content;
-    Object.entries(paramValues).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{${key}\\}`, "g");
-      content = content.replace(regex, value || `{${key}}`);
-    });
-
-    return formatMessageContent(content);
   };
 
   // Toggle preview mode
   const togglePreview = () => {
+    console.log("🔄 Toggling preview mode");
     setPreviewMode((prev) => !prev);
   };
 
   // Handle contacts selected
   const handleContactsSelected = (contacts) => {
+    console.log("👥 Contacts selected:", contacts.length);
     setSelectedContacts(contacts);
   };
+
+  // Log current state for debugging
+  useEffect(() => {
+    console.log("📊 Hook state:", {
+      selectedTemplate: selectedTemplate ? "exists" : "null",
+      paramValues,
+      selectedContacts: selectedContacts.length,
+      manualRecipients,
+      previewMode,
+      error,
+    });
+  }, [
+    selectedTemplate,
+    paramValues,
+    selectedContacts,
+    manualRecipients,
+    previewMode,
+    error,
+  ]);
 
   return {
     selectedTemplate,
@@ -187,7 +255,7 @@ export function useTemplateMessageSender(templates, selectedTemplateId) {
     setError,
     handleTemplateChange,
     handleParamChange,
-    getFinalMessageForContact,
+    getFinalMessageForContact: getFinalMessageForContactLocal,
     parseManualRecipients,
     getAllRecipients,
     validateForm,

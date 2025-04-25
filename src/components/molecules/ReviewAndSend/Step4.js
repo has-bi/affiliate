@@ -17,6 +17,116 @@ const Step4 = ({
   isSubmitting,
   handlePrevStep,
 }) => {
+  console.log("🚀 Step4: Rendering");
+  console.log("📊 Props received:", {
+    selectedTemplate: selectedTemplate ? "exists" : "null",
+    sessionName,
+    getAllRecipients: typeof getAllRecipients,
+    getPreviewHTML: typeof getPreviewHTML,
+    isScheduling,
+    setIsScheduling: typeof setIsScheduling,
+    scheduleConfig,
+    handleScheduleConfigChange: typeof handleScheduleConfigChange,
+    handleSend: typeof handleSend,
+    handleSchedule: typeof handleSchedule,
+    isSubmitting,
+    handlePrevStep: typeof handlePrevStep,
+  });
+
+  // Try to get recipients safely
+  let recipients = [];
+  let recipientsError = null;
+  try {
+    console.log("📋 Attempting to get recipients...");
+    if (typeof getAllRecipients === "function") {
+      recipients = getAllRecipients();
+      console.log("✅ Recipients retrieved:", recipients);
+    } else {
+      console.error("❌ getAllRecipients is not a function");
+      recipientsError = "getAllRecipients is not a function";
+    }
+  } catch (error) {
+    console.error("❌ Error getting recipients:", error);
+    recipientsError = error.message;
+  }
+
+  // Try to get preview HTML safely
+  let previewHTML = "";
+  let previewError = null;
+  try {
+    console.log("🖼️ Attempting to get preview HTML...");
+    if (typeof getPreviewHTML === "function") {
+      previewHTML = getPreviewHTML();
+      console.log(
+        "✅ Preview HTML retrieved:",
+        previewHTML ? "success" : "empty"
+      );
+    } else {
+      console.error("❌ getPreviewHTML is not a function");
+      previewError = "getPreviewHTML is not a function";
+    }
+  } catch (error) {
+    console.error("❌ Error getting preview HTML:", error);
+    previewError = error.message;
+  }
+
+  // Safe schedule config with defaults
+  const safeScheduleConfig = scheduleConfig || {
+    type: "once",
+    date: "",
+    time: "09:00",
+    cronExpression: "0 9 * * 1",
+    startDate: "",
+    endDate: "",
+  };
+
+  console.log("🔧 Safe schedule config:", safeScheduleConfig);
+
+  // Debug section
+  if (recipientsError || previewError) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-red-700">Error Details</h3>
+        {recipientsError && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-md">
+            <h4 className="font-medium">Recipients Error:</h4>
+            <p>{recipientsError}</p>
+          </div>
+        )}
+        {previewError && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-md">
+            <h4 className="font-medium">Preview Error:</h4>
+            <p>{previewError}</p>
+          </div>
+        )}
+        <div className="p-4 bg-gray-100 rounded-md">
+          <h4 className="font-medium mb-2">Debug Information:</h4>
+          <pre className="text-xs overflow-auto">
+            {JSON.stringify(
+              {
+                selectedTemplate: selectedTemplate ? "exists" : "null",
+                sessionName,
+                getAllRecipients: typeof getAllRecipients,
+                getPreviewHTML: typeof getPreviewHTML,
+                scheduleConfig: safeScheduleConfig,
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handlePrevStep}
+          disabled={isSubmitting}
+        >
+          Kembali
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium text-gray-700">
@@ -31,7 +141,7 @@ const Step4 = ({
         <div className="p-4">
           <div
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: getPreviewHTML() }}
+            dangerouslySetInnerHTML={{ __html: previewHTML }}
           />
         </div>
       </div>
@@ -40,15 +150,15 @@ const Step4 = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 p-4 rounded-md">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Template</h5>
-          <p>{selectedTemplate?.name}</p>
+          <p>{selectedTemplate?.name || "No template selected"}</p>
         </div>
         <div className="bg-gray-50 p-4 rounded-md">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Session</h5>
-          <p>{sessionName}</p>
+          <p>{sessionName || "No session selected"}</p>
         </div>
         <div className="bg-gray-50 p-4 rounded-md">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Recipients</h5>
-          <p>{getAllRecipients().length} penerima</p>
+          <p>{recipients.length} penerima</p>
         </div>
       </div>
 
@@ -60,7 +170,14 @@ const Step4 = ({
               type="radio"
               name="sendOption"
               checked={!isScheduling}
-              onChange={() => setIsScheduling(false)}
+              onChange={() => {
+                console.log("🔄 Send option changed: send now");
+                if (typeof setIsScheduling === "function") {
+                  setIsScheduling(false);
+                } else {
+                  console.error("❌ setIsScheduling is not a function");
+                }
+              }}
               className="h-4 w-4 text-indigo-600"
             />
             <span className="ml-2">Kirim Sekarang</span>
@@ -70,7 +187,14 @@ const Step4 = ({
               type="radio"
               name="sendOption"
               checked={isScheduling}
-              onChange={() => setIsScheduling(true)}
+              onChange={() => {
+                console.log("🔄 Send option changed: schedule");
+                if (typeof setIsScheduling === "function") {
+                  setIsScheduling(true);
+                } else {
+                  console.error("❌ setIsScheduling is not a function");
+                }
+              }}
               className="h-4 w-4 text-indigo-600"
             />
             <span className="ml-2">Jadwalkan Pengiriman</span>
@@ -89,8 +213,17 @@ const Step4 = ({
                     type="radio"
                     name="type"
                     value="once"
-                    checked={scheduleConfig.type === "once"}
-                    onChange={handleScheduleConfigChange}
+                    checked={safeScheduleConfig.type === "once"}
+                    onChange={(e) => {
+                      console.log("🔄 Schedule type changed:", e.target.value);
+                      if (typeof handleScheduleConfigChange === "function") {
+                        handleScheduleConfigChange(e);
+                      } else {
+                        console.error(
+                          "❌ handleScheduleConfigChange is not a function"
+                        );
+                      }
+                    }}
                     className="h-4 w-4 text-indigo-600"
                   />
                   <span className="ml-2">Satu Kali</span>
@@ -100,8 +233,17 @@ const Step4 = ({
                     type="radio"
                     name="type"
                     value="recurring"
-                    checked={scheduleConfig.type === "recurring"}
-                    onChange={handleScheduleConfigChange}
+                    checked={safeScheduleConfig.type === "recurring"}
+                    onChange={(e) => {
+                      console.log("🔄 Schedule type changed:", e.target.value);
+                      if (typeof handleScheduleConfigChange === "function") {
+                        handleScheduleConfigChange(e);
+                      } else {
+                        console.error(
+                          "❌ handleScheduleConfigChange is not a function"
+                        );
+                      }
+                    }}
                     className="h-4 w-4 text-indigo-600"
                   />
                   <span className="ml-2">Berulang</span>
@@ -109,7 +251,7 @@ const Step4 = ({
               </div>
             </div>
 
-            {scheduleConfig.type === "once" ? (
+            {safeScheduleConfig.type === "once" ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
@@ -122,7 +264,7 @@ const Step4 = ({
                     type="date"
                     id="date"
                     name="date"
-                    value={scheduleConfig.date}
+                    value={safeScheduleConfig.date || ""}
                     onChange={handleScheduleConfigChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min={new Date().toISOString().split("T")[0]}
@@ -140,7 +282,7 @@ const Step4 = ({
                     type="time"
                     id="time"
                     name="time"
-                    value={scheduleConfig.time}
+                    value={safeScheduleConfig.time || "09:00"}
                     onChange={handleScheduleConfigChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     required
@@ -160,7 +302,7 @@ const Step4 = ({
                     type="text"
                     id="cronExpression"
                     name="cronExpression"
-                    value={scheduleConfig.cronExpression}
+                    value={safeScheduleConfig.cronExpression || "0 9 * * 1"}
                     onChange={handleScheduleConfigChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="0 9 * * 1"
@@ -184,7 +326,7 @@ const Step4 = ({
                       type="date"
                       id="startDate"
                       name="startDate"
-                      value={scheduleConfig.startDate}
+                      value={safeScheduleConfig.startDate || ""}
                       onChange={handleScheduleConfigChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       min={new Date().toISOString().split("T")[0]}
@@ -202,11 +344,11 @@ const Step4 = ({
                       type="date"
                       id="endDate"
                       name="endDate"
-                      value={scheduleConfig.endDate}
+                      value={safeScheduleConfig.endDate || ""}
                       onChange={handleScheduleConfigChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       min={
-                        scheduleConfig.startDate ||
+                        safeScheduleConfig.startDate ||
                         new Date().toISOString().split("T")[0]
                       }
                     />
@@ -222,7 +364,14 @@ const Step4 = ({
           <Button
             type="button"
             variant="secondary"
-            onClick={handlePrevStep}
+            onClick={() => {
+              console.log("⬅️ Back button clicked");
+              if (typeof handlePrevStep === "function") {
+                handlePrevStep();
+              } else {
+                console.error("❌ handlePrevStep is not a function");
+              }
+            }}
             disabled={isSubmitting}
           >
             Kembali
@@ -232,7 +381,14 @@ const Step4 = ({
             <Button
               type="button"
               variant="primary"
-              onClick={handleSchedule}
+              onClick={(e) => {
+                console.log("📅 Schedule button clicked");
+                if (typeof handleSchedule === "function") {
+                  handleSchedule(e);
+                } else {
+                  console.error("❌ handleSchedule is not a function");
+                }
+              }}
               disabled={isSubmitting}
               isLoading={isSubmitting}
               leftIcon={!isSubmitting && <Calendar className="h-4 w-4 mr-1" />}
@@ -243,7 +399,14 @@ const Step4 = ({
             <Button
               type="button"
               variant="success"
-              onClick={handleSend}
+              onClick={(e) => {
+                console.log("📤 Send button clicked");
+                if (typeof handleSend === "function") {
+                  handleSend(e);
+                } else {
+                  console.error("❌ handleSend is not a function");
+                }
+              }}
               disabled={isSubmitting}
               isLoading={isSubmitting}
               leftIcon={!isSubmitting && <Send className="h-4 w-4 mr-1" />}

@@ -9,10 +9,11 @@ import Button from "@/components/atoms/Button";
 import Input from "@/components/atoms/Input";
 import TemplateParameter from "@/components/molecules/TemplateParameter";
 import {
-  extractParametersFromTemplateContent,
+  extractParametersFromContent,
   formatMessageContent,
   DYNAMIC_PARAMETERS,
-} from "@/lib/templateParameterUtils";
+  createParameterId,
+} from "@/lib/templateUtils";
 
 /**
  * TemplateForm - Form for creating and editing templates
