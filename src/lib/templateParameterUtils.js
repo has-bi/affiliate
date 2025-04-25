@@ -13,24 +13,6 @@ export const DYNAMIC_PARAMETERS = {
     placeholder: "Automatically filled from contact data",
     required: false,
   },
-  phone: {
-    id: "phone",
-    name: "Phone Number",
-    type: "text",
-    isDynamic: true,
-    source: "contact.phone",
-    placeholder: "Automatically filled from contact data",
-    required: false,
-  },
-  platform: {
-    id: "platform",
-    name: "Platform",
-    type: "text",
-    isDynamic: true,
-    source: "contact.platform",
-    placeholder: "Automatically filled from contact data",
-    required: false,
-  },
 };
 
 /**
@@ -41,15 +23,12 @@ export const DYNAMIC_PARAMETERS = {
 export function extractParametersFromTemplateContent(content) {
   if (!content) return { dynamic: [], static: [] };
 
-  // Match all {parameter} occurrences
   const matches = content.match(/\{([^}]+)\}/g) || [];
-
   const parameters = {
     dynamic: [],
     static: [],
   };
 
-  // Extract parameter names and categorize them
   const paramSet = new Set();
   matches.forEach((match) => {
     const paramName = match.substring(1, match.length - 1);
