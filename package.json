@@ -7,14 +7,17 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "fix-name-param": "node scripts/fixNameParam.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
     "@prisma/client": "^6.6.0",
     "axios": "^1.8.4",
+    "baileys": "^6.7.16",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
+    "google-auth-library": "^9.15.1",
     "google-spreadsheet": "^4.1.4",
     "googleapis": "^148.0.0",
     "jsonwebtoken": "^9.0.2",

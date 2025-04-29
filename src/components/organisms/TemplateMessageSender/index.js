@@ -9,6 +9,7 @@ import { formatMessageContent } from "@/lib/templateUtils";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import { AlertCircle, Check } from "lucide-react";
+import { createSchedule } from "@/lib/scheduleUtils";
 
 // Import step components
 import Step1 from "@/components/molecules/TemplateSelector/Step1";
@@ -278,29 +279,19 @@ export default function TemplateMessageSender() {
       });
 
       if (!response.ok) {
-        let errorMessage = "Failed to schedule message";
-
+        const resClone = response.clone();
+        let errorMsg = "Failed to schedule message";
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          console.error("Failed to parse error response:", e);
-          // If response is not JSON, try to get text
-          try {
-            const errorText = await response.text();
-            if (errorText) {
-              errorMessage = errorText;
-            }
-          } catch (textError) {
-            console.error("Failed to get error text:", textError);
-          }
+          const j = await resClone.json();
+          errorMsg = j.error ?? errorMsg;
+        } catch {
+          const t = await response.text();
+          if (t) errorMsg = t;
         }
-
-        throw new Error(errorMessage);
+        throw new Error(errorMsg);
       }
 
-      const result = await response.json();
-      console.log("✅ Schedule result:", result);
+      const result = response.status === 204 ? {} : await response.json(); // guards empty body
       setSendResult({
         scheduled: true,
         scheduleId: result.id,
