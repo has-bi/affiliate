@@ -4,16 +4,15 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Plus, AlertCircle, CheckCircle, Info } from "lucide-react";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import TemplateParameter from "@/components/molecules/TemplateParameter";
 import {
   extractParametersFromContent,
   formatMessageContent,
   DYNAMIC_PARAMETERS,
   createParameterId,
-} from "@/lib/templateUtils";
+} from "@/lib/templates/templateUtils";
 
 /**
  * TemplateForm - Form for creating and editing templates

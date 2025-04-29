@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState } from "react";
-import Card from "../../atoms/Card";
-import Input from "../../atoms/Input";
-import Button from "../../atoms/Button";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 const SessionForm = ({ onSubmit, isLoading = false }) => {
   const [sessionName, setSessionName] = useState("");

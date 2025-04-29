@@ -6,7 +6,7 @@ import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
 import {
   extractParametersFromContent,
   formatMessageContent,
-} from "@/lib/templateUtils";
+} from "@/lib/templates/templateUtils";
 import PageLayout from "@/components/templates/PageLayout";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";

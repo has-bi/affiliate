@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
-import { formatMessageContent } from "@/lib/templateUtils";
+import { formatMessageContent } from "@/lib/templates/templateUtils";
 import PageLayout from "@/components/templates/PageLayout";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";

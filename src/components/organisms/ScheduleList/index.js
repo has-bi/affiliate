@@ -16,9 +16,9 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
-import Badge from "@/components/atoms/Badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function ScheduleList() {
   const router = useRouter();

@@ -1,4 +1,4 @@
-import { initializeSchedules } from "@/lib/services/schedulerService";
+import { initializeSchedules } from "@/lib/schedules/schedulerService";
 
 export async function middleware(request) {
   // Initialize schedules on server start

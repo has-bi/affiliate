@@ -3,11 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Input from "../../atoms/Input";
-import Button from "../../atoms/Button";
-import Card from "../../atoms/Card";
-import TemplateSelector from "../TemplateSelector";
-import MessagePreview from "../MessagePreview";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTemplate } from "../../../hooks/useTemplate";
 import { useSession } from "../../../hooks/useWhatsApp";
 import {

@@ -3,8 +3,8 @@
 
 import React from "react";
 import { Edit, Send, Calendar, Clock, Tag } from "lucide-react";
-import Button from "@/components/atoms/Button";
-import Card from "@/components/atoms/Card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 /**
  * TemplateDetail - Displays detailed information about a template

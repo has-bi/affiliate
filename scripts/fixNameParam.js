@@ -1,6 +1,6 @@
 // /home/hasbi/affiliate/scripts/fixNameParam.js
 
-import prisma from "../src/lib/prisma"; // Adjust the import to match your file structure
+import prisma from "../src/lib/db/prisma"; // Adjust the import to match your file structure
 
 async function main() {
   // Update 'name' parameter to be dynamic

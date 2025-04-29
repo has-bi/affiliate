@@ -1,6 +1,6 @@
 // src/components/molecules/TemplateParameterForm/Step2.js
 import React from "react";
-import Button from "@/components/atoms/Button";
+import { Button } from "@/components/ui/button";
 import { Eye, Edit } from "lucide-react";
 
 const Step2 = ({

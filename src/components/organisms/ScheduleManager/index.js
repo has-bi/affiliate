@@ -14,9 +14,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
-import Badge from "@/components/atoms/Badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useSchedule } from "@/hooks/useSchedule";
 
 const ScheduleManager = () => {

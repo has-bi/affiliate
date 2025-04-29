@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Search, RefreshCw, AlertCircle, Check, User, X } from "lucide-react";
-import Button from "@/components/atoms/Button";
-import Card from "@/components/atoms/Card";
+import { Button } from "@/components/ui/button";
 
 /**
  * Contact Selector component for selecting contacts from master sheet

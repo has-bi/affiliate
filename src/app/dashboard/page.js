@@ -1,4 +1,3 @@
-// app/dashboard/page.js
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,8 +12,7 @@ import {
   Send,
   LinkIcon,
 } from "lucide-react";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
+import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/templates/PageLayout";
 import Link from "next/link";
 
@@ -26,7 +24,6 @@ export default function DashboardPage() {
   const [newAffiliateCount, setNewAffiliateCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
 
-  // Fetch affiliate count (you might need to create an API endpoint for this)
   useEffect(() => {
     const fetchAffiliateCount = async () => {
       try {
@@ -55,7 +52,6 @@ export default function DashboardPage() {
     fetchNewAffiliateCount();
   }, []);
 
-  // Mock recent activity - you can replace this with actual data
   useEffect(() => {
     setRecentActivity([
       {
@@ -88,9 +84,9 @@ export default function DashboardPage() {
     >
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Messages Sent - This would need an API endpoint */}
+        {/* New Affiliates */}
         <Card>
-          <Card.Content>
+          <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-indigo-100">
                 <PersonStanding className="h-6 w-6 text-indigo-600" />
@@ -104,12 +100,12 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         {/* Active Affiliates */}
         <Card>
-          <Card.Content>
+          <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-100">
                 <Users className="h-6 w-6 text-green-600" />
@@ -123,12 +119,12 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         {/* Active Schedules */}
         <Card>
-          <Card.Content>
+          <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-amber-100">
                 <Clock className="h-6 w-6 text-amber-600" />
@@ -142,12 +138,12 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         {/* Templates */}
         <Card>
-          <Card.Content>
+          <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-purple-100">
                 <FileText className="h-6 w-6 text-purple-600" />
@@ -159,7 +155,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       </div>
 
@@ -169,77 +165,48 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-md transition-shadow">
-            <Card.Content>
-              <Link href="/broadcasts" className="block">
-                <div className="flex items-center">
-                  <Send className="h-8 w-8 text-indigo-600" />
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Send Broadcast
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Send messages to multiple contacts
-                    </p>
+          {[
+            {
+              href: "/broadcasts",
+              icon: Send,
+              title: "Send Broadcast",
+              desc: "Send messages to multiple contacts",
+            },
+            {
+              href: "/templates/new",
+              icon: FileText,
+              title: "Create Template",
+              desc: "Design a new message template",
+            },
+            {
+              href: "/schedules/new",
+              icon: Clock,
+              title: "Schedule Message",
+              desc: "Set up automated messaging",
+            },
+            {
+              href: "/dashboard/connections",
+              icon: LinkIcon,
+              title: "Manage Connections",
+              desc: "Add/remove WhatsApp sessions",
+            },
+          ].map((action, idx) => (
+            <Card key={idx} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <Link href={action.href} className="block">
+                  <div className="flex items-center">
+                    <action.icon className="h-8 w-8 text-indigo-600" />
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {action.title}
+                      </h3>
+                      <p className="text-sm text-gray-500">{action.desc}</p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </Card.Content>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <Card.Content>
-              <Link href="/templates/new" className="block">
-                <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-green-600" />
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Create Template
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Design a new message template
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </Card.Content>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <Card.Content>
-              <Link href="/schedules/new" className="block">
-                <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-amber-600" />
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Schedule Message
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Set up automated messaging
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </Card.Content>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <Card.Content>
-              <Link href="/dashboard/connections" className="block">
-                <div className="flex items-center">
-                  <LinkIcon className="h-8 w-8 text-blue-600" />
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Manage Connections
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Add / remove WhatsApp sessions
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </Card.Content>
-          </Card>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
 
@@ -249,7 +216,7 @@ export default function DashboardPage() {
           Recent Activity
         </h2>
         <Card>
-          <Card.Content>
+          <CardContent className="p-4">
             <ul className="divide-y divide-gray-200">
               {recentActivity.map((activity, index) => (
                 <li key={index} className="py-4 first:pt-0 last:pb-0">
@@ -272,7 +239,7 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
-          </Card.Content>
+          </CardContent>
         </Card>
       </div>
     </PageLayout>

@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import Card from "../../atoms/Card";
+import { Card } from "@/components/ui/card";
 
 const MessagePreview = ({ preview, isValid }) => {
   // Function to process the message text with markdown-like syntax

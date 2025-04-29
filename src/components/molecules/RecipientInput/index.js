@@ -2,8 +2,8 @@
 "use client";
 
 import React from "react";
-import Card from "../../../components/atoms/Card";
-import Button from "../../../components/atoms/Button";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const RecipientInput = ({
   recipients,
