@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSession } from "@/hooks/useSession";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useSchedule } from "@/hooks/useSchedule";
 import {
@@ -19,7 +19,7 @@ import PageLayout from "@/components/templates/PageLayout";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { sessions } = useSession();
+  const { sessions } = useWhatsApp();
   const { templates } = useTemplate();
   const { schedules } = useSchedule();
   const [affiliateCount, setAffiliateCount] = useState(0);

@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSession } from "@/hooks/useSession";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 import {
   LogOut,
   ChevronDown,
@@ -125,7 +125,7 @@ export default function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { sessions } = useSession();
+  const { sessions } = useWhatsApp();
 
   const connectedSessions = sessions.filter((s) =>
     ["CONNECTED", "WORKING"].includes(s.status)

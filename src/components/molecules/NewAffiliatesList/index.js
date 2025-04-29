@@ -10,7 +10,7 @@ import {
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/hooks/useWhatsApp";
 
 /**
  * Component for managing and sending welcome messages to new affiliates

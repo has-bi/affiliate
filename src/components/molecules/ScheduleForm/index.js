@@ -9,7 +9,7 @@ import Card from "../../atoms/Card";
 import TemplateSelector from "../TemplateSelector";
 import MessagePreview from "../MessagePreview";
 import { useTemplate } from "../../../hooks/useTemplate";
-import { useSession } from "../../../hooks/useSession";
+import { useSession } from "../../../hooks/useWhatsApp";
 import {
   Calendar,
   Clock,

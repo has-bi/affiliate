@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/hooks/useWhatsApp";
 import { useTemplateMessageSender } from "@/hooks/useTemplateMessageSender";
 import { formatMessageContent } from "@/lib/templateUtils";
 import Card from "@/components/atoms/Card";

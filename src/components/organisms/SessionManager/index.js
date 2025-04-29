@@ -6,7 +6,7 @@ import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import Input from "@/components/atoms/Input";
 import { AlertCircle, RefreshCw, Power, Trash } from "lucide-react";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/hooks/useWhatsApp";
 
 /**
  * Component for managing WhatsApp sessions
