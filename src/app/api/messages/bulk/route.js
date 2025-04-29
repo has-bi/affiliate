@@ -1,23 +1,19 @@
 // src/app/api/messages/bulk/route.js
-// Final version – filters recipients to ACTIVE affiliates only and sends
-// messages sequentially with an optional delay via WAHA API.
-// -----------------------------------------------------------------------------
+// Final version – Baileys-powered, no external WAHA gateway
+//--------------------------------------------------------------------------
 import { NextResponse } from "next/server";
-
 import { formatPhoneNumber } from "@/lib/utils";
 import { getActiveAffiliates } from "@/lib/spreadsheetService";
-
-const WAHA_URL =
-  process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
+import baileysClient from "@/lib/baileysClient";
 
 /**
  * POST /api/messages/bulk
  * Body:
  * {
- *   "session"    : "default-session",   // required
- *   "recipients" : ["628123…", …],      // required – raw phone strings
- *   "message"    : "Hello …",            // required – fully rendered text
- *   "delay"      : 3000                  // optional ms between sends (default 0)
+ *   "session"    : "default-session",   // required – for future multi‑device
+ *   "recipients" : ["62812…", …],       // required – raw phone numbers
+ *   "message"    : "Hello …" ,          // required – final rendered text
+ *   "delay"      : 1000                 // optional ms between sends (default 0)
  * }
  */
 export async function POST(request) {
@@ -36,12 +32,8 @@ export async function POST(request) {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 1️⃣  Get map of active affiliates – key = raw phone (numbers only)
-    // -----------------------------------------------------------------------
+    // 1️⃣  Load active affiliates map
     const activeMap = await getActiveAffiliates();
-
-    // Filter recipients → only those in activeMap
     const allowed = recipients.filter((p) => activeMap[p]);
     const skipped = recipients.filter((p) => !activeMap[p]);
 
@@ -52,28 +44,18 @@ export async function POST(request) {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 2️⃣  Send sequentially (delay in‑between) – can be optimised to parallel
-    // -----------------------------------------------------------------------
+    // 2️⃣  Send sequentially (respect delay)
     let success = 0;
-    let failures = [];
+    const failures = [];
 
     for (const raw of allowed) {
-      const chatId = formatPhoneNumber(raw);
-
+      const chatId = `${formatPhoneNumber(raw)}@s.whatsapp.net`;
       try {
-        const res = await fetch(`${WAHA_URL}/api/sendText`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId, text: message, session }),
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await baileysClient.sendText(chatId, message);
         success += 1;
       } catch (err) {
         failures.push({ phone: raw, error: err.message });
       }
-
       if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     }
 

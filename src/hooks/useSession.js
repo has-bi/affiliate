@@ -1,154 +1,92 @@
+// hooks/useSession.js
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 
 export function useSession() {
-  const [sessions, setSessions] = useState([]);
-  const [currentSession, setCurrentSession] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [sessions, setSessions] = useState([]); // ["marketing", …]
+  const [current, setCurrent] = useState(null); // string | null
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch all sessions
+  /* -------------------------------------------
+   * Helpers
+   * -----------------------------------------*/
   const fetchSessions = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
+    setLoading(true);
     try {
-      const response = await fetch("/api/sessions");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch sessions");
-      }
-
-      const data = await response.json();
-      setSessions(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching sessions:", err);
-      setError(err.message || "Failed to fetch sessions");
+      const res = await fetch("/api/connections");
+      if (!res.ok) throw new Error("Failed to fetch sessions");
+      const data = await res.json(); // { sessions: [...] }
+      setSessions(data.sessions || []);
+    } catch (e) {
+      console.error(e);
+      setError(e.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  // Fetch a specific session
-  const fetchSession = useCallback(async (sessionName) => {
-    if (!sessionName) return null;
-
-    setIsLoading(true);
-    setError(null);
-
+  const createSession = useCallback(async (name) => {
+    if (!name?.trim()) return null;
+    setLoading(true);
     try {
-      const response = await fetch(`/api/sessions/${sessionName}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch session ${sessionName}`);
-      }
-
-      const session = await response.json();
-
-      // Update the sessions list with this session
-      setSessions((prev) => {
-        const exists = prev.some((s) => s.name === session.name);
-        if (exists) {
-          return prev.map((s) => (s.name === session.name ? session : s));
-        } else {
-          return [...prev, session];
-        }
-      });
-
-      setCurrentSession(session);
-      return session;
-    } catch (err) {
-      console.error(`Error fetching session ${sessionName}:`, err);
-      setError(err.message || `Failed to fetch session ${sessionName}`);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Create a new session
-  const createSession = useCallback(async (sessionName) => {
-    if (!sessionName) return null;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/sessions`, {
+      const res = await fetch("/api/connections", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: sessionName }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
       });
+      if (!res.ok) throw await res.json();
 
-      if (!response.ok) {
-        throw new Error(`Failed to create session ${sessionName}`);
-      }
-
-      const newSession = await response.json();
-      setSessions((prev) => [...prev, newSession]);
-      setCurrentSession(newSession);
-      return newSession;
-    } catch (err) {
-      console.error(`Error creating session ${sessionName}:`, err);
-      setError(err.message || `Failed to create session ${sessionName}`);
+      setSessions((prev) => [...prev, name.trim()]);
+      setCurrent(name.trim());
+      return name.trim();
+    } catch (e) {
+      console.error(e);
+      setError(e.error || "Failed to create session");
       return null;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  // Delete a session
   const deleteSession = useCallback(
-    async (sessionName) => {
-      if (!sessionName) return false;
-
-      setIsLoading(true);
-      setError(null);
-
+    async (name) => {
+      if (!name) return false;
+      setLoading(true);
       try {
-        const response = await fetch(`/api/sessions/${sessionName}`, {
+        const res = await fetch(`/api/connections/${name}`, {
           method: "DELETE",
         });
+        if (!res.ok) throw await res.json();
 
-        if (!response.ok) {
-          throw new Error(`Failed to delete session ${sessionName}`);
-        }
-
-        setSessions((prev) => prev.filter((s) => s.name !== sessionName));
-
-        if (currentSession?.name === sessionName) {
-          setCurrentSession(null);
-        }
-
+        setSessions((prev) => prev.filter((n) => n !== name));
+        if (current === name) setCurrent(null);
         return true;
-      } catch (err) {
-        console.error(`Error deleting session ${sessionName}:`, err);
-        setError(err.message || `Failed to delete session ${sessionName}`);
+      } catch (e) {
+        console.error(e);
+        setError(e.error || "Failed to delete session");
         return false;
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     },
-    [currentSession]
+    [current]
   );
 
-  // Initialize sessions on mount
+  /* initial load */
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
   return {
     sessions,
-    currentSession,
-    isLoading,
+    currentSession: current,
+    isLoading: loading,
     error,
     fetchSessions,
-    fetchSession,
     createSession,
     deleteSession,
-    setCurrentSession,
+    setCurrentSession: setCurrent,
   };
 }
