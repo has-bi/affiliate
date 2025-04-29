@@ -11,6 +11,7 @@
     "fix-name-param": "node scripts/fixNameParam.js"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
     "@hookform/resolvers": "^5.0.1",
     "@neondatabase/serverless": "^1.0.0",
     "@prisma/client": "^6.6.0",
@@ -47,6 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cross-env": "^7.0.3",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "google-auth-library": "^9.15.1",

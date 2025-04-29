@@ -12,7 +12,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/hooks/useWhatsApp";
 
 const MessageSender = () => {
   // Session handling

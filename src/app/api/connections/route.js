@@ -1,20 +1,39 @@
+// src/app/api/connections/route.js
 import { NextResponse } from "next/server";
-import { createSession, listSessions } from "@/lib/waSessionManager";
+import baileysClient from "@/lib/baileysClient";
 
-export async function GET() {
-  return NextResponse.json({ sessions: listSessions() });
+export async function GET(request) {
+  try {
+    const sessions = baileysClient.listSessions();
+    return NextResponse.json({ sessions });
+  } catch (error) {
+    console.error("Error listing sessions:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to list sessions" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request) {
   try {
-    const { name } = await request.json();
-    if (!name)
-      return NextResponse.json({ error: "name required" }, { status: 400 });
+    const body = await request.json();
+    const { name } = body;
 
-    const sess = await createSession(name.trim());
-    return NextResponse.json({ name: name.trim(), qr: sess.qr });
-  } catch (e) {
-    console.error("[connections] create failed", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    if (!name || typeof name !== "string") {
+      return NextResponse.json(
+        { error: "Valid session name is required" },
+        { status: 400 }
+      );
+    }
+
+    const session = await baileysClient.initSession(name);
+    return NextResponse.json(session);
+  } catch (error) {
+    console.error("Error creating session:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to create session" },
+      { status: 500 }
+    );
   }
 }

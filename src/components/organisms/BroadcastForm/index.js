@@ -8,7 +8,7 @@ import Input from "@/components/atoms/Input";
 import RecipientInput from "@/components/molecules/RecipientInput";
 import BroadcastProgress from "@/components/molecules/BroadcastProgress";
 import { useBroadcast } from "@/hooks/useBroadcast";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/hooks/useWhatsApp";
 import { formatPhoneNumber } from "@/lib/utils";
 import { Send, AlertCircle } from "lucide-react";
 
