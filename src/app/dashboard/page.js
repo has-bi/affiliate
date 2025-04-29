@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useSchedule } from "@/hooks/useSchedule";
+import { useAffiliates } from "@/hooks/useAffiliates";
 import {
   PersonStanding,
   Users,
@@ -15,42 +17,15 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/templates/PageLayout";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { sessions } = useWhatsApp();
   const { templates } = useTemplate();
   const { schedules } = useSchedule();
-  const [affiliateCount, setAffiliateCount] = useState(0);
-  const [newAffiliateCount, setNewAffiliateCount] = useState(0);
+  const { newAffiliatesCount, activeAffiliatesCount } = useAffiliates();
   const [recentActivity, setRecentActivity] = useState([]);
-
-  useEffect(() => {
-    const fetchAffiliateCount = async () => {
-      try {
-        const response = await fetch("/api/contacts");
-        const data = await response.json();
-        setAffiliateCount(data.contacts?.length || 0);
-      } catch (error) {
-        console.error("Error fetching affiliate count:", error);
-      }
-    };
-
-    fetchAffiliateCount();
-  }, []);
-
-  useEffect(() => {
-    const fetchNewAffiliateCount = async () => {
-      try {
-        const response = await fetch("/api/affiliates/new");
-        const data = await response.json();
-        setNewAffiliateCount(data.contacts?.length || 0);
-      } catch (error) {
-        console.error("Error fetching new affiliate count:", error);
-      }
-    };
-
-    fetchNewAffiliateCount();
-  }, []);
 
   useEffect(() => {
     setRecentActivity([
@@ -75,12 +50,16 @@ export default function DashboardPage() {
     ]);
   }, []);
 
+  // Derived data
   const activeSchedules = schedules.filter((s) => s.status === "active").length;
+  const activeConnections = sessions.filter(
+    (s) => s.status === "CONNECTED"
+  ).length;
 
   return (
     <PageLayout
       title="Dashboard"
-      description="Overview of your WhatsApp operations"
+      description={`Welcome back, ${user?.name || "Admin"}`}
     >
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -93,10 +72,10 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">
-                  New Affiliate
+                  New Affiliates
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {newAffiliateCount}
+                  {newAffiliatesCount}
                 </p>
               </div>
             </div>
@@ -115,7 +94,7 @@ export default function DashboardPage() {
                   Active Affiliates
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {affiliateCount}
+                  {activeAffiliatesCount}
                 </p>
               </div>
             </div>

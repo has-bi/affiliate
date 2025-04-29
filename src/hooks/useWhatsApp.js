@@ -2,12 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { toast } from "react-hot-toast"; // Assuming you're using react-hot-toast for notifications
 
-/**
- * React hook for WhatsApp functionality
- * Provides methods to manage WhatsApp sessions and send messages
- */
 export function useWhatsApp() {
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
@@ -127,17 +122,10 @@ export function useWhatsApp() {
         // Refresh sessions list
         await fetchSessions();
 
-        // Show success notification
-        toast.success("WhatsApp session deleted successfully");
-
         return true;
       } catch (err) {
         console.error("Error deleting WhatsApp session:", err);
         setError(err.message || "Failed to delete WhatsApp session");
-
-        // Show error notification
-        toast.error(err.message || "Failed to delete WhatsApp session");
-
         return false;
       } finally {
         setIsLoading(false);
@@ -193,22 +181,9 @@ export function useWhatsApp() {
         throw new Error(errorData.error || "Failed to send message");
       }
 
-      const result = await response.json();
-
-      // Show success notification
-      if (result.totalSent > 0) {
-        toast.success("Message sent successfully");
-      } else {
-        toast.error("Failed to send message");
-      }
-
-      return result;
+      return await response.json();
     } catch (err) {
       console.error("Error sending message:", err);
-
-      // Show error notification
-      toast.error(err.message || "Failed to send message");
-
       throw err;
     }
   }, []);
@@ -240,26 +215,9 @@ export function useWhatsApp() {
           throw new Error(errorData.error || "Failed to send bulk messages");
         }
 
-        const result = await response.json();
-
-        // Show success/partial success notification
-        if (result.totalSent === result.totalRequested) {
-          toast.success(`Successfully sent ${result.totalSent} messages`);
-        } else if (result.totalSent > 0) {
-          toast.success(
-            `Sent ${result.totalSent}/${result.totalRequested} messages`
-          );
-        } else {
-          toast.error("Failed to send any messages");
-        }
-
-        return result;
+        return await response.json();
       } catch (err) {
         console.error("Error sending bulk messages:", err);
-
-        // Show error notification
-        toast.error(err.message || "Failed to send bulk messages");
-
         throw err;
       }
     },

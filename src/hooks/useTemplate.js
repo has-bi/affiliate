@@ -1,62 +1,28 @@
+// src/hooks/useTemplate.js
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import toast from "react-hot-toast";
+import { useState, useEffect, useCallback } from "react";
 import { formatMessageContent } from "@/lib/templates/templateUtils";
-import { useTemplateDatabase } from "./useTemplateDatabase";
 
+/**
+ * Hook for template management
+ * Handles template CRUD operations and parameter handling
+ */
 export function useTemplate(initialTemplates = []) {
-  // Use the database hook
-  const {
-    isLoading: isDbLoading,
-    error: dbError,
-    fetchTemplates,
-    fetchTemplateById,
-    createTemplate: dbCreateTemplate,
-    updateTemplate: dbUpdateTemplate,
-    deleteTemplate: dbDeleteTemplate,
-  } = useTemplateDatabase();
-
-  // Use a ref to track if we've initialized from props
-  const initializedRef = useRef(false);
-
-  // Core state
-  const [templates, setTemplates] = useState([]);
+  // Template state
+  const [templates, setTemplates] = useState(initialTemplates || []);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [paramValues, setParamValues] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [paramValues, setParamValues] = useState({});
   const [preview, setPreview] = useState("");
 
-  // Initialize from props only once
-  useEffect(() => {
-    if (!initializedRef.current && initialTemplates.length > 0) {
-      setTemplates(initialTemplates);
-      initializedRef.current = true;
-    }
-  }, [initialTemplates]);
-
-  // Computed properties
+  // Derived state
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-
-  // Update preview when template or param values change
-  useEffect(() => {
-    if (selectedTemplate && selectedTemplate.content) {
-      let content = selectedTemplate.content;
-
-      // Replace parameter placeholders with values
-      Object.entries(paramValues).forEach(([key, value]) => {
-        const regex = new RegExp(`\\{${key}\\}`, "g");
-        content = content.replace(regex, value || `{${key}}`);
-      });
-
-      setPreview(formatMessageContent(content));
-    } else {
-      setPreview("");
-    }
-  }, [selectedTemplate, paramValues]);
 
   // Filter templates based on search and category
   const filteredTemplates = templates.filter((template) => {
@@ -74,53 +40,106 @@ export function useTemplate(initialTemplates = []) {
     ...new Set(templates.map((t) => t.category).filter(Boolean)),
   ];
 
-  // Load templates from database
-  const loadTemplates = useCallback(async () => {
+  // Update preview when template or parameters change
+  useEffect(() => {
+    if (selectedTemplate) {
+      let content = selectedTemplate.content;
+
+      // Replace parameter placeholders with values
+      Object.entries(paramValues).forEach(([key, value]) => {
+        const regex = new RegExp(`\\{${key}\\}`, "g");
+        content = content.replace(regex, value || `{${key}}`);
+      });
+
+      setPreview(formatMessageContent(content));
+    } else {
+      setPreview("");
+    }
+  }, [selectedTemplate, paramValues]);
+
+  /**
+   * Load templates from API
+   */
+  const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await fetchTemplates();
+      const response = await fetch("/api/templates");
+
+      if (!response.ok) {
+        throw new Error(`Error fetching templates: ${response.status}`);
+      }
+
+      const data = await response.json();
       setTemplates(data);
+      return data;
     } catch (err) {
-      setError("Failed to load templates");
-      console.error("Error loading templates:", err);
+      console.error("Error fetching templates:", err);
+      setError(err.message || "Failed to fetch templates");
+      return [];
     } finally {
       setIsLoading(false);
     }
-  }, [fetchTemplates]);
+  }, []);
 
-  // Select a template
-  const selectTemplate = useCallback(
-    async (templateId) => {
-      setSelectedTemplateId(templateId);
+  /**
+   * Get template by ID
+   */
+  const fetchTemplateById = useCallback(async (id) => {
+    if (!id) return null;
 
-      // Reset parameter values when selecting a new template
-      setParamValues({});
+    setIsLoading(true);
+    setError(null);
 
-      // If we're selecting a template ID that's not in our current list,
-      // fetch it from the database
-      if (templateId && !templates.find((t) => t.id === templateId)) {
-        try {
-          const template = await fetchTemplateById(templateId);
-          if (template) {
-            setTemplates((prev) => {
-              // Add template to the list if not already there
-              if (!prev.find((t) => t.id === template.id)) {
-                return [...prev, template];
-              }
-              return prev;
-            });
-          }
-        } catch (err) {
-          console.error(`Error fetching template ${templateId}:`, err);
+    try {
+      const response = await fetch(`/api/templates/${id}`);
+
+      if (!response.ok) {
+        throw new Error(`Error fetching template: ${response.status}`);
+      }
+
+      const template = await response.json();
+
+      // Add/update template in state
+      setTemplates((prev) => {
+        const exists = prev.some((t) => t.id === template.id);
+        if (exists) {
+          return prev.map((t) => (t.id === template.id ? template : t));
+        } else {
+          return [...prev, template];
         }
+      });
+
+      return template;
+    } catch (err) {
+      console.error(`Error fetching template ${id}:`, err);
+      setError(err.message || `Failed to fetch template ${id}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Select a template and load its parameters
+   */
+  const selectTemplate = useCallback(
+    async (id) => {
+      setSelectedTemplateId(id);
+      setParamValues({}); // Reset parameter values
+
+      if (id && !templates.find((t) => t.id === id)) {
+        // If template is not in state, fetch it
+        await fetchTemplateById(id);
       }
     },
-    [fetchTemplateById, templates]
+    [templates, fetchTemplateById]
   );
 
-  // Update parameter value
+  /**
+   * Update parameter value
+   */
   const updateParamValue = useCallback((paramId, value) => {
     setParamValues((prev) => ({
       ...prev,
@@ -128,263 +147,248 @@ export function useTemplate(initialTemplates = []) {
     }));
   }, []);
 
-  // Create a new template
-  const createTemplate = useCallback(
-    async (templateData = null) => {
-      if (!templateData) {
-        // Create empty template UI only (not in database)
-        const newTemplate = {
-          id: `temp-${Date.now()}`,
-          name: "",
-          description: "",
-          content: "",
-          category: "general",
-          parameters: [],
-        };
+  /**
+   * Create a new template
+   */
+  const createTemplate = useCallback(async (templateData) => {
+    setIsLoading(true);
+    setError(null);
 
-        setTemplates((prev) => [...prev, newTemplate]);
-        setSelectedTemplateId(newTemplate.id);
-        return true;
-      } else {
-        // Create template in database
-        try {
-          const createdTemplate = await dbCreateTemplate(templateData);
-          if (createdTemplate) {
-            setTemplates((prev) => [...prev, createdTemplate]);
-            setSelectedTemplateId(createdTemplate.id);
-            return true;
-          }
-          return false;
-        } catch (err) {
-          console.error("Error creating template:", err);
-          return false;
-        }
+    try {
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(templateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `Error creating template: ${response.status}`
+        );
       }
-    },
-    [dbCreateTemplate]
-  );
 
-  // Update a template
-  const updateTemplate = useCallback(
-    async (updatedTemplate) => {
-      try {
-        // For temporary templates not yet saved to DB
-        if (updatedTemplate.id.startsWith("temp-")) {
-          // Remove the temp ID and save as new
-          const { id, ...templateData } = updatedTemplate;
-          const result = await dbCreateTemplate(templateData);
+      const newTemplate = await response.json();
 
-          if (result) {
-            // Remove temporary template and add the real one
-            setTemplates((prev) =>
-              prev.filter((t) => t.id !== id).concat(result)
-            );
-            setSelectedTemplateId(result.id);
-            return true;
-          }
-          return false;
-        } else {
-          // Update existing template
-          const result = await dbUpdateTemplate(
-            updatedTemplate.id,
-            updatedTemplate
-          );
+      // Add to templates list
+      setTemplates((prev) => [...prev, newTemplate]);
 
-          if (result) {
-            setTemplates((prev) =>
-              prev.map((t) => (t.id === result.id ? result : t))
-            );
-            return true;
-          }
-          return false;
-        }
-      } catch (err) {
-        console.error("Error updating template:", err);
-        return false;
+      return newTemplate;
+    } catch (err) {
+      console.error("Error creating template:", err);
+      setError(err.message || "Failed to create template");
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Update an existing template
+   */
+  const updateTemplate = useCallback(async (id, templateData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/templates/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(templateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `Error updating template: ${response.status}`
+        );
       }
-    },
-    [dbCreateTemplate, dbUpdateTemplate]
-  );
 
-  // Delete a template
+      const updatedTemplate = await response.json();
+
+      // Update in templates list
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === updatedTemplate.id ? updatedTemplate : t))
+      );
+
+      return updatedTemplate;
+    } catch (err) {
+      console.error(`Error updating template ${id}:`, err);
+      setError(err.message || `Failed to update template ${id}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Delete a template
+   */
   const deleteTemplate = useCallback(
-    async (templateId) => {
-      if (window.confirm("Are you sure you want to delete this template?")) {
-        try {
-          // For temporary templates not yet saved to DB
-          if (templateId.startsWith("temp-")) {
-            setTemplates((prev) => prev.filter((t) => t.id !== templateId));
-            if (selectedTemplateId === templateId) {
-              setSelectedTemplateId(null);
-            }
-            return true;
-          } else {
-            // Delete from database
-            const success = await dbDeleteTemplate(templateId);
-
-            if (success) {
-              setTemplates((prev) => prev.filter((t) => t.id !== templateId));
-              if (selectedTemplateId === templateId) {
-                setSelectedTemplateId(null);
-              }
-              return true;
-            }
-            return false;
-          }
-        } catch (err) {
-          console.error("Error deleting template:", err);
-          return false;
-        }
-      }
-      return false;
-    },
-    [dbDeleteTemplate, selectedTemplateId]
-  );
-
-  // Duplicate a template
-  const duplicateTemplate = useCallback(
-    async (templateId) => {
-      const template = templates.find((t) => t.id === templateId);
-      if (!template) return false;
+    async (id) => {
+      setIsLoading(true);
+      setError(null);
 
       try {
-        // Create copy of the template data
-        const { id, createdAt, updatedAt, ...templateData } = template;
+        const response = await fetch(`/api/templates/${id}`, {
+          method: "DELETE",
+        });
 
-        const newTemplateData = {
-          ...templateData,
-          name: `${template.name} (Copy)`,
-        };
-
-        // Save to database
-        const result = await dbCreateTemplate(newTemplateData);
-
-        if (result) {
-          setTemplates((prev) => [...prev, result]);
-          toast.success("Template duplicated");
-          return true;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `Error deleting template: ${response.status}`
+          );
         }
-        return false;
+
+        // Remove from templates list
+        setTemplates((prev) => prev.filter((t) => t.id !== id));
+
+        // Clear selection if this was the selected template
+        if (selectedTemplateId === id) {
+          setSelectedTemplateId(null);
+        }
+
+        return true;
       } catch (err) {
-        console.error("Error duplicating template:", err);
+        console.error(`Error deleting template ${id}:`, err);
+        setError(err.message || `Failed to delete template ${id}`);
         return false;
+      } finally {
+        setIsLoading(false);
       }
     },
-    [templates, dbCreateTemplate]
+    [selectedTemplateId]
   );
 
-  // Export templates
-  const exportTemplates = useCallback(() => {
-    const dataStr = JSON.stringify({ templates }, null, 2);
-    const dataUri =
-      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-    const exportFileDefaultName = "message-templates.json";
+  /**
+   * Duplicate a template
+   */
+  const duplicateTemplate = useCallback(
+    async (id) => {
+      const template = templates.find((t) => t.id === id);
+      if (!template) return null;
 
-    const linkElement = document.createElement("a");
-    linkElement.setAttribute("href", dataUri);
-    linkElement.setAttribute("download", exportFileDefaultName);
-    linkElement.click();
-
-    toast.success("Templates exported successfully");
-  }, [templates]);
-
-  // Import templates
-  const importTemplates = useCallback(
-    (file) => {
-      if (!file) return;
-
-      const reader = new FileReader();
-
-      reader.onload = async (e) => {
-        try {
-          const json = JSON.parse(e.target.result);
-
-          if (json.templates && Array.isArray(json.templates)) {
-            setIsLoading(true);
-
-            const results = {
-              success: 0,
-              failed: 0,
-            };
-
-            // Process templates one by one
-            for (const template of json.templates) {
-              try {
-                // Format data for database
-                const { id, ...templateData } = template;
-                const result = await dbCreateTemplate(templateData);
-
-                if (result) {
-                  results.success++;
-                  // Add to local state
-                  setTemplates((prev) => [...prev, result]);
-                } else {
-                  results.failed++;
-                }
-              } catch (err) {
-                results.failed++;
-                console.error(
-                  `Error importing template ${template.name}:`,
-                  err
-                );
-              }
-            }
-
-            setIsLoading(false);
-
-            if (results.success > 0) {
-              toast.success(`${results.success} templates imported`);
-            }
-
-            if (results.failed > 0) {
-              toast.error(`Failed to import ${results.failed} templates`);
-            }
-          } else {
-            toast.error("Invalid template format");
-          }
-        } catch (error) {
-          toast.error("Error parsing JSON file");
-          console.error("Error parsing JSON:", error);
-        }
+      const duplicateData = {
+        ...template,
+        name: `${template.name} (Copy)`,
+        // Remove fields that shouldn't be duplicated
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
       };
 
-      reader.readAsText(file);
+      return await createTemplate(duplicateData);
     },
-    [dbCreateTemplate]
+    [templates, createTemplate]
   );
 
-  // Get final message with all parameters filled in
-  const getFinalMessage = useCallback(() => {
-    if (!selectedTemplate) return "";
+  /**
+   * Export templates to JSON file
+   */
+  const exportTemplates = useCallback(() => {
+    // Create JSON data
+    const data = { templates };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
 
-    let content = selectedTemplate.content;
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "message-templates.json";
 
-    // Replace parameter placeholders with values
-    Object.entries(paramValues).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{${key}\\}`, "g");
-      content = content.replace(regex, value || `{${key}}`);
-    });
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    return content;
-  }, [selectedTemplate, paramValues]);
+    // Clean up
+    URL.revokeObjectURL(url);
+  }, [templates]);
+
+  /**
+   * Import templates from JSON file
+   */
+  const importTemplates = useCallback(
+    async (file) => {
+      if (!file) return;
+
+      try {
+        // Read file content
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!data.templates || !Array.isArray(data.templates)) {
+          throw new Error("Invalid template file format");
+        }
+
+        // Import each template
+        const results = {
+          success: 0,
+          failed: 0,
+        };
+
+        for (const template of data.templates) {
+          try {
+            // Remove id and metadata from imported template
+            const { id, createdAt, updatedAt, ...templateData } = template;
+
+            // Create template
+            const newTemplate = await createTemplate(templateData);
+
+            if (newTemplate) {
+              results.success++;
+            } else {
+              results.failed++;
+            }
+          } catch (error) {
+            console.error(
+              `Error importing template "${template.name}":`,
+              error
+            );
+            results.failed++;
+          }
+        }
+
+        return results;
+      } catch (error) {
+        console.error("Error importing templates:", error);
+        setError("Failed to import templates: " + error.message);
+        return { success: 0, failed: 0 };
+      }
+    },
+    [createTemplate]
+  );
+
+  // Initialize by fetching templates
+  useEffect(() => {
+    // Only fetch if no initial templates provided
+    if (initialTemplates.length === 0) {
+      fetchTemplates();
+    }
+  }, [fetchTemplates, initialTemplates.length]);
 
   return {
     // State
     templates,
-    isLoading: isLoading || isDbLoading,
-    error: error || dbError,
     selectedTemplateId,
     selectedTemplate,
+    paramValues,
     searchTerm,
     filterCategory,
     filteredTemplates,
     categories,
-    paramValues,
+    isLoading,
+    error,
     preview,
 
     // Actions
-    setSearchTerm,
-    setFilterCategory,
+    fetchTemplates,
     selectTemplate,
     updateParamValue,
     createTemplate,
@@ -393,7 +397,10 @@ export function useTemplate(initialTemplates = []) {
     duplicateTemplate,
     exportTemplates,
     importTemplates,
-    loadTemplates,
-    getFinalMessage,
+    setSearchTerm,
+    setFilterCategory,
+
+    // Helper
+    formatMessageContent,
   };
 }

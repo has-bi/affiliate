@@ -1,4 +1,4 @@
-// lib/prisma.js
+// src/lib/db/prisma.js
 import { PrismaClient } from "@prisma/client";
 
 // PrismaClient is attached to the `global` object in development to prevent
