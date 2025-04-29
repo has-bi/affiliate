@@ -1,6 +1,6 @@
 // src/components/molecules/TemplateSelector/Step1.js
 import React from "react";
-import Button from "@/components/atoms/Button";
+import { Button } from "@/components/ui/button";
 
 const Step1 = ({
   sessionName,

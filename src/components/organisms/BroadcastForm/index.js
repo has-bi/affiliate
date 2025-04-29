@@ -2,9 +2,8 @@
 "use client";
 
 import React, { useState } from "react";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import RecipientInput from "@/components/molecules/RecipientInput";
 import BroadcastProgress from "@/components/molecules/BroadcastProgress";
 import { useBroadcast } from "@/hooks/useBroadcast";

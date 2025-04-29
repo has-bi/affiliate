@@ -5,17 +5,17 @@ import React, { useState, useEffect } from "react";
 import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
 import { useSession } from "@/hooks/useWhatsApp";
 import { useTemplateMessageSender } from "@/hooks/useTemplateMessageSender";
-import { formatMessageContent } from "@/lib/templateUtils";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
+import { formatMessageContent } from "@/lib/templates/templateUtils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { AlertCircle, Check } from "lucide-react";
-import { createSchedule } from "@/lib/scheduleUtils";
+import { createSchedule } from "@/lib/schedules/scheduleUtils";
 
 // Import step components
-import Step1 from "@/components/molecules/TemplateSelector/Step1";
-import Step2 from "@/components/molecules/TemplateParameterForm/Step2";
-import Step3 from "@/components/molecules/RecipientSelector/Step3";
-import Step4 from "@/components/molecules/ReviewAndSend/Step4";
+import Step1 from "@/components/molecules/TemplateSelector";
+import Step2 from "@/components/molecules/TemplateParameterForm";
+import Step3 from "@/components/molecules/RecipientSelector";
+import Step4 from "@/components/molecules/ReviewAndSend";
 
 export default function TemplateMessageSender() {
   console.log("🚀 TemplateMessageSender: Rendering");

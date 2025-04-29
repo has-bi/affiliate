@@ -1,6 +1,6 @@
 // src/components/molecules/RecipientSelector/Step3.js
 import React from "react";
-import Button from "@/components/atoms/Button";
+import { Button } from "@/components/ui/button";
 import ContactSelector from "@/components/molecules/ContactSelector";
 import { Users, PlusCircle, X } from "lucide-react";
 

@@ -2,10 +2,10 @@
 "use client";
 
 import React from "react";
-import Card from "../../atoms/Card";
-import Badge from "../../atoms/Badge";
-import Button from "../../atoms/Button";
-import config from "../../../lib/config";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import config from "../../../lib/config/config";
 
 const getStatusVariant = (status) => {
   const upperStatus = status?.toUpperCase();

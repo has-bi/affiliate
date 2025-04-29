@@ -6,7 +6,7 @@ import {
   fillTemplateContent,
   fillDynamicParameters,
   getFinalMessageForContact,
-} from "@/lib/templateUtils";
+} from "@/lib/templates/templateUtils";
 
 export function useTemplateMessageSender(templates, selectedTemplateId) {
   console.log("🔧 useTemplateMessageSender: Hook called with:", {

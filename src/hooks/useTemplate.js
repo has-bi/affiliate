@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
-import { formatMessageContent } from "@/lib/templateUtils";
+import { formatMessageContent } from "@/lib/templates/templateUtils";
 import { useTemplateDatabase } from "./useTemplateDatabase";
 
 export function useTemplate(initialTemplates = []) {

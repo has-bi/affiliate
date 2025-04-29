@@ -1,16 +1,16 @@
 // src/lib/services/schedulerService.js
 import schedule from "node-schedule";
-import baileysClient from "@/lib/baileysClient";
+import baileysClient from "@/lib/whatsapp/baileysClient";
 import {
   getAllSchedules,
   updateSchedule,
   addScheduleHistory,
   getScheduleById,
-} from "@/lib/scheduleUtils";
+} from "@/lib/schedules/scheduleUtils";
 import {
   getTemplateById,
   getFinalMessageForContact,
-} from "@/lib/templateUtils";
+} from "@/lib/templates/templateUtils";
 import { formatPhoneNumber } from "@/lib/utils";
 
 class SchedulerService {

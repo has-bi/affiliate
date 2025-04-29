@@ -3,7 +3,6 @@
 
 import React from "react";
 import { Trash } from "lucide-react";
-import Input from "@/components/atoms/Input";
 
 /**
  * TemplateParameter - Component for editing a single parameter in a template

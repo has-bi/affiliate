@@ -9,3 +9,7 @@ export function verifyCredentials(username, password) {
   // Direct string comparison
   return username === adminUsername && password === adminPassword;
 }
+
+export async function getCurrentUser() {
+  return await currentUser();
+}
