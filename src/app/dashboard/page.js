@@ -5,7 +5,14 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "@/hooks/useSession";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useSchedule } from "@/hooks/useSchedule";
-import { PersonStanding, Users, Clock, FileText, Send } from "lucide-react";
+import {
+  PersonStanding,
+  Users,
+  Clock,
+  FileText,
+  Send,
+  LinkIcon,
+} from "lucide-react";
 import Card from "@/components/atoms/Card";
 import Button from "@/components/atoms/Button";
 import PageLayout from "@/components/templates/PageLayout";
@@ -209,6 +216,24 @@ export default function DashboardPage() {
                     </h3>
                     <p className="text-sm text-gray-500">
                       Set up automated messaging
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </Card.Content>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <Card.Content>
+              <Link href="/dashboard/connections" className="block">
+                <div className="flex items-center">
+                  <LinkIcon className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Manage Connections
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Add / remove WhatsApp sessions
                     </p>
                   </div>
                 </div>

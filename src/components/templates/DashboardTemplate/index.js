@@ -26,6 +26,9 @@ const DashboardTemplate = () => {
           <SessionManager />
         </div>
       </main>
+      <Link href="/dashboard/connections" className={navClass}>
+        Connections
+      </Link>
     </div>
   );
 };
