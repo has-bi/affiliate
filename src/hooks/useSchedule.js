@@ -2,8 +2,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import toast from "react-hot-toast";
 
+/**
+ * Hook for schedule management
+ * Handles schedule CRUD operations and status management
+ */
 export function useSchedule() {
   const [schedules, setSchedules] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +87,81 @@ export function useSchedule() {
     }
   }, []);
 
+  // Create a new schedule
+  const createSchedule = useCallback(async (scheduleData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/schedules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scheduleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create schedule");
+      }
+
+      const newSchedule = await response.json();
+
+      // Add to schedules list
+      setSchedules((prev) => [...prev, newSchedule]);
+
+      // Select the new schedule
+      setSelectedScheduleId(newSchedule.id);
+
+      return newSchedule;
+    } catch (err) {
+      console.error("Error creating schedule:", err);
+      setError(err.message || "Failed to create schedule");
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Update a schedule
+  const updateSchedule = useCallback(async (scheduleId, scheduleData) => {
+    if (!scheduleId) return null;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/schedules/${scheduleId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scheduleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update schedule");
+      }
+
+      const updatedSchedule = await response.json();
+
+      // Update in schedules list
+      setSchedules((prev) =>
+        prev.map((s) => (s.id === updatedSchedule.id ? updatedSchedule : s))
+      );
+
+      return updatedSchedule;
+    } catch (err) {
+      console.error(`Error updating schedule ${scheduleId}:`, err);
+      setError(err.message || `Failed to update schedule`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Delete a schedule
   const deleteSchedule = useCallback(
     async (scheduleId) => {
@@ -112,12 +190,10 @@ export function useSchedule() {
           setSelectedScheduleId(null);
         }
 
-        toast.success("Schedule deleted successfully");
         return true;
       } catch (err) {
         console.error(`Error deleting schedule:`, err);
         setError(err.message || `Failed to delete schedule`);
-        toast.error(`Failed to delete schedule: ${err.message}`);
         return false;
       } finally {
         setIsLoading(false);
@@ -126,20 +202,72 @@ export function useSchedule() {
     [selectedScheduleId]
   );
 
-  // Initialize on mount
+  // Toggle schedule status (active/paused)
+  const toggleScheduleStatus = useCallback(
+    async (scheduleId) => {
+      const schedule = schedules.find((s) => s.id === scheduleId);
+      if (!schedule) return null;
+
+      const newStatus = schedule.status === "active" ? "paused" : "active";
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/schedules/${scheduleId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to toggle schedule status"
+          );
+        }
+
+        const updatedSchedule = await response.json();
+
+        // Update in schedules list
+        setSchedules((prev) =>
+          prev.map((s) => (s.id === updatedSchedule.id ? updatedSchedule : s))
+        );
+
+        return updatedSchedule;
+      } catch (err) {
+        console.error(`Error toggling schedule status:`, err);
+        setError(err.message || `Failed to toggle schedule status`);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [schedules]
+  );
+
+  // Initialize by fetching schedules
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
 
   return {
+    // State
     schedules,
     selectedSchedule,
     selectedScheduleId,
     isLoading,
     error,
+
+    // Actions
     setSelectedScheduleId,
     fetchSchedules,
     fetchSchedule,
+    createSchedule,
+    updateSchedule,
     deleteSchedule,
+    toggleScheduleStatus,
   };
 }

@@ -1,114 +1,23 @@
+// src/components/molecules/NewAffiliatesList/index.js
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  MessageSquare,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-} from "lucide-react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useSession } from "@/hooks/useWhatsApp";
+import { useAffiliates } from "@/hooks/useAffiliates";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { RefreshCw, MessageSquare, AlertCircle } from "lucide-react";
 
-/**
- * Component for managing and sending welcome messages to new affiliates
- */
 const NewAffiliatesList = () => {
-  const { sessions, isLoading: isLoadingSessions } = useSession();
-  const [newAffiliates, setNewAffiliates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { sessions } = useWhatsApp();
+  const { newAffiliates, error, fetchNewAffiliates, sendWelcomeMessage } =
+    useAffiliates();
+
   const [sessionName, setSessionName] = useState("");
   const [sendingTo, setSendingTo] = useState(null);
 
-  // Load new affiliates on component mount
-  useEffect(() => {
-    fetchNewAffiliates();
-  }, []);
-
-  // Fetch new affiliates from API
-  const fetchNewAffiliates = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/affiliates/new");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch new affiliates");
-      }
-
-      const data = await response.json();
-      setNewAffiliates(data);
-    } catch (err) {
-      console.error("Error fetching new affiliates:", err);
-      setError(err.message || "Failed to load new affiliates");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Send welcome message to an affiliate
-  const handleSendWelcome = async (affiliate) => {
-    if (!sessionName) {
-      alert("Please select a WhatsApp session first");
-      return;
-    }
-
-    if (!confirm(`Send welcome message to ${affiliate.name}?`)) {
-      return;
-    }
-
-    try {
-      setSendingTo(affiliate.phone);
-
-      // Generate welcome message
-      const welcomeMessage = generateWelcomeMessage(affiliate);
-
-      // Send welcome message
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          session: sessionName,
-          recipients: [affiliate.phone],
-          message: welcomeMessage,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to send welcome message");
-      }
-
-      // Update affiliate status
-      await fetch("/api/affiliates/update-status", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: affiliate.phone,
-          status: "contacted",
-        }),
-      });
-
-      // Refresh the list
-      fetchNewAffiliates();
-      alert("Welcome message sent successfully!");
-    } catch (err) {
-      console.error("Error sending welcome message:", err);
-      alert(`Error: ${err.message}`);
-    } finally {
-      setSendingTo(null);
-    }
-  };
-
-  // Generate welcome message based on affiliate data
-  const generateWelcomeMessage = (affiliate) => {
+  // Generate welcome message template
+  const getWelcomeMessage = (affiliate) => {
     return `✨**Welcome to Youvit Affiliate Club**✨
 Hai Kak ${affiliate.name} ! 👋
 Selamat datang di Youvit Affiliate Club! 🥳 Seneng banget Kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀
@@ -122,16 +31,27 @@ Salam cuan,
 Tim Youvit Affiliate`;
   };
 
-  // Helper to get the appropriate username based on platform
-  const getPlatformUsername = (affiliate) => {
-    if (affiliate.platform === "TikTok") {
-      return affiliate.tiktokUsername;
-    } else if (affiliate.platform === "Shopee") {
-      return affiliate.shopeeUsername;
-    } else if (affiliate.platform === "Instagram") {
-      return affiliate.instagramUsername;
+  // Handle sending welcome message
+  const handleSendWelcome = async (affiliate) => {
+    if (!sessionName) {
+      alert("Please select a WhatsApp session first");
+      return;
     }
-    return "";
+
+    setSendingTo(affiliate.phone);
+
+    try {
+      await sendWelcomeMessage(
+        affiliate,
+        sessionName,
+        getWelcomeMessage(affiliate)
+      );
+    } catch (err) {
+      console.error("Error sending welcome message:", err);
+      alert(`Error: ${err.message || "Failed to send welcome message"}`);
+    } finally {
+      setSendingTo(null);
+    }
   };
 
   return (

@@ -1,23 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import TemplateList from "@/components/molecules/TemplateList";
 import TemplateParameter from "@/components/molecules/TemplateParameter";
 import TemplatePreview from "@/components/molecules/TemplatePreview";
 import { useTemplate } from "@/hooks/useTemplate";
-import {
-  Plus,
-  MessageSquare,
-  Download,
-  Upload,
-  Search,
-  ChevronDown,
-} from "lucide-react";
+import { Plus, MessageSquare, Download, Upload } from "lucide-react";
 
 const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
   const router = useRouter();
-  const initializedRef = useRef(false);
   const [isEditing, setIsEditing] = useState(false);
 
   const {
@@ -41,11 +33,10 @@ const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
     importTemplates,
   } = useTemplate(initialTemplates);
 
-  // Set initial selected ID only once
-  useEffect(() => {
-    if (!initializedRef.current && selectedId && !selectedTemplateId) {
+  // Set initial selected ID
+  React.useEffect(() => {
+    if (selectedId && !selectedTemplateId) {
       selectTemplate(selectedId);
-      initializedRef.current = true;
     }
   }, [selectedId, selectedTemplateId, selectTemplate]);
 
