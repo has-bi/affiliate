@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import schedulerService from "@/lib/services/schedulerService";
+import { createSchedule } from "@/lib/scheduleUtils";
 
 export async function GET() {
   console.log("API: Fetching schedules...");
@@ -64,5 +65,23 @@ export async function GET() {
       { error: "Failed to fetch schedules", details: error.message },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const created = await createSchedule(body);
+
+    // immediately register with the in-memory scheduler
+    await schedulerService.scheduleJob(created);
+
+    return NextResponse.json(
+      { id: created.id, nextRun: created.nextRun },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("API: create schedule failed", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

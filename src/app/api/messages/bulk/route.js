@@ -1,108 +1,91 @@
+// src/app/api/messages/bulk/route.js
+// Final version – filters recipients to ACTIVE affiliates only and sends
+// messages sequentially with an optional delay via WAHA API.
+// -----------------------------------------------------------------------------
 import { NextResponse } from "next/server";
+
 import { formatPhoneNumber } from "@/lib/utils";
+import { getActiveAffiliates } from "@/lib/spreadsheetService";
+
+const WAHA_URL =
+  process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
 
 /**
  * POST /api/messages/bulk
- * Send a message to multiple recipients with a delay between messages
- *
- * Request body:
+ * Body:
  * {
- *   "session": "session-name",
- *   "recipients": ["6281234567890", "6289876543210"],
- *   "message": "Hello world",
- *   "delay": 3000 // milliseconds
+ *   "session"    : "default-session",   // required
+ *   "recipients" : ["628123…", …],      // required – raw phone strings
+ *   "message"    : "Hello …",            // required – fully rendered text
+ *   "delay"      : 3000                  // optional ms between sends (default 0)
  * }
  */
 export async function POST(request) {
   try {
-    // Parse request body
-    const body = await request.json();
+    const {
+      session,
+      recipients = [],
+      message,
+      delay = 0,
+    } = await request.json();
 
-    // Validate required fields
-    const { session, recipients, message, delay = 3000 } = body;
-
-    if (!session || !recipients || !message) {
+    if (!session || !recipients.length || !message) {
       return NextResponse.json(
-        { error: "Missing required fields: session, recipients, message" },
+        { error: "session, recipients and message are required" },
         { status: 400 }
       );
     }
 
-    // Ensure recipients is an array
-    const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+    // -----------------------------------------------------------------------
+    // 1️⃣  Get map of active affiliates – key = raw phone (numbers only)
+    // -----------------------------------------------------------------------
+    const activeMap = await getActiveAffiliates();
 
-    // Get WAHA API URL from env
-    const wahaApiUrl =
-      process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
+    // Filter recipients → only those in activeMap
+    const allowed = recipients.filter((p) => activeMap[p]);
+    const skipped = recipients.filter((p) => !activeMap[p]);
 
-    // Send messages with delay
-    const results = [];
-
-    for (const recipient of recipientList) {
-      // Format phone number if needed
-      const formattedChatId = recipient.includes("@c.us")
-        ? recipient
-        : `${formatPhoneNumber(recipient)}@c.us`;
-
-      try {
-        // Send message to WAHA API
-        const response = await fetch(`${wahaApiUrl}/api/sendText`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            chatId: formattedChatId,
-            text: message,
-            session: session,
-          }),
-        });
-
-        if (!response.ok) {
-          let errorMessage = "Failed to send message";
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            // If response is not JSON, try to get text
-            errorMessage = (await response.text()) || errorMessage;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const responseData = await response.json();
-        results.push({
-          recipient: formattedChatId,
-          success: true,
-          messageId: responseData.id || "unknown",
-        });
-      } catch (error) {
-        results.push({
-          recipient: formattedChatId,
-          success: false,
-          error: error.message || "Unknown error",
-        });
-      }
-
-      // Add delay before next message (except for the last one)
-      if (recipient !== recipientList[recipientList.length - 1]) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
+    if (!allowed.length) {
+      return NextResponse.json(
+        { error: "No recipients are active affiliates", skipped },
+        { status: 400 }
+      );
     }
 
-    // Process results
-    const successResults = results.filter((r) => r.success);
-    const failedResults = results.filter((r) => !r.success);
+    // -----------------------------------------------------------------------
+    // 2️⃣  Send sequentially (delay in‑between) – can be optimised to parallel
+    // -----------------------------------------------------------------------
+    let success = 0;
+    let failures = [];
+
+    for (const raw of allowed) {
+      const chatId = formatPhoneNumber(raw);
+
+      try {
+        const res = await fetch(`${WAHA_URL}/api/sendText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId, text: message, session }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        success += 1;
+      } catch (err) {
+        failures.push({ phone: raw, error: err.message });
+      }
+
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    }
 
     return NextResponse.json({
-      totalSent: successResults.length,
-      totalFailed: failedResults.length,
-      success: successResults,
-      failures: failedResults,
+      totalRequested: recipients.length,
+      sentTo: allowed.length,
+      skipped: skipped.length,
+      success,
+      failures,
     });
   } catch (error) {
-    console.error("Error sending bulk messages:", error);
+    console.error("[bulk] Internal error:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }

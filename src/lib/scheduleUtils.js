@@ -117,6 +117,53 @@ export async function updateSchedule(id, data) {
   }
 }
 
+export async function createSchedule(data) {
+  const {
+    name,
+    templateId,
+    scheduleType,
+    scheduleConfig,
+    sessionName,
+    paramValues,
+    recipients,
+  } = data;
+
+  const created = await prisma.schedule.create({
+    data: {
+      name,
+      templateId,
+      scheduleType,
+      cronExpression:
+        scheduleType === "recurring" ? scheduleConfig.cronExpression : null,
+      scheduledDate:
+        scheduleType === "once" ? new Date(scheduleConfig.date) : null,
+      sessionName,
+      parameters: {
+        createMany: {
+          data: Object.entries(paramValues).map(([paramId, paramValue]) => ({
+            paramId,
+            paramValue,
+          })),
+        },
+      },
+      recipients: {
+        createMany: {
+          data: recipients.map((r) => ({ recipient: r })),
+        },
+      },
+    },
+    include: { parameters: true, recipients: true },
+  });
+
+  return {
+    id: created.id,
+    ...data,
+    nextRun: created.nextRun,
+    lastRun: created.lastRun,
+    status: created.status,
+  };
+}
+
 // Add history entry to a schedule
 export async function addScheduleHistory(id, historyEntry) {
   try {
