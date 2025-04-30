@@ -1,188 +1,254 @@
+// src/components/organisms/TemplateManager/index.js
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import TemplateList from "@/components/molecules/TemplateList";
-import TemplateParameter from "@/components/molecules/TemplateParameter";
-import TemplatePreview from "@/components/molecules/TemplatePreview";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Plus,
+  Edit,
+  Copy,
+  Trash,
+  Tag,
+  MessageSquare,
+} from "lucide-react";
 import { useTemplate } from "@/hooks/useTemplate";
-import { Plus, MessageSquare, Download, Upload } from "lucide-react";
+import { formatMessageContent } from "@/lib/templates/templateUtils";
 
 const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
   const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-
   const {
     templates,
-    isLoading,
-    error,
-    selectedTemplateId,
-    selectedTemplate,
     searchTerm,
+    setSearchTerm,
     filterCategory,
+    setFilterCategory,
     filteredTemplates,
     categories,
-    setSearchTerm,
-    setFilterCategory,
+    selectedTemplateId,
+    selectedTemplate,
+    isLoading,
+    error,
     selectTemplate,
-    createTemplate,
-    updateTemplate,
     deleteTemplate,
     duplicateTemplate,
-    exportTemplates,
-    importTemplates,
   } = useTemplate(initialTemplates);
 
   // Set initial selected ID
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedId && !selectedTemplateId) {
       selectTemplate(selectedId);
     }
   }, [selectedId, selectedTemplateId, selectTemplate]);
 
-  // Handle creating a new template
+  // Navigation handlers
   const handleCreateNew = () => {
-    createTemplate();
-    setIsEditing(true);
+    router.push("/messages/templates/new");
   };
 
-  // Handle edit template
-  const handleEditTemplate = (templateId) => {
-    selectTemplate(templateId);
-    setIsEditing(true);
+  const handleEditTemplate = (id) => {
+    router.push(`/messages/templates/edit/${id}`);
   };
 
-  // Handle save template
-  const handleSaveTemplate = (formData) => {
-    const success = formData.id
-      ? updateTemplate(formData)
-      : createTemplate(formData);
+  const handleViewDetails = (id) => {
+    router.push(`/messages/templates/detail/${id}`);
+  };
 
-    if (success) {
-      setIsEditing(false);
-      toast.success(formData.id ? "Template updated" : "Template created");
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Handle template deletion with confirmation
+  const handleDeleteTemplate = async (e, id) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (window.confirm("Are you sure you want to delete this template?")) {
+      await deleteTemplate(id);
     }
   };
 
-  // Handle cancel edit
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
+  // Handle template duplication
+  const handleDuplicateTemplate = async (e, id) => {
+    e.stopPropagation();
+    e.preventDefault();
 
-  // Handle import file selection
-  const handleImportFile = (event) => {
-    importTemplates(event.target.files[0]);
+    const newTemplate = await duplicateTemplate(id);
+    if (newTemplate) {
+      router.push(`/messages/templates/edit/${newTemplate.id}`);
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Header */}
-      <div className="bg-green-600 px-6 py-4 flex justify-between items-center">
-        <h2 className="text-white text-lg font-medium flex items-center">
-          <MessageSquare className="h-5 w-5 mr-2" />
-          Message Templates
-        </h2>
-        <div className="flex space-x-2">
-          <button
+    <div className="space-y-6">
+      {/* Search and filter bar */}
+      <Card className="p-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search input */}
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search templates..."
+              className="pl-9"
+            />
+          </div>
+
+          {/* Category filter */}
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category === "all"
+                  ? "All Categories"
+                  : category.charAt(0).toUpperCase() + category.slice(1)}
+              </option>
+            ))}
+          </select>
+
+          {/* Create button */}
+          <Button
             onClick={handleCreateNew}
-            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50"
+            variant="primary"
+            className="whitespace-nowrap"
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4 mr-2" />
             New Template
-          </button>
-          <button
-            onClick={exportTemplates}
-            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </button>
-          <input
-            type="file"
-            id="import-templates"
-            className="hidden"
-            accept=".json"
-            onChange={handleImportFile}
-          />
-          <label
-            htmlFor="import-templates"
-            className="bg-white text-green-600 px-3 py-1 rounded-md text-sm font-medium flex items-center hover:bg-green-50 cursor-pointer"
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            Import
-          </label>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      {/* Main Content */}
-      <div className="flex h-[600px]">
-        {/* Left Sidebar - Template List */}
-        <div className="w-1/3 border-r border-gray-200 flex flex-col">
-          {/* Search and Filters */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="relative mb-3">
-              <input
-                type="text"
-                placeholder="Search templates..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
-            </div>
+      {/* Templates list */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : filteredTemplates.length === 0 ? (
+        <Card className="p-6 text-center">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No templates found
+          </h3>
+          <p className="text-gray-500 mb-4">
+            {searchTerm || filterCategory !== "all"
+              ? "Try adjusting your search filters"
+              : "Create your first template to get started"}
+          </p>
+          <Button variant="primary" onClick={handleCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTemplates.map((template) => (
+            <Card
+              key={template.id}
+              className={`cursor-pointer hover:shadow-md transition ${
+                template.id === selectedTemplateId ? "ring-2 ring-blue-500" : ""
+              }`}
+              onClick={() => handleViewDetails(template.id)}
+            >
+              <div className="p-4">
+                {/* Template header */}
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium text-gray-900 line-clamp-1">
+                    {template.name}
+                  </h3>
+                  <Badge
+                    variant={
+                      template.category === "marketing"
+                        ? "primary"
+                        : "secondary"
+                    }
+                  >
+                    {template.category || "general"}
+                  </Badge>
+                </div>
 
-            <div className="flex">
-              <div className="relative inline-block w-full">
-                <select
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-md pl-3 pr-8 py-2 text-sm"
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                >
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category === "all"
-                        ? "All Categories"
-                        : category.charAt(0).toUpperCase() + category.slice(1)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="h-4 w-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                {/* Template content preview */}
+                <div className="h-24 overflow-hidden text-sm text-gray-600 mb-3">
+                  <div
+                    className="prose prose-sm"
+                    dangerouslySetInnerHTML={{
+                      __html: formatMessageContent(
+                        template.content.substring(0, 150) +
+                          (template.content.length > 150 ? "..." : "")
+                      ),
+                    }}
+                  />
+                </div>
+
+                {/* Template metadata */}
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                  <div className="flex items-center">
+                    <Tag className="h-3 w-3 mr-1" />
+                    <span>{template.parameters?.length || 0} parameters</span>
+                  </div>
+                  <div>Updated {formatDate(template.updatedAt)}</div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex space-x-2 pt-2 border-t border-gray-100">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleEditTemplate(template.id);
+                    }}
+                    className="flex-1"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleDuplicateTemplate(e, template.id)}
+                    className="flex-1"
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleDeleteTemplate(e, template.id)}
+                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Template List */}
-          <div className="flex-1 overflow-y-auto">
-            <TemplateList
-              templates={filteredTemplates}
-              selectedId={selectedTemplateId}
-              onSelect={selectTemplate}
-              onEdit={handleEditTemplate}
-              onDelete={deleteTemplate}
-              onDuplicate={duplicateTemplate}
-              isLoading={isLoading}
-            />
-          </div>
+            </Card>
+          ))}
         </div>
+      )}
 
-        {/* Right Content - Template Details */}
-        <div className="w-2/3 flex flex-col">
-          {isEditing ? (
-            <TemplateParameter
-              template={selectedTemplate}
-              onSave={handleSaveTemplate}
-              onCancel={handleCancelEdit}
-            />
-          ) : (
-            <TemplatePreview
-              template={selectedTemplate}
-              onEdit={handleEditTemplate}
-              onDelete={deleteTemplate}
-              onDuplicate={duplicateTemplate}
-            />
-          )}
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-start">
+          <div className="h-5 w-5 mr-2 flex-shrink-0" />
+          <p>{error}</p>
         </div>
-      </div>
+      )}
     </div>
   );
 };

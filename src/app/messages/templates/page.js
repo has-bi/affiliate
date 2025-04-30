@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import TemplateManager from "@/components/organisms/TemplateManager";
 import PageLayout from "@/components/templates/PageLayout";
 import { Plus } from "lucide-react";
-import Button from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
 export default function TemplatesClientPage() {
   const searchParams = useSearchParams();
