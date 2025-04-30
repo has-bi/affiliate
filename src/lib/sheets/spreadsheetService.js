@@ -2,9 +2,7 @@
 import { GoogleSpreadsheet } from "google-spreadsheet";
 import { JWT } from "google-auth-library";
 
-// -----------------------------------------------------------------------------
 // AUTH & DOCUMENT SETUP
-// -----------------------------------------------------------------------------
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
 // Create JWT client for authentication
@@ -20,7 +18,7 @@ export const doc = new GoogleSpreadsheet(
   jwt
 );
 
-// Sheet tab names - keep them in one place for easy updates
+// Sheet tab names
 const SHEETS = {
   FORM_RESPONSES: "Form Responses 1",
   TOP_PERFORMERS: "Top Performers",
@@ -40,9 +38,7 @@ export async function initSheets() {
   }
 }
 
-// -----------------------------------------------------------------------------
 // UTILITY FUNCTIONS
-// -----------------------------------------------------------------------------
 
 // Normalize text values for consistency
 export function norm(value) {
@@ -61,8 +57,7 @@ export function phoneKey(value = "") {
 
   // Convert to string, handling number types
   if (typeof value === "number") {
-    // For numeric values, ensure we don't lose leading zeros
-    // by converting to a fixed string format
+    // For numeric values, ensure we don't lose leading zeros by converting to a fixed string format
     str = value.toString();
     console.log(`Converting numeric phone ${value} to string: ${str}`);
   } else {
@@ -101,10 +96,7 @@ function getRowValue(row, headerName) {
   return null;
 }
 
-// -----------------------------------------------------------------------------
 // AFFILIATE MANAGEMENT
-// -----------------------------------------------------------------------------
-
 /**
  * Get all affiliates where Status is "contacted"
  * @returns {Promise<Object>} Map of { phone: { phone, name, ... } }
@@ -113,10 +105,8 @@ export async function getActiveAffiliates() {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
-    await sheet.loadHeaderRow(); // Ensure headers are loaded
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
-
-    console.log(`Total rows in spreadsheet: ${rows.length}`);
 
     // Find column indices
     const phoneColName = "Nomor WhatsApp (agar tim kami bisa menghubungi kamu)";
@@ -124,17 +114,6 @@ export async function getActiveAffiliates() {
       (h) => h === phoneColName
     );
     const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
-
-    console.log(
-      `Phone column index: ${phoneColIndex}, Status column index: ${statusColIndex}`
-    );
-
-    // Debug row data
-    rows.slice(0, 3).forEach((row, idx) => {
-      console.log(`Row ${idx} raw data:`, row._rawData);
-      console.log(`Row ${idx} status value:`, row._rawData[statusColIndex]);
-      console.log(`Row ${idx} phone value:`, row._rawData[phoneColIndex]);
-    });
 
     // Return as array instead of map to preserve duplicates
     const activeAffiliates = [];
@@ -207,25 +186,12 @@ export async function getNewAffiliates() {
     await sheet.loadHeaderRow(); // Ensure headers are loaded
     const rows = await sheet.getRows();
 
-    console.log(`Total rows checking for new affiliates: ${rows.length}`);
-
     // Find phone column index
     const phoneColName = "Nomor WhatsApp (agar tim kami bisa menghubungi kamu)";
     const phoneColIndex = sheet.headerValues.findIndex(
       (h) => h === phoneColName
     );
     const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
-
-    console.log(
-      `Phone column index: ${phoneColIndex}, Status column index: ${statusColIndex}`
-    );
-
-    // Debug the raw data of first few rows
-    rows.slice(0, 3).forEach((row, idx) => {
-      console.log(`Row ${idx} raw data:`, row._rawData);
-      console.log(`Row ${idx} status value:`, row._rawData[statusColIndex]);
-      console.log(`Row ${idx} phone value:`, row._rawData[phoneColIndex]);
-    });
 
     let blankStatusCount = 0;
     const newAffiliates = [];
@@ -247,12 +213,6 @@ export async function getNewAffiliates() {
           phoneValue !== undefined && phoneValue !== null
             ? String(phoneValue)
             : "";
-
-        console.log(
-          `Row ${index} phone value (${typeof phoneValue}):`,
-          phoneValue
-        );
-        console.log(`Row ${index} converted phone:`, phoneStr);
 
         const phone = phoneKey(phoneStr);
 
@@ -287,9 +247,6 @@ export async function getNewAffiliates() {
         });
       }
     });
-
-    console.log(`Found ${blankStatusCount} rows with blank status`);
-    console.log(`Mapped to ${newAffiliates.length} new affiliates`);
 
     return newAffiliates;
   } catch (error) {
@@ -435,10 +392,7 @@ export async function setupTestData() {
   }
 }
 
-// -----------------------------------------------------------------------------
 // TOP PERFORMER MANAGEMENT
-// -----------------------------------------------------------------------------
-
 /**
  * Get top performing affiliates by category
  * @param {string} category Performance category
@@ -545,9 +499,7 @@ export async function updateTopPerformerStatus(phone, status = "sent") {
   }
 }
 
-// -----------------------------------------------------------------------------
 // ONBOARDING MANAGEMENT
-// -----------------------------------------------------------------------------
 
 /**
  * Update welcome message status
