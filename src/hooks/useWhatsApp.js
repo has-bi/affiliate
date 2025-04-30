@@ -27,7 +27,10 @@ export function useWhatsApp() {
       setSessions(data.sessions || []);
 
       // If we have a current session that no longer exists, clear it
-      if (currentSession && !data.sessions.includes(currentSession)) {
+      if (
+        currentSession &&
+        !data.sessions.some((s) => s.name === currentSession)
+      ) {
         setCurrentSession(null);
       }
     } catch (err) {

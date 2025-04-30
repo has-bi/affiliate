@@ -12,8 +12,8 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
-import Card from "@/components/atoms/Card";
-import Button from "@/components/atoms/Button";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import PageLayout from "@/components/templates/PageLayout";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useSchedule } from "@/hooks/useSchedule";

@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useTemplate } from "@/hooks/useTemplate"; // Changed from useTemplateDatabase
-import { useSession } from "@/hooks/useWhatsApp";
+import { useTemplate } from "@/hooks/useTemplate";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { useMessageWizard } from "@/hooks/useMessageWizard";
 import { formatMessageContent } from "@/lib/templates/templateUtils";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { AlertCircle, Check, Search } from "lucide-react";
 
 // Import step components
@@ -20,7 +20,7 @@ export default function TemplateMessageSender() {
   console.log("🚀 TemplateMessageSender: Rendering");
 
   // Session state
-  const { sessions, isLoading: isLoadingSessions } = useSession();
+  const { sessions, isLoading: isLoadingSessions } = useWhatsApp();
   const [sessionName, setSessionName] = useState("");
 
   // Template state using useTemplate hook instead
@@ -97,12 +97,6 @@ export default function TemplateMessageSender() {
     scheduleConfig,
     isScheduling,
   ]);
-
-  // Fetch templates on mount - use fetchTemplates from useTemplate
-  useEffect(() => {
-    console.log("📥 Loading templates...");
-    // No need to explicitly call fetchTemplates as useTemplate does this internally
-  }, []);
 
   // Handle template change (wrapper for the hook function)
   const handleTemplateChangeWrapper = (e) => {
@@ -425,7 +419,7 @@ export default function TemplateMessageSender() {
       {/* Main content area */}
       {!sendResult && (
         <Card>
-          <Card.Content>
+          <CardContent>
             {step === 1 && (
               <Step1
                 sessionName={sessionName}
@@ -490,7 +484,7 @@ export default function TemplateMessageSender() {
                 handlePrevStep={handlePrevStep}
               />
             )}
-          </Card.Content>
+          </CardContent>
         </Card>
       )}
     </div>

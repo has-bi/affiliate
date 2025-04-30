@@ -96,3 +96,17 @@ export function formatDate(date, options = {}) {
     return String(date);
   }
 }
+
+/**
+ * Create a namespaced logger
+ * @param {string} namespace - Logger namespace
+ * @returns {Object} Logger instance
+ */
+export function createLogger(namespace) {
+  return {
+    info: (...args) => console.log(`${namespace}`, ...args),
+    warn: (...args) => console.warn(`${namespace}`, ...args),
+    error: (...args) => console.error(`${namespace}`, ...args),
+    debug: (...args) => console.debug(`${namespace}`, ...args),
+  };
+}
