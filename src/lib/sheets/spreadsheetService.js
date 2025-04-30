@@ -45,10 +45,61 @@ export async function initSheets() {
 // -----------------------------------------------------------------------------
 
 // Normalize text values for consistency
-const norm = (v = "") => v.toString().trim();
+export function norm(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+}
 
 // Format phone numbers for comparison/indexing
-const phoneKey = (v = "") => norm(v).replace(/\D/g, "");
+export function phoneKey(value = "") {
+  // Handle different value types
+  let str;
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  // Convert to string, handling number types
+  if (typeof value === "number") {
+    // For numeric values, ensure we don't lose leading zeros
+    // by converting to a fixed string format
+    str = value.toString();
+    console.log(`Converting numeric phone ${value} to string: ${str}`);
+  } else {
+    str = String(value);
+  }
+
+  // Clean the number (remove non-digits)
+  const cleaned = str.replace(/\D/g, "");
+
+  // Handle empty after cleaning
+  if (!cleaned) return "";
+
+  // Ensure Indonesian format (starts with 62)
+  if (cleaned.startsWith("0")) {
+    return `62${cleaned.substring(1)}`;
+  } else if (!cleaned.startsWith("62") && cleaned.length > 6) {
+    return `62${cleaned}`;
+  }
+
+  return cleaned;
+}
+
+// Helper to safely access row data by header name
+function getRowValue(row, headerName) {
+  if (!row || !row._sheet) return null;
+
+  // Get column index from header
+  const headers = row._sheet.headerValues || [];
+  const colIndex = headers.findIndex((h) => h === headerName);
+
+  // If found, return the corresponding value from _rawData
+  if (colIndex >= 0 && row._rawData && row._rawData[colIndex] !== undefined) {
+    return row._rawData[colIndex];
+  }
+
+  return null;
+}
 
 // -----------------------------------------------------------------------------
 // AFFILIATE MANAGEMENT
@@ -62,29 +113,86 @@ export async function getActiveAffiliates() {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
+    await sheet.loadHeaderRow(); // Ensure headers are loaded
     const rows = await sheet.getRows();
 
-    const map = {};
-    rows.forEach((r) => {
-      if (norm(r.Status).toLowerCase() !== "contacted") return;
+    console.log(`Total rows in spreadsheet: ${rows.length}`);
 
-      const phone = phoneKey(
-        r["Nomor WhatsApp (agar tim kami bisa menghubungi kamu)"]
-      );
-      if (!phone) return;
+    // Find column indices
+    const phoneColName = "Nomor WhatsApp (agar tim kami bisa menghubungi kamu)";
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === phoneColName
+    );
+    const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
 
-      map[phone] = {
-        phone,
-        name: norm(r["Isi nama kamu"]),
-        city: norm(r["Domisili kamu"]),
-        platform: norm(r["Dari Platform mana kamu berasal?"]) || "",
-        raw: r, // original row reference (optional)
-      };
+    console.log(
+      `Phone column index: ${phoneColIndex}, Status column index: ${statusColIndex}`
+    );
+
+    // Debug row data
+    rows.slice(0, 3).forEach((row, idx) => {
+      console.log(`Row ${idx} raw data:`, row._rawData);
+      console.log(`Row ${idx} status value:`, row._rawData[statusColIndex]);
+      console.log(`Row ${idx} phone value:`, row._rawData[phoneColIndex]);
     });
-    return map;
+
+    // Return as array instead of map to preserve duplicates
+    const activeAffiliates = [];
+    let contactedCount = 0;
+
+    rows.forEach((row, index) => {
+      // Get status directly from _rawData
+      const status = row._rawData[statusColIndex];
+
+      // Only process rows with "contacted" status
+      if (status === "contacted") {
+        contactedCount++;
+
+        // Get phone number directly
+        const phoneValue = row._rawData[phoneColIndex];
+        const phone = phoneKey(phoneValue);
+
+        if (!phone) {
+          console.log(
+            `Row ${index}: Found 'contacted' row but phone is empty or invalid`
+          );
+          return;
+        }
+
+        // Add to active affiliates array
+        activeAffiliates.push({
+          phone,
+          rowIndex: index,
+          name: norm(row._rawData[sheet.headerValues.indexOf("Isi nama kamu")]),
+          platform: norm(
+            row._rawData[
+              sheet.headerValues.indexOf(
+                "Lebih aktif sebagai Affiliate di mana?"
+              )
+            ]
+          ),
+          instagramUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username Instagram")]
+          ),
+          tiktokUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username TikTok")]
+          ),
+          shopeeUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username Shopee")]
+          ),
+        });
+      }
+    });
+
+    console.log(`Found ${contactedCount} rows with 'contacted' status`);
+    console.log(
+      `Created array with ${activeAffiliates.length} active affiliates`
+    );
+
+    return activeAffiliates;
   } catch (error) {
     console.error("[Sheets] Error getting active affiliates:", error);
-    return {};
+    return [];
   }
 }
 
@@ -96,25 +204,92 @@ export async function getNewAffiliates() {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
+    await sheet.loadHeaderRow(); // Ensure headers are loaded
     const rows = await sheet.getRows();
 
-    const newAffiliates = rows
-      .filter((r) => !norm(r.Status))
-      .map((r, index) => ({
-        rowIndex: index,
-        name: norm(r["Isi nama kamu"]),
-        phone: phoneKey(
-          r["Nomor WhatsApp (agar tim kami bisa menghubungi kamu)"]
-        ),
-        platform: norm(r["Dari Platform mana kamu berasal?"]) || "",
-        city: norm(r["Domisili kamu"]) || "",
-        tiktokUsername:
-          norm(r["Username Tiktok kamu? Contoh : @youvit_id"]) || "",
-        instagramUsername:
-          norm(r["Username Instagram kamu? Contoh : @youvit_id"]) || "",
-        shopeeUsername:
-          norm(r["Username Shopee kamu? Contoh : youvitofficial"]) || "",
-      }));
+    console.log(`Total rows checking for new affiliates: ${rows.length}`);
+
+    // Find phone column index
+    const phoneColName = "Nomor WhatsApp (agar tim kami bisa menghubungi kamu)";
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === phoneColName
+    );
+    const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
+
+    console.log(
+      `Phone column index: ${phoneColIndex}, Status column index: ${statusColIndex}`
+    );
+
+    // Debug the raw data of first few rows
+    rows.slice(0, 3).forEach((row, idx) => {
+      console.log(`Row ${idx} raw data:`, row._rawData);
+      console.log(`Row ${idx} status value:`, row._rawData[statusColIndex]);
+      console.log(`Row ${idx} phone value:`, row._rawData[phoneColIndex]);
+    });
+
+    let blankStatusCount = 0;
+    const newAffiliates = [];
+
+    rows.forEach((row, index) => {
+      // Get status value directly from _rawData array
+      const status = row._rawData[statusColIndex];
+
+      // Check if status is empty/blank (not "contacted")
+      const isEmpty = status === null || status === undefined || status === "";
+
+      if (isEmpty) {
+        blankStatusCount++;
+
+        // Get phone number directly from _rawData and convert to string
+        const phoneValue = row._rawData[phoneColIndex];
+        // Handle phone number that might be numeric
+        const phoneStr =
+          phoneValue !== undefined && phoneValue !== null
+            ? String(phoneValue)
+            : "";
+
+        console.log(
+          `Row ${index} phone value (${typeof phoneValue}):`,
+          phoneValue
+        );
+        console.log(`Row ${index} converted phone:`, phoneStr);
+
+        const phone = phoneKey(phoneStr);
+
+        if (!phone) {
+          console.log(
+            `Row ${index}: Found blank status row but phone is empty or invalid after conversion`
+          );
+          return;
+        }
+
+        // Add to new affiliates list
+        newAffiliates.push({
+          rowIndex: index,
+          name: norm(row._rawData[sheet.headerValues.indexOf("Isi nama kamu")]),
+          phone: phone,
+          platform: norm(
+            row._rawData[
+              sheet.headerValues.indexOf(
+                "Lebih aktif sebagai Affiliate di mana?"
+              )
+            ]
+          ),
+          instagramUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username Instagram")]
+          ),
+          tiktokUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username TikTok")]
+          ),
+          shopeeUsername: norm(
+            row._rawData[sheet.headerValues.indexOf("Username Shopee")]
+          ),
+        });
+      }
+    });
+
+    console.log(`Found ${blankStatusCount} rows with blank status`);
+    console.log(`Mapped to ${newAffiliates.length} new affiliates`);
 
     return newAffiliates;
   } catch (error) {
@@ -124,44 +299,45 @@ export async function getNewAffiliates() {
 }
 
 /**
- * Update an affiliate's status by row
- * @param {Object} row Sheet row object
- * @param {string} status New status value
- * @returns {Promise<boolean>} Success status
- */
-export async function setAffiliateStatus(row, status = "contacted") {
-  try {
-    row.Status = status;
-    await row.save();
-    return true;
-  } catch (error) {
-    console.error("[Sheets] Error setting affiliate status:", error);
-    return false;
-  }
-}
-
-/**
  * Update an affiliate's status by row index
- * @param {number} index Row index (0-based)
- * @param {string} status New status value
- * @returns {Promise<boolean>} Success status
+ * @param {Object} params - Parameters including rowIndex and status
+ * @returns {Promise<Object>} Result with success flag
  */
-export async function updateAffiliateStatusByIndex(
-  index,
-  status = "contacted"
-) {
+export async function updateAffiliateStatus(params) {
   try {
+    const { rowIndex, status = "contacted" } = params;
+
+    if (rowIndex === undefined) {
+      return { success: false, error: "Row index is required" };
+    }
+
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
 
-    if (index < 0 || index >= rows.length) return false;
-    rows[index].Status = status;
-    await rows[index].save();
-    return true;
+    if (rowIndex < 0 || rowIndex >= rows.length) {
+      return { success: false, error: "Invalid row index" };
+    }
+
+    // Find the index of the Status column
+    const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
+
+    if (statusColIndex === -1) {
+      return { success: false, error: "Status column not found" };
+    }
+
+    // Update the status
+    rows[rowIndex]._rawData[statusColIndex] = status;
+    await rows[rowIndex].save();
+
+    return {
+      success: true,
+      message: `Status updated to '${status}' for row ${rowIndex}`,
+    };
   } catch (error) {
-    console.error("[Sheets] Error updating affiliate status by index:", error);
-    return false;
+    console.error("[Sheets] Error updating affiliate status:", error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -178,21 +354,84 @@ export async function updateAffiliateStatusByPhone(
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
 
-    const target = rows.find(
-      (r) =>
-        phoneKey(r["Nomor WhatsApp (agar tim kami bisa menghubungi kamu)"]) ===
-        phoneKey(phone)
-    );
+    // Find the status column index
+    const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
+    if (statusColIndex === -1) return false;
 
-    if (!target) return false;
-    target.Status = status;
-    await target.save();
+    // Find the phone column index
+    const phoneColName = "Nomor WhatsApp (agar tim kami bisa menghubungi kamu)";
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === phoneColName
+    );
+    if (phoneColIndex === -1) return false;
+
+    // Format the target phone for comparison
+    const targetPhone = phoneKey(phone);
+    if (!targetPhone) return false;
+
+    // Find the row with matching phone number
+    let foundRow = null;
+    for (let i = 0; i < rows.length; i++) {
+      const rowPhone = phoneKey(rows[i]._rawData[phoneColIndex]);
+      if (rowPhone === targetPhone) {
+        foundRow = rows[i];
+        break;
+      }
+    }
+
+    if (!foundRow) return false;
+
+    // Update the status and save
+    foundRow._rawData[statusColIndex] = status;
+    await foundRow.save();
+
     return true;
   } catch (error) {
     console.error("[Sheets] Error updating affiliate status by phone:", error);
     return false;
+  }
+}
+
+/**
+ * Helper function to set up test data
+ * @returns {Promise<Object>} Result with success flag
+ */
+export async function setupTestData() {
+  try {
+    await initSheets();
+    const sheet = doc.sheetsByTitle[SHEETS.FORM_RESPONSES];
+    await sheet.loadHeaderRow();
+    const rows = await sheet.getRows();
+
+    if (rows.length < 3) {
+      return { success: false, message: "Not enough rows to set up test data" };
+    }
+
+    // Find Status column index
+    const statusColIndex = sheet.headerValues.findIndex((h) => h === "Status");
+
+    if (statusColIndex === -1) {
+      return { success: false, error: "Status column not found" };
+    }
+
+    // Set first two rows to "contacted"
+    rows[0]._rawData[statusColIndex] = "contacted";
+    await rows[0].save();
+
+    rows[1]._rawData[statusColIndex] = "contacted";
+    await rows[1].save();
+
+    // Set third row to blank
+    rows[2]._rawData[statusColIndex] = "";
+    await rows[2].save();
+
+    return { success: true, message: "Test data set up successfully" };
+  } catch (error) {
+    console.error("[Sheets] Error setting up test data:", error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -209,17 +448,51 @@ export async function getTopPerformers(category) {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.TOP_PERFORMERS];
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
 
-    return rows
-      .filter((r) => r.kategori === category && r.status_notifikasi !== "sent")
-      .map((r) => ({
-        name: norm(r.nama_affiliate),
-        phone: phoneKey(r.nomor_telepon),
-        username: norm(r.username),
-        ranking: norm(r.ranking),
-        achievement: norm(r.achievement),
-      }));
+    // Get relevant column indices
+    const categoryColIndex = sheet.headerValues.findIndex(
+      (h) => h === "kategori"
+    );
+    const statusColIndex = sheet.headerValues.findIndex(
+      (h) => h === "status_notifikasi"
+    );
+    const nameColIndex = sheet.headerValues.findIndex(
+      (h) => h === "nama_affiliate"
+    );
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === "nomor_telepon"
+    );
+    const usernameColIndex = sheet.headerValues.findIndex(
+      (h) => h === "username"
+    );
+    const rankingColIndex = sheet.headerValues.findIndex(
+      (h) => h === "ranking"
+    );
+    const achievementColIndex = sheet.headerValues.findIndex(
+      (h) => h === "achievement"
+    );
+
+    // Filter and map rows
+    const performers = [];
+
+    rows.forEach((row) => {
+      const rowCategory = row._rawData[categoryColIndex];
+      const notifStatus = row._rawData[statusColIndex];
+
+      if (rowCategory === category && notifStatus !== "sent") {
+        performers.push({
+          name: norm(row._rawData[nameColIndex]),
+          phone: phoneKey(row._rawData[phoneColIndex]),
+          username: norm(row._rawData[usernameColIndex]),
+          ranking: norm(row._rawData[rankingColIndex]),
+          achievement: norm(row._rawData[achievementColIndex]),
+        });
+      }
+    });
+
+    return performers;
   } catch (error) {
     console.error("[Sheets] Error getting top performers:", error);
     return [];
@@ -236,16 +509,36 @@ export async function updateTopPerformerStatus(phone, status = "sent") {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.TOP_PERFORMERS];
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
 
-    const target = rows.find(
-      (r) => phoneKey(r.nomor_telepon) === phoneKey(phone)
+    // Get column indices
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === "nomor_telepon"
+    );
+    const statusColIndex = sheet.headerValues.findIndex(
+      (h) => h === "status_notifikasi"
     );
 
-    if (!target) return false;
-    target.status_notifikasi = status;
-    await target.save();
-    return true;
+    if (phoneColIndex === -1 || statusColIndex === -1) return false;
+
+    // Format the target phone for comparison
+    const targetPhone = phoneKey(phone);
+    if (!targetPhone) return false;
+
+    // Find and update the matching row
+    let found = false;
+    for (let i = 0; i < rows.length; i++) {
+      const rowPhone = phoneKey(rows[i]._rawData[phoneColIndex]);
+      if (rowPhone === targetPhone) {
+        rows[i]._rawData[statusColIndex] = status;
+        await rows[i].save();
+        found = true;
+        break;
+      }
+    }
+
+    return found;
   } catch (error) {
     console.error("[Sheets] Error updating top performer status:", error);
     return false;
@@ -266,16 +559,36 @@ export async function updateWelcomeStatus(phone, status = "sent") {
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.ONBOARDING];
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
 
-    const target = rows.find(
-      (r) => phoneKey(r.nomor_telepon) === phoneKey(phone)
+    // Get column indices
+    const phoneColIndex = sheet.headerValues.findIndex(
+      (h) => h === "nomor_telepon"
+    );
+    const statusColIndex = sheet.headerValues.findIndex(
+      (h) => h === "status_welcome_message"
     );
 
-    if (!target) return false;
-    target.status_welcome_message = status;
-    await target.save();
-    return true;
+    if (phoneColIndex === -1 || statusColIndex === -1) return false;
+
+    // Format the target phone for comparison
+    const targetPhone = phoneKey(phone);
+    if (!targetPhone) return false;
+
+    // Find and update the matching row
+    let found = false;
+    for (let i = 0; i < rows.length; i++) {
+      const rowPhone = phoneKey(rows[i]._rawData[phoneColIndex]);
+      if (rowPhone === targetPhone) {
+        rows[i]._rawData[statusColIndex] = status;
+        await rows[i].save();
+        found = true;
+        break;
+      }
+    }
+
+    return found;
   } catch (error) {
     console.error("[Sheets] Error updating welcome status:", error);
     return false;
@@ -301,16 +614,40 @@ export async function logBroadcast({
   try {
     await initSheets();
     const sheet = doc.sheetsByTitle[SHEETS.BROADCAST_LOG];
+    await sheet.loadHeaderRow();
 
-    await sheet.addRow({
-      id_broadcast: `BC${Date.now()}`,
-      tanggal: new Date().toISOString(),
-      jenis_broadcast: type,
-      jumlah_penerima: recipients.length,
-      sukses: success,
-      gagal: failed,
-      notes,
+    // Create array matching the header order
+    const rowData = [];
+    sheet.headerValues.forEach((header) => {
+      switch (header) {
+        case "id_broadcast":
+          rowData.push(`BC${Date.now()}`);
+          break;
+        case "tanggal":
+          rowData.push(new Date().toISOString());
+          break;
+        case "jenis_broadcast":
+          rowData.push(type);
+          break;
+        case "jumlah_penerima":
+          rowData.push(String(recipients.length));
+          break;
+        case "sukses":
+          rowData.push(String(success));
+          break;
+        case "gagal":
+          rowData.push(String(failed));
+          break;
+        case "notes":
+          rowData.push(notes);
+          break;
+        default:
+          rowData.push(""); // Empty for unknown columns
+      }
     });
+
+    // Add the row
+    await sheet.addRow(rowData);
 
     return true;
   } catch (error) {

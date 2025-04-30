@@ -1,4 +1,4 @@
-// /src/app/api/affiliates/route.js
+// src/app/api/affiliates/route.js
 import {
   getActiveAffiliates,
   getNewAffiliates,
@@ -14,20 +14,28 @@ export async function GET(request) {
     let affiliatesData;
 
     if (status === "new") {
-      affiliatesData = await getNewAffiliates();
+      const newAffiliates = await getNewAffiliates();
+      console.log(`Returning ${newAffiliates.length} new affiliates`);
+      affiliatesData = newAffiliates;
     } else if (status === "active") {
-      affiliatesData = await getActiveAffiliates();
+      const activeAffiliates = await getActiveAffiliates();
+      console.log(`Returning ${activeAffiliates.length} active affiliates`);
+      affiliatesData = activeAffiliates;
     } else {
       // If no status specified, return both with counts
       const newAffiliates = await getNewAffiliates();
       const activeAffiliates = await getActiveAffiliates();
 
+      console.log(
+        `Combined response: ${newAffiliates.length} new, ${activeAffiliates.length} active`
+      );
+
       affiliatesData = {
         new: newAffiliates,
-        active: Object.values(activeAffiliates),
+        active: activeAffiliates,
         counts: {
           new: newAffiliates.length,
-          active: Object.keys(activeAffiliates).length,
+          active: activeAffiliates.length,
         },
       };
     }
@@ -35,8 +43,6 @@ export async function GET(request) {
     return Response.json(affiliatesData);
   } catch (error) {
     console.error("[API] Error fetching affiliates:", error);
-
-    // Return error response with fallback data
     return Response.json(
       {
         error: "Failed to fetch affiliates",

@@ -25,6 +25,18 @@ export function useAffiliates() {
       }
 
       const data = await response.json();
+      console.log("Dashboard received affiliate data:", data);
+
+      // Check the structure of received data
+      console.log(
+        "New affiliates:",
+        Array.isArray(data.new) ? data.new.length : "not array"
+      );
+      console.log(
+        "Active affiliates:",
+        Array.isArray(data.active) ? data.active.length : "not array"
+      );
+      console.log("Counts:", data.counts);
 
       // Set state with the returned data
       setNewAffiliates(data.new || []);
