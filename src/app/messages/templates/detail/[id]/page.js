@@ -21,14 +21,17 @@ import {
   Send,
   AlertCircle,
 } from "lucide-react";
+import React from "react";
 
 export default function TemplateDetailPage({ params }) {
   const router = useRouter();
   const { templates, isLoading, error, deleteTemplate, duplicateTemplate } =
     useTemplate();
 
-  // Get ID safely with React.use() for Next.js App Router
-  const id = parseInt(params.id, 10);
+  // Use React.use to unwrap the params Promise
+  const unwrappedParams = React.use(params);
+  // Get ID safely from unwrapped params
+  const id = parseInt(unwrappedParams.id, 10);
 
   // Local state
   const [isDeleting, setIsDeleting] = useState(false);
