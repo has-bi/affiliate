@@ -10,8 +10,14 @@ import { RefreshCw, MessageSquare, AlertCircle } from "lucide-react";
 
 const NewAffiliatesList = () => {
   const { sessions } = useWhatsApp();
-  const { newAffiliates, error, fetchNewAffiliates, sendWelcomeMessage } =
-    useAffiliates();
+  const {
+    newAffiliates,
+    isLoading,
+    error,
+    fetchNewAffiliates,
+    updateAffiliateStatus,
+    sendWelcomeMessage,
+  } = useAffiliates();
 
   const [sessionName, setSessionName] = useState("");
   const [sendingTo, setSendingTo] = useState(null);

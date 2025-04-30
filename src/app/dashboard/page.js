@@ -24,7 +24,13 @@ export default function DashboardPage() {
   const { sessions } = useWhatsApp();
   const { templates } = useTemplate();
   const { schedules } = useSchedule();
-  const { newAffiliatesCount, activeAffiliatesCount } = useAffiliates();
+  const {
+    newAffiliatesCount,
+    activeAffiliatesCount,
+    isLoading: affiliatesLoading,
+    error: affiliatesError,
+    fetchAllAffiliateData,
+  } = useAffiliates();
   const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
@@ -74,9 +80,13 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-gray-500">
                   New Affiliates
                 </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {newAffiliatesCount}
-                </p>
+                {affiliatesLoading ? (
+                  <div className="animate-pulse h-8 w-16 bg-gray-200 rounded"></div>
+                ) : (
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {newAffiliatesCount}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -93,9 +103,13 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-gray-500">
                   Active Affiliates
                 </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {activeAffiliatesCount}
-                </p>
+                {affiliatesLoading ? (
+                  <div className="animate-pulse h-8 w-16 bg-gray-200 rounded"></div>
+                ) : (
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {activeAffiliatesCount}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
