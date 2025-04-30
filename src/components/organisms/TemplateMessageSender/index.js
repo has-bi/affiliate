@@ -2,14 +2,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useTemplateDatabase } from "@/hooks/useTemplateDatabase";
+import { useTemplate } from "@/hooks/useTemplate"; // Changed from useTemplateDatabase
 import { useSession } from "@/hooks/useWhatsApp";
-import { useTemplateMessageSender } from "@/hooks/useTemplateMessageSender";
+import { useMessageWizard } from "@/hooks/useMessageWizard";
 import { formatMessageContent } from "@/lib/templates/templateUtils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AlertCircle, Check } from "lucide-react";
-import { createSchedule } from "@/lib/schedules/scheduleUtils";
+import { AlertCircle, Check, Search } from "lucide-react";
 
 // Import step components
 import Step1 from "@/components/molecules/TemplateSelector";
@@ -24,13 +23,16 @@ export default function TemplateMessageSender() {
   const { sessions, isLoading: isLoadingSessions } = useSession();
   const [sessionName, setSessionName] = useState("");
 
-  // Template state
-  const { fetchTemplates, isLoading: isLoadingTemplates } =
-    useTemplateDatabase();
-  const [templates, setTemplates] = useState([]);
+  // Template state using useTemplate hook instead
+  const {
+    templates,
+    fetchTemplates,
+    isLoading: isLoadingTemplates,
+  } = useTemplate();
+
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
 
-  // Use the new hook for template message logic
+  // Use the useMessageWizard hook
   const {
     selectedTemplate,
     paramValues,
@@ -50,7 +52,7 @@ export default function TemplateMessageSender() {
     togglePreview,
     handleContactsSelected,
     getFinalMessageForContact,
-  } = useTemplateMessageSender(templates, selectedTemplateId);
+  } = useMessageWizard(templates, selectedTemplateId);
 
   // Form state
   const [step, setStep] = useState(1);
@@ -96,20 +98,11 @@ export default function TemplateMessageSender() {
     isScheduling,
   ]);
 
-  // Fetch templates on mount
+  // Fetch templates on mount - use fetchTemplates from useTemplate
   useEffect(() => {
-    const loadTemplates = async () => {
-      try {
-        console.log("📥 Fetching templates...");
-        const data = await fetchTemplates();
-        console.log("✅ Templates fetched:", data.length);
-        setTemplates(data);
-      } catch (error) {
-        console.error("❌ Error fetching templates:", error);
-      }
-    };
-    loadTemplates();
-  }, [fetchTemplates]);
+    console.log("📥 Loading templates...");
+    // No need to explicitly call fetchTemplates as useTemplate does this internally
+  }, []);
 
   // Handle template change (wrapper for the hook function)
   const handleTemplateChangeWrapper = (e) => {
