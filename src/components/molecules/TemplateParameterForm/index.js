@@ -94,14 +94,12 @@ const Step2 = ({
             variant="secondary"
             size="sm"
             onClick={togglePreview}
-            leftIcon={
-              previewMode ? (
-                <Edit className="h-4 w-4 mr-1" />
-              ) : (
-                <Eye className="h-4 w-4 mr-1" />
-              )
-            }
           >
+            {previewMode ? (
+              <Edit className="h-4 w-4 mr-1" />
+            ) : (
+              <Eye className="h-4 w-4 mr-1" />
+            )}
             {previewMode ? "Edit" : "Preview"}
           </Button>
         </div>
