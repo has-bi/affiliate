@@ -5,7 +5,7 @@ import { Search, RefreshCw, AlertCircle, Check, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Contact Selector component for selecting contacts from master sheet
+ * Contact Selector component for selecting contacts from affiliates
  */
 export default function ContactSelector({ onSelectContacts }) {
   // State
@@ -26,36 +26,75 @@ export default function ContactSelector({ onSelectContacts }) {
     fetchContacts();
   }, [pagination.page, searchTerm]);
 
-  // Fetch contacts from API
+  // Fetch contacts from affiliates API
   const fetchContacts = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Build query parameters
-      const queryParams = new URLSearchParams({
-        page: pagination.page,
-        limit: pagination.limit,
-        status: "contacted",
-      });
-
-      if (searchTerm) {
-        queryParams.append("search", searchTerm);
-      }
-
-      // Make the API call
-      const response = await fetch(`/api/contacts?${queryParams.toString()}`);
+      // Use the affiliates API with status=active query parameter
+      const response = await fetch("/api/affiliates?status=active");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch contacts");
+        throw new Error("Failed to fetch affiliates");
       }
 
       const data = await response.json();
-      setContacts(data.contacts);
-      setPagination(data.pagination);
+
+      // Handle different response formats from the affiliates API
+      let affiliateArray = [];
+      if (Array.isArray(data)) {
+        affiliateArray = data;
+      } else if (typeof data === "object") {
+        // Handle object format (map of phone -> affiliate)
+        affiliateArray = Object.values(data);
+      }
+
+      // Ensure each contact has a unique identifier
+      const processedAffiliates = affiliateArray.map((affiliate, index) => ({
+        ...affiliate,
+        // Generate a unique ID to use as a React key
+        _uniqueId: `contact-${index}-${Date.now()}`,
+      }));
+
+      // Filter out entries with duplicate phone numbers, keeping only the first occurrence
+      const uniquePhoneNumbers = new Set();
+      const uniqueAffiliates = processedAffiliates.filter((affiliate) => {
+        if (!affiliate.phone) return false;
+
+        // Normalize phone number for comparison
+        const normalizedPhone = String(affiliate.phone).replace(/\D/g, "");
+
+        if (uniquePhoneNumbers.has(normalizedPhone)) {
+          return false; // Skip this duplicate
+        }
+
+        uniquePhoneNumbers.add(normalizedPhone);
+        return true; // Keep this entry (first occurrence)
+      });
+
+      // Filter by search term if provided
+      const filteredAffiliates = searchTerm
+        ? uniqueAffiliates.filter(
+            (affiliate) =>
+              affiliate.name
+                ?.toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+              affiliate.phone?.includes(searchTerm)
+          )
+        : uniqueAffiliates;
+
+      setContacts(filteredAffiliates);
+
+      // Update pagination info
+      setPagination((prev) => ({
+        ...prev,
+        total: filteredAffiliates.length,
+        totalPages: Math.ceil(filteredAffiliates.length / prev.limit),
+      }));
     } catch (err) {
-      console.error("Error fetching contacts:", err);
-      setError(err.message || "Failed to load contacts");
+      console.error("Error fetching affiliates:", err);
+      setError(err.message || "Failed to load affiliates");
     } finally {
       setIsLoading(false);
     }
@@ -64,10 +103,10 @@ export default function ContactSelector({ onSelectContacts }) {
   // Handle contact selection
   const toggleContactSelection = (contact) => {
     setSelectedContacts((prev) => {
-      const isSelected = prev.some((c) => c.phone === contact.phone);
+      const isSelected = prev.some((c) => c._uniqueId === contact._uniqueId);
 
       if (isSelected) {
-        return prev.filter((c) => c.phone !== contact.phone);
+        return prev.filter((c) => c._uniqueId !== contact._uniqueId);
       } else {
         return [...prev, contact];
       }
@@ -83,7 +122,7 @@ export default function ContactSelector({ onSelectContacts }) {
     }
   };
 
-  // Handle search input change with debounce
+  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     // Reset pagination to first page
@@ -117,6 +156,12 @@ export default function ContactSelector({ onSelectContacts }) {
     onSelectContacts(selectedContacts);
   };
 
+  // Paginate contacts
+  const paginatedContacts = contacts.slice(
+    (pagination.page - 1) * pagination.limit,
+    pagination.page * pagination.limit
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -149,12 +194,10 @@ export default function ContactSelector({ onSelectContacts }) {
           variant="secondary"
           onClick={fetchContacts}
           disabled={isLoading}
-          leftIcon={
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
-          }
         >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
@@ -164,7 +207,7 @@ export default function ContactSelector({ onSelectContacts }) {
         <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-medium">Error loading contacts</h3>
+            <h3 className="font-medium">Error loading affiliates</h3>
             <p className="mt-1">{error}</p>
           </div>
         </div>
@@ -199,7 +242,7 @@ export default function ContactSelector({ onSelectContacts }) {
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
-      ) : contacts.length === 0 ? (
+      ) : paginatedContacts.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-md">
           <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500 mb-1">Tidak ada kontak ditemukan</p>
@@ -241,13 +284,13 @@ export default function ContactSelector({ onSelectContacts }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {contacts.map((contact) => {
+              {paginatedContacts.map((contact) => {
                 const isSelected = selectedContacts.some(
-                  (c) => c.phone === contact.phone
+                  (c) => c._uniqueId === contact._uniqueId
                 );
                 return (
                   <tr
-                    key={contact.id || contact.phone}
+                    key={contact._uniqueId}
                     className={`hover:bg-gray-50 cursor-pointer ${
                       isSelected ? "bg-indigo-50" : ""
                     }`}
@@ -319,9 +362,9 @@ export default function ContactSelector({ onSelectContacts }) {
             Kontak Terpilih ({selectedContacts.length})
           </h4>
           <div className="flex flex-wrap gap-2">
-            {selectedContacts.slice(0, 10).map((contact) => (
+            {selectedContacts.slice(0, 10).map((contact, index) => (
               <div
-                key={contact.id || contact.phone}
+                key={`selected-${contact._uniqueId || index}`}
                 className="inline-flex items-center bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 text-sm"
               >
                 <span className="truncate max-w-[150px]">{contact.name}</span>
@@ -351,8 +394,8 @@ export default function ContactSelector({ onSelectContacts }) {
           variant="primary"
           onClick={handleConfirmSelection}
           disabled={selectedContacts.length === 0}
-          leftIcon={<Check className="h-4 w-4 mr-2" />}
         >
+          <Check className="h-4 w-4 mr-2" />
           Konfirmasi Pilihan
         </Button>
       </div>

@@ -236,6 +236,7 @@ export default function TemplateMessageSender() {
       const allRecipients = getAllRecipients();
       console.log("📋 Schedule recipients:", allRecipients);
 
+      // Format schedule data
       let scheduleData = {
         name: `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
         templateId: selectedTemplate.id,
@@ -243,46 +244,77 @@ export default function TemplateMessageSender() {
         recipients: allRecipients,
         scheduleType: scheduleConfig.type,
         sessionName: sessionName,
-        scheduleConfig: {
-          cronExpression:
-            scheduleConfig.type === "recurring"
-              ? scheduleConfig.cronExpression
-              : null,
-          date:
-            scheduleConfig.type === "once"
-              ? new Date(
-                  `${scheduleConfig.date}T${scheduleConfig.time}:00`
-                ).toISOString()
-              : null,
-        },
+        scheduleConfig: {},
       };
+
+      // Format schedule configuration based on type
+      if (scheduleConfig.type === "once") {
+        scheduleData.scheduleConfig = {
+          date: new Date(
+            `${scheduleConfig.date}T${scheduleConfig.time}:00`
+          ).toISOString(),
+        };
+      } else {
+        scheduleData.scheduleConfig = {
+          cronExpression: scheduleConfig.cronExpression,
+          startDate: scheduleConfig.startDate
+            ? new Date(`${scheduleConfig.startDate}T00:00:00`).toISOString()
+            : new Date().toISOString(),
+          endDate: scheduleConfig.endDate
+            ? new Date(`${scheduleConfig.endDate}T23:59:59`).toISOString()
+            : null,
+        };
+      }
 
       console.log("📝 Schedule data:", scheduleData);
 
       const response = await fetch("/api/schedules", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(scheduleData),
       });
 
       if (!response.ok) {
-        const resClone = response.clone();
         let errorMsg = "Failed to schedule message";
         try {
-          const j = await resClone.json();
-          errorMsg = j.error ?? errorMsg;
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
         } catch {
-          const t = await response.text();
-          if (t) errorMsg = t;
+          // If we can't parse JSON, try to get the text
+          try {
+            const text = await response.text();
+            if (text) errorMsg = text;
+          } catch {
+            // If even that fails, use status text
+            errorMsg = `${response.status}: ${response.statusText}`;
+          }
         }
         throw new Error(errorMsg);
       }
 
-      const result = response.status === 204 ? {} : await response.json(); // guards empty body
+      // Parse the response, handling empty responses
+      let result = {};
+      try {
+        const text = await response.text();
+        if (text.trim()) {
+          result = JSON.parse(text);
+        }
+      } catch (err) {
+        console.warn("Could not parse schedule response:", err);
+      }
+
       setSendResult({
         scheduled: true,
-        scheduleId: result.id,
-        nextRun: result.nextRun,
+        scheduleId: result.id || "unknown",
+        nextRun:
+          result.nextRun ||
+          (scheduleConfig.type === "once"
+            ? new Date(
+                `${scheduleConfig.date}T${scheduleConfig.time}:00`
+              ).toISOString()
+            : "according to schedule"),
       });
     } catch (err) {
       console.error("❌ Error scheduling message:", err);

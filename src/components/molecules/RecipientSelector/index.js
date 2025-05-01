@@ -22,15 +22,14 @@ const Step3 = ({
     <div className="space-y-4">
       <h3 className="text-lg font-medium text-gray-700">Pilih Penerima</h3>
 
-      {/* Contact selection buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
           type="button"
           variant="secondary"
-          leftIcon={<Users className="h-4 w-4 mr-2" />}
           onClick={() => setShowContactSelector(true)}
           className="flex-1"
         >
+          <Users className="h-4 w-4 mr-2" />
           Pilih dari Daftar Kontak
         </Button>
 
@@ -39,10 +38,10 @@ const Step3 = ({
         <Button
           type="button"
           variant="secondary"
-          leftIcon={<PlusCircle className="h-4 w-4 mr-2" />}
           onClick={() => setShowContactSelector(false)}
           className="flex-1"
         >
+          <PlusCircle className="h-4 w-4 mr-2" />
           Tambahkan Nomor Manual
         </Button>
       </div>
