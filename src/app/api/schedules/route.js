@@ -1,63 +1,48 @@
-// src/app/api/schedules/route.js
-import { listSchedules, createSchedule } from "@/lib/schedules/scheduleUtils";
-import { createLogger } from "@/lib/utils";
+// src/app/api/debug/schedules/route.js
+import prisma from "@/lib/db/prisma";
+import schedulerService from "@/lib/schedules/schedulerService";
 
-const logger = createLogger("[API][Schedules]");
-
-// GET - List all schedules
-export async function GET() {
+export async function GET(request) {
   try {
-    const schedules = await listSchedules();
-    return Response.json(schedules);
+    // Get active schedules
+    const activeSchedules = await prisma.schedule.findMany({
+      where: { status: "active" },
+      include: {
+        recipients: true,
+        parameters: true,
+        template: true,
+      },
+    });
+
+    return Response.json({
+      message: "Active schedules found",
+      schedules: activeSchedules.map((s) => ({
+        id: s.id,
+        name: s.name,
+        nextRun: s.nextRun,
+        lastRun: s.lastRun,
+        templateId: s.templateId,
+        scheduleType: s.scheduleType,
+        recipientCount: s.recipients.length,
+        parameterCount: s.parameters.length,
+      })),
+    });
   } catch (error) {
-    logger.error("Error listing schedules:", error);
-    return Response.json(
-      { error: "Failed to fetch schedules" },
-      { status: 500 }
-    );
+    console.error("Debug endpoint error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST - Create a new schedule
-export async function POST(req) {
+// Manually trigger check for schedules
+export async function POST(request) {
   try {
-    const body = await req.json();
-
-    // Validate required fields
-    if (!body.templateId) {
-      return Response.json(
-        { error: "Template ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!body.sessionName) {
-      return Response.json(
-        { error: "Session name is required" },
-        { status: 400 }
-      );
-    }
-
-    if (
-      !body.recipients ||
-      !Array.isArray(body.recipients) ||
-      body.recipients.length === 0
-    ) {
-      return Response.json(
-        { error: "At least one recipient is required" },
-        { status: 400 }
-      );
-    }
-
-    // Create schedule in database
-    const result = await createSchedule(body);
-
-    return Response.json(result);
+    const result = await schedulerService.checkAndExecuteSchedules();
+    return Response.json({
+      message: "Scheduler check triggered",
+      result,
+    });
   } catch (error) {
-    logger.error("Error creating schedule:", error);
-    return Response.json(
-      { error: error.message || "Failed to create schedule" },
-      { status: 500 }
-    );
+    console.error("Debug endpoint error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

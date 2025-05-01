@@ -1,0 +1,425 @@
+[2025-05-01T16:41:32.191Z] SchedulerDebugService instantiated
+[2025-05-01T16:41:32.191Z] Auto-initializing scheduler debug service
+[2025-05-01T16:41:32.192Z] Initializing scheduler debug service
+[2025-05-01T16:41:32.192Z] Environment: development, Is serverless: false
+[2025-05-01T16:41:32.192Z] Starting polling mechanism
+[2025-05-01T16:41:32.192Z] Starting debug polling mechanism
+[2025-05-01T16:41:32.193Z] Triggering initial poll
+[2025-05-01T16:41:32.193Z] Starting poll cycle
+[2025-05-01T16:41:32.194Z] Checking for schedules to execute at 2025-05-01T16:41:32.194Z
+[2025-05-01T16:41:32.202Z] Checking for schedules to execute at 2025-05-01T16:41:32.202Z
+[2025-05-01T16:41:32.289Z] Database connection successful
+[2025-05-01T16:41:32.289Z] Querying for schedules to execute
+[2025-05-01T16:41:32.291Z] Found 3 active schedules:
+[2025-05-01T16:41:32.291Z] - Schedule #14: Testing Template - 5/1/2025, Next run: Thu May 01 2025 17:49:00 GMT+0700 (Western Indonesia Time), Type: once
+[2025-05-01T16:41:32.291Z] - Schedule #15: Testing Template - 5/1/2025, Next run: Thu May 01 2025 18:15:00 GMT+0700 (Western Indonesia Time), Type: once
+[2025-05-01T16:41:32.292Z] - Schedule #16: Testing Template - 5/1/2025, Next run: Thu May 01 2025 23:38:00 GMT+0700 (Western Indonesia Time), Type: once
+[2025-05-01T16:41:32.428Z] Found 3 schedules to execute
+[2025-05-01T16:41:32.428Z] Preparing to execute schedule #14: Testing Template - 5/1/2025
+[2025-05-01T16:41:32.428Z] Executing schedule #14: Testing Template - 5/1/2025
+[2025-05-01T16:41:32.428Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:32.429Z] Using template: Testing Template
+[2025-05-01T16:41:32.429Z] Session name: hasbi
+[2025-05-01T16:41:32.429Z] Parameter name: 
+[2025-05-01T16:41:32.429Z] Parameter product: Youvit
+[2025-05-01T16:41:32.429Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:32.429Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:32.430Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:32.430Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:32.548Z] Database connection successful
+[2025-05-01T16:41:32.548Z] Querying for schedules to execute
+[2025-05-01T16:41:32.725Z] Found 3 schedules to execute
+[2025-05-01T16:41:32.725Z] Preparing to execute schedule #14: Testing Template - 5/1/2025
+[2025-05-01T16:41:32.725Z] Executing schedule #14: Testing Template - 5/1/2025
+[2025-05-01T16:41:32.725Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:32.725Z] Using template: Testing Template
+[2025-05-01T16:41:32.726Z] Session name: hasbi
+[2025-05-01T16:41:32.726Z] Parameter name: 
+[2025-05-01T16:41:32.726Z] Parameter product: Youvit
+[2025-05-01T16:41:32.726Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:32.726Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:32.726Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:32.726Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:33.097Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:33.097Z] Sending message to 6282284477640
+[2025-05-01T16:41:33.101Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:33.101Z] Sending message to 6282284477640
+[2025-05-01T16:41:33.294Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:33.294Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:33.294Z] Waiting 1 second before next message
+[2025-05-01T16:41:33.698Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:33.698Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:33.698Z] Waiting 1 second before next message
+[2025-05-01T16:41:34.295Z] Updating history for schedule #14: Success=0, Failed=1
+[2025-05-01T16:41:34.296Z] Adding history entry for schedule #14
+[2025-05-01T16:41:34.346Z] History entry created successfully
+[2025-05-01T16:41:34.346Z] Updating schedule after execution
+[2025-05-01T16:41:34.347Z] Updating schedule #14 after execution
+[2025-05-01T16:41:34.347Z] One-time schedule, marking as completed
+[2025-05-01T16:41:34.347Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:34.347Z, NextRun=undefined
+[2025-05-01T16:41:34.394Z] Schedule #14 updated successfully
+[2025-05-01T16:41:34.394Z] Schedule #14 execution completed
+[2025-05-01T16:41:34.394Z] Preparing to execute schedule #15: Testing Template - 5/1/2025
+[2025-05-01T16:41:34.394Z] Executing schedule #15: Testing Template - 5/1/2025
+[2025-05-01T16:41:34.394Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:34.394Z] Using template: Testing Template
+[2025-05-01T16:41:34.394Z] Session name: hasbi
+[2025-05-01T16:41:34.395Z] Parameter name: 
+[2025-05-01T16:41:34.395Z] Parameter product: Youvit
+[2025-05-01T16:41:34.395Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:34.395Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:34.395Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:34.395Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:34.412Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:34.413Z] Sending message to 6282284477640
+[2025-05-01T16:41:34.518Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:34.518Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:34.518Z] Waiting 1 second before next message
+[2025-05-01T16:41:34.699Z] Updating history for schedule #14: Success=0, Failed=1
+[2025-05-01T16:41:34.699Z] Adding history entry for schedule #14
+[2025-05-01T16:41:34.722Z] History entry created successfully
+[2025-05-01T16:41:34.722Z] Updating schedule after execution
+[2025-05-01T16:41:34.722Z] Updating schedule #14 after execution
+[2025-05-01T16:41:34.722Z] One-time schedule, marking as completed
+[2025-05-01T16:41:34.722Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:34.722Z, NextRun=undefined
+[2025-05-01T16:41:34.746Z] Schedule #14 updated successfully
+[2025-05-01T16:41:34.747Z] Schedule #14 execution completed
+[2025-05-01T16:41:34.747Z] Preparing to execute schedule #15: Testing Template - 5/1/2025
+[2025-05-01T16:41:34.747Z] Executing schedule #15: Testing Template - 5/1/2025
+[2025-05-01T16:41:34.747Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:34.747Z] Using template: Testing Template
+[2025-05-01T16:41:34.747Z] Session name: hasbi
+[2025-05-01T16:41:34.748Z] Parameter name: 
+[2025-05-01T16:41:34.748Z] Parameter product: Youvit
+[2025-05-01T16:41:34.748Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:34.748Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:34.748Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:34.748Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:34.764Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:34.764Z] Sending message to 6282284477640
+[2025-05-01T16:41:34.809Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:34.809Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:34.809Z] Waiting 1 second before next message
+[2025-05-01T16:41:35.519Z] Updating history for schedule #15: Success=0, Failed=1
+[2025-05-01T16:41:35.519Z] Adding history entry for schedule #15
+[2025-05-01T16:41:35.543Z] History entry created successfully
+[2025-05-01T16:41:35.543Z] Updating schedule after execution
+[2025-05-01T16:41:35.543Z] Updating schedule #15 after execution
+[2025-05-01T16:41:35.543Z] One-time schedule, marking as completed
+[2025-05-01T16:41:35.543Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:35.543Z, NextRun=undefined
+[2025-05-01T16:41:35.567Z] Schedule #15 updated successfully
+[2025-05-01T16:41:35.567Z] Schedule #15 execution completed
+[2025-05-01T16:41:35.567Z] Preparing to execute schedule #16: Testing Template - 5/1/2025
+[2025-05-01T16:41:35.567Z] Executing schedule #16: Testing Template - 5/1/2025
+[2025-05-01T16:41:35.567Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:35.567Z] Using template: Testing Template
+[2025-05-01T16:41:35.567Z] Session name: hasbi
+[2025-05-01T16:41:35.567Z] Parameter name: 
+[2025-05-01T16:41:35.567Z] Parameter product: Youvit
+[2025-05-01T16:41:35.568Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:35.568Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:35.568Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:35.568Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:35.584Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:35.584Z] Sending message to 6282284477640
+[2025-05-01T16:41:35.711Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:35.712Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:35.712Z] Waiting 1 second before next message
+[2025-05-01T16:41:35.809Z] Updating history for schedule #15: Success=0, Failed=1
+[2025-05-01T16:41:35.810Z] Adding history entry for schedule #15
+[2025-05-01T16:41:35.833Z] History entry created successfully
+[2025-05-01T16:41:35.833Z] Updating schedule after execution
+[2025-05-01T16:41:35.833Z] Updating schedule #15 after execution
+[2025-05-01T16:41:35.834Z] One-time schedule, marking as completed
+[2025-05-01T16:41:35.834Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:35.833Z, NextRun=undefined
+[2025-05-01T16:41:35.857Z] Schedule #15 updated successfully
+[2025-05-01T16:41:35.858Z] Schedule #15 execution completed
+[2025-05-01T16:41:35.858Z] Preparing to execute schedule #16: Testing Template - 5/1/2025
+[2025-05-01T16:41:35.858Z] Executing schedule #16: Testing Template - 5/1/2025
+[2025-05-01T16:41:35.858Z] Template ID: 7, Recipients: 1, Parameters: 2
+[2025-05-01T16:41:35.858Z] Using template: Testing Template
+[2025-05-01T16:41:35.858Z] Session name: hasbi
+[2025-05-01T16:41:35.859Z] Parameter name: 
+[2025-05-01T16:41:35.859Z] Parameter product: Youvit
+[2025-05-01T16:41:35.859Z] Preparing to send messages to 1 recipients
+[2025-05-01T16:41:35.859Z] Processing recipient: 6282284477640 → 6282284477640
+[2025-05-01T16:41:35.859Z] Message prepared, length: 41 chars
+[2025-05-01T16:41:35.859Z] Checking WhatsApp session: hasbi
+[2025-05-01T16:41:35.878Z] WhatsApp status: {"name":"hasbi","isConnected":true,"status":"WORKING"}
+[2025-05-01T16:41:35.878Z] Sending message to 6282284477640
+[2025-05-01T16:41:35.920Z] ERROR sending message: Failed to send message
+[2025-05-01T16:41:35.920Z] Failed to send message to 6282284477640: Failed to send message
+[2025-05-01T16:41:35.921Z] Waiting 1 second before next message
+[2025-05-01T16:41:36.713Z] Updating history for schedule #16: Success=0, Failed=1
+[2025-05-01T16:41:36.713Z] Adding history entry for schedule #16
+[2025-05-01T16:41:36.736Z] History entry created successfully
+[2025-05-01T16:41:36.736Z] Updating schedule after execution
+[2025-05-01T16:41:36.737Z] Updating schedule #16 after execution
+[2025-05-01T16:41:36.737Z] One-time schedule, marking as completed
+[2025-05-01T16:41:36.737Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:36.737Z, NextRun=undefined
+[2025-05-01T16:41:36.760Z] Schedule #16 updated successfully
+[2025-05-01T16:41:36.760Z] Schedule #16 execution completed
+[2025-05-01T16:41:36.921Z] Updating history for schedule #16: Success=0, Failed=1
+[2025-05-01T16:41:36.923Z] Adding history entry for schedule #16
+[2025-05-01T16:41:36.947Z] History entry created successfully
+[2025-05-01T16:41:36.947Z] Updating schedule after execution
+[2025-05-01T16:41:36.948Z] Updating schedule #16 after execution
+[2025-05-01T16:41:36.948Z] One-time schedule, marking as completed
+[2025-05-01T16:41:36.948Z] Updating schedule in database: Status=completed, LastRun=2025-05-01T16:41:36.948Z, NextRun=undefined
+[2025-05-01T16:41:36.971Z] Schedule #16 updated successfully
+[2025-05-01T16:41:36.971Z] Schedule #16 execution completed
+[2025-05-01T16:41:36.971Z] Scheduling next poll in 30000ms
+[2025-05-01T16:42:08.146Z] Starting poll cycle
+[2025-05-01T16:42:08.146Z] Checking for schedules to execute at 2025-05-01T16:42:08.146Z
+[2025-05-01T16:42:08.190Z] Database connection successful
+[2025-05-01T16:42:08.191Z] Querying for schedules to execute
+[2025-05-01T16:42:08.214Z] Found 0 schedules to execute
+[2025-05-01T16:42:08.215Z] No schedules to execute at this time
+[2025-05-01T16:42:08.260Z] Next 0 upcoming schedules:
+[2025-05-01T16:42:08.260Z] Scheduling next poll in 30000ms
+[2025-05-01T16:42:39.444Z] Starting poll cycle
+[2025-05-01T16:42:39.444Z] Checking for schedules to execute at 2025-05-01T16:42:39.444Z
+[2025-05-01T16:42:39.489Z] Database connection successful
+[2025-05-01T16:42:39.490Z] Querying for schedules to execute
+[2025-05-01T16:42:39.513Z] Found 0 schedules to execute
+[2025-05-01T16:42:39.513Z] No schedules to execute at this time
+[2025-05-01T16:42:39.536Z] Next 0 upcoming schedules:
+[2025-05-01T16:42:39.536Z] Scheduling next poll in 30000ms
+[2025-05-01T16:43:10.711Z] Starting poll cycle
+[2025-05-01T16:43:10.712Z] Checking for schedules to execute at 2025-05-01T16:43:10.712Z
+[2025-05-01T16:43:10.755Z] Database connection successful
+[2025-05-01T16:43:10.755Z] Querying for schedules to execute
+[2025-05-01T16:43:10.778Z] Found 0 schedules to execute
+[2025-05-01T16:43:10.778Z] No schedules to execute at this time
+[2025-05-01T16:43:10.800Z] Next 0 upcoming schedules:
+[2025-05-01T16:43:10.800Z] Scheduling next poll in 30000ms
+[2025-05-01T16:43:41.964Z] Starting poll cycle
+[2025-05-01T16:43:41.964Z] Checking for schedules to execute at 2025-05-01T16:43:41.964Z
+[2025-05-01T16:43:42.008Z] Database connection successful
+[2025-05-01T16:43:42.008Z] Querying for schedules to execute
+[2025-05-01T16:43:42.030Z] Found 0 schedules to execute
+[2025-05-01T16:43:42.030Z] No schedules to execute at this time
+[2025-05-01T16:43:42.052Z] Next 0 upcoming schedules:
+[2025-05-01T16:43:42.052Z] Scheduling next poll in 30000ms
+[2025-05-01T16:44:13.147Z] Starting poll cycle
+[2025-05-01T16:44:13.147Z] Checking for schedules to execute at 2025-05-01T16:44:13.147Z
+[2025-05-01T16:44:13.326Z] Database connection successful
+[2025-05-01T16:44:13.326Z] Querying for schedules to execute
+[2025-05-01T16:44:13.376Z] Found 0 schedules to execute
+[2025-05-01T16:44:13.376Z] No schedules to execute at this time
+[2025-05-01T16:44:13.401Z] Next 0 upcoming schedules:
+[2025-05-01T16:44:13.402Z] Scheduling next poll in 30000ms
+[2025-05-01T16:44:19.272Z] SchedulerDebugService instantiated
+[2025-05-01T16:44:19.274Z] Checking for schedules to execute at 2025-05-01T16:44:19.274Z
+[2025-05-01T16:44:19.299Z] Database connection successful
+[2025-05-01T16:44:19.299Z] Querying for schedules to execute
+[2025-05-01T16:44:19.467Z] Found 0 schedules to execute
+[2025-05-01T16:44:19.468Z] No schedules to execute at this time
+[2025-05-01T16:44:19.513Z] Next 0 upcoming schedules:
+[2025-05-01T16:44:44.656Z] Starting poll cycle
+[2025-05-01T16:44:44.656Z] Checking for schedules to execute at 2025-05-01T16:44:44.656Z
+[2025-05-01T16:44:44.877Z] Database connection successful
+[2025-05-01T16:44:44.877Z] Querying for schedules to execute
+[2025-05-01T16:44:44.923Z] Found 0 schedules to execute
+[2025-05-01T16:44:44.923Z] No schedules to execute at this time
+[2025-05-01T16:44:44.946Z] Next 0 upcoming schedules:
+[2025-05-01T16:44:44.946Z] Scheduling next poll in 30000ms
+[2025-05-01T16:45:16.337Z] Starting poll cycle
+[2025-05-01T16:45:16.337Z] Checking for schedules to execute at 2025-05-01T16:45:16.337Z
+[2025-05-01T16:45:16.532Z] Database connection successful
+[2025-05-01T16:45:16.532Z] Querying for schedules to execute
+[2025-05-01T16:45:16.555Z] Found 0 schedules to execute
+[2025-05-01T16:45:16.556Z] No schedules to execute at this time
+[2025-05-01T16:45:16.668Z] Next 0 upcoming schedules:
+[2025-05-01T16:45:16.668Z] Scheduling next poll in 30000ms
+[2025-05-01T16:45:48.041Z] Starting poll cycle
+[2025-05-01T16:45:48.041Z] Checking for schedules to execute at 2025-05-01T16:45:48.041Z
+[2025-05-01T16:45:48.227Z] Database connection successful
+[2025-05-01T16:45:48.227Z] Querying for schedules to execute
+[2025-05-01T16:45:48.269Z] Found 0 schedules to execute
+[2025-05-01T16:45:48.269Z] No schedules to execute at this time
+[2025-05-01T16:45:48.292Z] Next 0 upcoming schedules:
+[2025-05-01T16:45:48.292Z] Scheduling next poll in 30000ms
+[2025-05-01T16:46:19.485Z] Starting poll cycle
+[2025-05-01T16:46:19.485Z] Checking for schedules to execute at 2025-05-01T16:46:19.485Z
+[2025-05-01T16:46:19.675Z] Database connection successful
+[2025-05-01T16:46:19.675Z] Querying for schedules to execute
+[2025-05-01T16:46:19.711Z] Found 0 schedules to execute
+[2025-05-01T16:46:19.711Z] No schedules to execute at this time
+[2025-05-01T16:46:19.734Z] Next 0 upcoming schedules:
+[2025-05-01T16:46:19.734Z] Scheduling next poll in 30000ms
+[2025-05-01T16:46:49.735Z] Starting poll cycle
+[2025-05-01T16:46:49.736Z] Checking for schedules to execute at 2025-05-01T16:46:49.736Z
+[2025-05-01T16:46:51.371Z] Database connection successful
+[2025-05-01T16:46:51.372Z] Querying for schedules to execute
+[2025-05-01T16:46:51.536Z] Found 0 schedules to execute
+[2025-05-01T16:46:51.536Z] No schedules to execute at this time
+[2025-05-01T16:46:51.585Z] Next 0 upcoming schedules:
+[2025-05-01T16:46:51.585Z] Scheduling next poll in 30000ms
+[2025-05-01T16:47:21.586Z] Starting poll cycle
+[2025-05-01T16:47:21.586Z] Checking for schedules to execute at 2025-05-01T16:47:21.586Z
+[2025-05-01T16:47:21.798Z] Database connection successful
+[2025-05-01T16:47:21.798Z] Querying for schedules to execute
+[2025-05-01T16:47:21.834Z] Found 0 schedules to execute
+[2025-05-01T16:47:21.834Z] No schedules to execute at this time
+[2025-05-01T16:47:21.857Z] Next 0 upcoming schedules:
+[2025-05-01T16:47:21.858Z] Scheduling next poll in 30000ms
+[2025-05-01T16:47:53.093Z] Starting poll cycle
+[2025-05-01T16:47:53.093Z] Checking for schedules to execute at 2025-05-01T16:47:53.093Z
+[2025-05-01T16:47:53.141Z] Database connection successful
+[2025-05-01T16:47:53.141Z] Querying for schedules to execute
+[2025-05-01T16:47:53.549Z] Found 0 schedules to execute
+[2025-05-01T16:47:53.549Z] No schedules to execute at this time
+[2025-05-01T16:47:53.576Z] Next 0 upcoming schedules:
+[2025-05-01T16:47:53.576Z] Scheduling next poll in 30000ms
+[2025-05-01T16:48:25.335Z] Starting poll cycle
+[2025-05-01T16:48:25.336Z] Checking for schedules to execute at 2025-05-01T16:48:25.336Z
+[2025-05-01T16:48:25.514Z] Database connection successful
+[2025-05-01T16:48:25.514Z] Querying for schedules to execute
+[2025-05-01T16:48:25.557Z] Found 0 schedules to execute
+[2025-05-01T16:48:25.557Z] No schedules to execute at this time
+[2025-05-01T16:48:25.584Z] Next 0 upcoming schedules:
+[2025-05-01T16:48:25.584Z] Scheduling next poll in 30000ms
+[2025-05-01T16:48:38.101Z] SchedulerDebugService instantiated
+[2025-05-01T16:48:38.104Z] Checking for schedules to execute at 2025-05-01T16:48:38.104Z
+[2025-05-01T16:48:38.130Z] Database connection successful
+[2025-05-01T16:48:38.130Z] Querying for schedules to execute
+[2025-05-01T16:48:38.356Z] Found 0 schedules to execute
+[2025-05-01T16:48:38.356Z] No schedules to execute at this time
+[2025-05-01T16:48:38.400Z] Next 0 upcoming schedules:
+[2025-05-01T16:48:56.954Z] Starting poll cycle
+[2025-05-01T16:48:56.954Z] Checking for schedules to execute at 2025-05-01T16:48:56.954Z
+[2025-05-01T16:48:57.112Z] Database connection successful
+[2025-05-01T16:48:57.112Z] Querying for schedules to execute
+[2025-05-01T16:48:57.144Z] Found 0 schedules to execute
+[2025-05-01T16:48:57.144Z] No schedules to execute at this time
+[2025-05-01T16:48:57.172Z] Next 0 upcoming schedules:
+[2025-05-01T16:48:57.173Z] Scheduling next poll in 30000ms
+[2025-05-01T16:49:28.386Z] Starting poll cycle
+[2025-05-01T16:49:28.386Z] Checking for schedules to execute at 2025-05-01T16:49:28.386Z
+[2025-05-01T16:49:28.624Z] Database connection successful
+[2025-05-01T16:49:28.624Z] Querying for schedules to execute
+[2025-05-01T16:49:28.668Z] Found 0 schedules to execute
+[2025-05-01T16:49:28.668Z] No schedules to execute at this time
+[2025-05-01T16:49:28.693Z] Next 0 upcoming schedules:
+[2025-05-01T16:49:28.693Z] Scheduling next poll in 30000ms
+[2025-05-01T16:49:59.943Z] Starting poll cycle
+[2025-05-01T16:49:59.943Z] Checking for schedules to execute at 2025-05-01T16:49:59.943Z
+[2025-05-01T16:50:00.106Z] Database connection successful
+[2025-05-01T16:50:00.106Z] Querying for schedules to execute
+[2025-05-01T16:50:00.141Z] Found 0 schedules to execute
+[2025-05-01T16:50:00.141Z] No schedules to execute at this time
+[2025-05-01T16:50:00.165Z] Next 0 upcoming schedules:
+[2025-05-01T16:50:00.166Z] Scheduling next poll in 30000ms
+[2025-05-01T16:50:31.433Z] Starting poll cycle
+[2025-05-01T16:50:31.433Z] Checking for schedules to execute at 2025-05-01T16:50:31.433Z
+[2025-05-01T16:50:31.659Z] Database connection successful
+[2025-05-01T16:50:31.659Z] Querying for schedules to execute
+[2025-05-01T16:50:31.712Z] Found 0 schedules to execute
+[2025-05-01T16:50:31.713Z] No schedules to execute at this time
+[2025-05-01T16:50:31.736Z] Next 0 upcoming schedules:
+[2025-05-01T16:50:31.736Z] Scheduling next poll in 30000ms
+[2025-05-01T16:51:02.998Z] Starting poll cycle
+[2025-05-01T16:51:02.999Z] Checking for schedules to execute at 2025-05-01T16:51:02.999Z
+[2025-05-01T16:51:03.050Z] Database connection successful
+[2025-05-01T16:51:03.050Z] Querying for schedules to execute
+[2025-05-01T16:51:03.290Z] Found 0 schedules to execute
+[2025-05-01T16:51:03.290Z] No schedules to execute at this time
+[2025-05-01T16:51:03.335Z] Next 0 upcoming schedules:
+[2025-05-01T16:51:03.336Z] Scheduling next poll in 30000ms
+[2025-05-01T16:51:33.337Z] Starting poll cycle
+[2025-05-01T16:51:33.337Z] Checking for schedules to execute at 2025-05-01T16:51:33.337Z
+[2025-05-01T16:51:33.568Z] Database connection successful
+[2025-05-01T16:51:33.568Z] Querying for schedules to execute
+[2025-05-01T16:51:33.610Z] Found 0 schedules to execute
+[2025-05-01T16:51:33.610Z] No schedules to execute at this time
+[2025-05-01T16:51:33.633Z] Next 0 upcoming schedules:
+[2025-05-01T16:51:33.634Z] Scheduling next poll in 30000ms
+[2025-05-01T16:52:04.963Z] Starting poll cycle
+[2025-05-01T16:52:04.964Z] Checking for schedules to execute at 2025-05-01T16:52:04.964Z
+[2025-05-01T16:52:05.377Z] Database connection successful
+[2025-05-01T16:52:05.377Z] Querying for schedules to execute
+[2025-05-01T16:52:05.424Z] Found 0 schedules to execute
+[2025-05-01T16:52:05.424Z] No schedules to execute at this time
+[2025-05-01T16:52:05.604Z] Next 0 upcoming schedules:
+[2025-05-01T16:52:05.605Z] Scheduling next poll in 30000ms
+[2025-05-01T16:52:36.952Z] Starting poll cycle
+[2025-05-01T16:52:36.952Z] Checking for schedules to execute at 2025-05-01T16:52:36.952Z
+[2025-05-01T16:52:37.107Z] Database connection successful
+[2025-05-01T16:52:37.107Z] Querying for schedules to execute
+[2025-05-01T16:52:37.134Z] Found 0 schedules to execute
+[2025-05-01T16:52:37.134Z] No schedules to execute at this time
+[2025-05-01T16:52:37.157Z] Next 0 upcoming schedules:
+[2025-05-01T16:52:37.157Z] Scheduling next poll in 30000ms
+[2025-05-01T16:53:08.529Z] Starting poll cycle
+[2025-05-01T16:53:08.530Z] Checking for schedules to execute at 2025-05-01T16:53:08.530Z
+[2025-05-01T16:53:08.678Z] Database connection successful
+[2025-05-01T16:53:08.679Z] Querying for schedules to execute
+[2025-05-01T16:53:08.724Z] Found 0 schedules to execute
+[2025-05-01T16:53:08.724Z] No schedules to execute at this time
+[2025-05-01T16:53:08.770Z] Next 0 upcoming schedules:
+[2025-05-01T16:53:08.770Z] Scheduling next poll in 30000ms
+[2025-05-01T16:53:40.065Z] Starting poll cycle
+[2025-05-01T16:53:40.066Z] Checking for schedules to execute at 2025-05-01T16:53:40.066Z
+[2025-05-01T16:53:40.259Z] Database connection successful
+[2025-05-01T16:53:40.259Z] Querying for schedules to execute
+[2025-05-01T16:53:40.291Z] Found 0 schedules to execute
+[2025-05-01T16:53:40.291Z] No schedules to execute at this time
+[2025-05-01T16:53:40.313Z] Next 0 upcoming schedules:
+[2025-05-01T16:53:40.314Z] Scheduling next poll in 30000ms
+[2025-05-01T16:54:11.753Z] Starting poll cycle
+[2025-05-01T16:54:11.753Z] Checking for schedules to execute at 2025-05-01T16:54:11.753Z
+[2025-05-01T16:54:11.969Z] Database connection successful
+[2025-05-01T16:54:11.969Z] Querying for schedules to execute
+[2025-05-01T16:54:11.995Z] Found 0 schedules to execute
+[2025-05-01T16:54:11.995Z] No schedules to execute at this time
+[2025-05-01T16:54:12.138Z] Next 0 upcoming schedules:
+[2025-05-01T16:54:12.138Z] Scheduling next poll in 30000ms
+[2025-05-01T16:54:43.515Z] Starting poll cycle
+[2025-05-01T16:54:43.515Z] Checking for schedules to execute at 2025-05-01T16:54:43.515Z
+[2025-05-01T16:54:43.674Z] Database connection successful
+[2025-05-01T16:54:43.675Z] Querying for schedules to execute
+[2025-05-01T16:54:43.707Z] Found 0 schedules to execute
+[2025-05-01T16:54:43.707Z] No schedules to execute at this time
+[2025-05-01T16:54:43.729Z] Next 0 upcoming schedules:
+[2025-05-01T16:54:43.729Z] Scheduling next poll in 30000ms
+[2025-05-01T16:55:15.379Z] Starting poll cycle
+[2025-05-01T16:55:15.379Z] Checking for schedules to execute at 2025-05-01T16:55:15.379Z
+[2025-05-01T16:55:15.632Z] Database connection successful
+[2025-05-01T16:55:15.632Z] Querying for schedules to execute
+[2025-05-01T16:55:15.674Z] Found 0 schedules to execute
+[2025-05-01T16:55:15.674Z] No schedules to execute at this time
+[2025-05-01T16:55:15.699Z] Next 0 upcoming schedules:
+[2025-05-01T16:55:15.699Z] Scheduling next poll in 30000ms
+[2025-05-01T16:55:47.383Z] Starting poll cycle
+[2025-05-01T16:55:47.384Z] Checking for schedules to execute at 2025-05-01T16:55:47.384Z
+[2025-05-01T16:55:47.435Z] Database connection successful
+[2025-05-01T16:55:47.435Z] Querying for schedules to execute
+[2025-05-01T16:55:47.457Z] Found 0 schedules to execute
+[2025-05-01T16:55:47.457Z] No schedules to execute at this time
+[2025-05-01T16:55:47.479Z] Next 0 upcoming schedules:
+[2025-05-01T16:55:47.480Z] Scheduling next poll in 30000ms
+[2025-05-01T16:56:18.997Z] Starting poll cycle
+[2025-05-01T16:56:18.998Z] Checking for schedules to execute at 2025-05-01T16:56:18.998Z
+[2025-05-01T16:56:19.142Z] Database connection successful
+[2025-05-01T16:56:19.142Z] Querying for schedules to execute
+[2025-05-01T16:56:19.176Z] Found 0 schedules to execute
+[2025-05-01T16:56:19.176Z] No schedules to execute at this time
+[2025-05-01T16:56:19.197Z] Next 0 upcoming schedules:
+[2025-05-01T16:56:19.197Z] Scheduling next poll in 30000ms
+[2025-05-01T16:56:50.713Z] Starting poll cycle
+[2025-05-01T16:56:50.713Z] Checking for schedules to execute at 2025-05-01T16:56:50.713Z
+[2025-05-01T16:56:50.902Z] Database connection successful
+[2025-05-01T16:56:50.902Z] Querying for schedules to execute
+[2025-05-01T16:56:50.941Z] Found 0 schedules to execute
+[2025-05-01T16:56:50.942Z] No schedules to execute at this time
+[2025-05-01T16:56:50.983Z] Next 0 upcoming schedules:
+[2025-05-01T16:56:50.983Z] Scheduling next poll in 30000ms
+[2025-05-01T16:57:22.516Z] Starting poll cycle
+[2025-05-01T16:57:22.516Z] Checking for schedules to execute at 2025-05-01T16:57:22.516Z
+[2025-05-01T16:57:22.920Z] Database connection successful
+[2025-05-01T16:57:22.921Z] Querying for schedules to execute
+[2025-05-01T16:57:23.108Z] Found 0 schedules to execute
+[2025-05-01T16:57:23.108Z] No schedules to execute at this time
+[2025-05-01T16:57:23.180Z] Next 0 upcoming schedules:
+[2025-05-01T16:57:23.181Z] Scheduling next poll in 30000ms
