@@ -1,8 +1,23 @@
+// src/app/middlewares.js
 import { initializeSchedules } from "@/lib/schedules/schedulerService";
+import { createLogger } from "@/lib/utils";
+
+const logger = createLogger("[Middleware]");
+let isSchedulerInitialized = false;
 
 export async function middleware(request) {
-  // Initialize schedules on server start
-  await initializeSchedules();
+  // Only initialize on server-side API routes
+  if (typeof window === "undefined" && !isSchedulerInitialized) {
+    try {
+      logger.info("Initializing scheduler from middleware");
+      await initializeSchedules();
+      isSchedulerInitialized = true;
+      logger.info("Scheduler initialized successfully");
+    } catch (error) {
+      logger.error("Failed to initialize scheduler:", error);
+    }
+  }
+
   return null;
 }
 
