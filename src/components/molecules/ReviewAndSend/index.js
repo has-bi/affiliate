@@ -1,7 +1,6 @@
-// src/components/molecules/ReviewAndSend/Step4.js
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Send, Calendar } from "lucide-react";
+import { Send, Calendar, Loader2 } from "lucide-react";
 
 const Step4 = ({
   selectedTemplate,
@@ -17,60 +16,31 @@ const Step4 = ({
   isSubmitting,
   handlePrevStep,
 }) => {
-  console.log("🚀 Step4: Rendering");
-  console.log("📊 Props received:", {
-    selectedTemplate: selectedTemplate ? "exists" : "null",
-    sessionName,
-    getAllRecipients: typeof getAllRecipients,
-    getPreviewHTML: typeof getPreviewHTML,
-    isScheduling,
-    setIsScheduling: typeof setIsScheduling,
-    scheduleConfig,
-    handleScheduleConfigChange: typeof handleScheduleConfigChange,
-    handleSend: typeof handleSend,
-    handleSchedule: typeof handleSchedule,
-    isSubmitting,
-    handlePrevStep: typeof handlePrevStep,
-  });
-
-  // Try to get recipients safely
   let recipients = [];
   let recipientsError = null;
+  let previewHTML = "";
+  let previewError = null;
+
   try {
-    console.log("📋 Attempting to get recipients...");
     if (typeof getAllRecipients === "function") {
       recipients = getAllRecipients();
-      console.log("✅ Recipients retrieved:", recipients);
     } else {
-      console.error("❌ getAllRecipients is not a function");
       recipientsError = "getAllRecipients is not a function";
     }
   } catch (error) {
-    console.error("❌ Error getting recipients:", error);
     recipientsError = error.message;
   }
 
-  // Try to get preview HTML safely
-  let previewHTML = "";
-  let previewError = null;
   try {
-    console.log("🖼️ Attempting to get preview HTML...");
     if (typeof getPreviewHTML === "function") {
       previewHTML = getPreviewHTML();
-      console.log(
-        "✅ Preview HTML retrieved:",
-        previewHTML ? "success" : "empty"
-      );
     } else {
-      console.error("❌ getPreviewHTML is not a function");
       previewError = "getPreviewHTML is not a function";
     }
   } catch (error) {
-    console.error("❌ Error getting preview HTML:", error);
     previewError = error.message;
   }
 
-  // Safe schedule config with defaults
   const safeScheduleConfig = scheduleConfig || {
     type: "once",
     date: "",
@@ -80,9 +50,6 @@ const Step4 = ({
     endDate: "",
   };
 
-  console.log("🔧 Safe schedule config:", safeScheduleConfig);
-
-  // Debug section
   if (recipientsError || previewError) {
     return (
       <div className="space-y-4">
@@ -133,7 +100,6 @@ const Step4 = ({
         Review & Kirim Pesan
       </h3>
 
-      {/* Preview Box */}
       <div className="border border-gray-200 rounded-md overflow-hidden">
         <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
           <h4 className="font-medium text-gray-700">Preview Pesan</h4>
@@ -146,7 +112,6 @@ const Step4 = ({
         </div>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 p-4 rounded-md">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Template</h5>
@@ -170,14 +135,7 @@ const Step4 = ({
               type="radio"
               name="sendOption"
               checked={!isScheduling}
-              onChange={() => {
-                console.log("🔄 Send option changed: send now");
-                if (typeof setIsScheduling === "function") {
-                  setIsScheduling(false);
-                } else {
-                  console.error("❌ setIsScheduling is not a function");
-                }
-              }}
+              onChange={() => setIsScheduling(false)}
               className="h-4 w-4 text-indigo-600"
             />
             <span className="ml-2">Kirim Sekarang</span>
@@ -187,14 +145,7 @@ const Step4 = ({
               type="radio"
               name="sendOption"
               checked={isScheduling}
-              onChange={() => {
-                console.log("🔄 Send option changed: schedule");
-                if (typeof setIsScheduling === "function") {
-                  setIsScheduling(true);
-                } else {
-                  console.error("❌ setIsScheduling is not a function");
-                }
-              }}
+              onChange={() => setIsScheduling(true)}
               className="h-4 w-4 text-indigo-600"
             />
             <span className="ml-2">Jadwalkan Pengiriman</span>
@@ -203,6 +154,7 @@ const Step4 = ({
 
         {isScheduling && (
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
+            {/* Schedule Type */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tipe Jadwal
@@ -214,16 +166,7 @@ const Step4 = ({
                     name="type"
                     value="once"
                     checked={safeScheduleConfig.type === "once"}
-                    onChange={(e) => {
-                      console.log("🔄 Schedule type changed:", e.target.value);
-                      if (typeof handleScheduleConfigChange === "function") {
-                        handleScheduleConfigChange(e);
-                      } else {
-                        console.error(
-                          "❌ handleScheduleConfigChange is not a function"
-                        );
-                      }
-                    }}
+                    onChange={handleScheduleConfigChange}
                     className="h-4 w-4 text-indigo-600"
                   />
                   <span className="ml-2">Satu Kali</span>
@@ -234,16 +177,7 @@ const Step4 = ({
                     name="type"
                     value="recurring"
                     checked={safeScheduleConfig.type === "recurring"}
-                    onChange={(e) => {
-                      console.log("🔄 Schedule type changed:", e.target.value);
-                      if (typeof handleScheduleConfigChange === "function") {
-                        handleScheduleConfigChange(e);
-                      } else {
-                        console.error(
-                          "❌ handleScheduleConfigChange is not a function"
-                        );
-                      }
-                    }}
+                    onChange={handleScheduleConfigChange}
                     className="h-4 w-4 text-indigo-600"
                   />
                   <span className="ml-2">Berulang</span>
@@ -251,6 +185,7 @@ const Step4 = ({
               </div>
             </div>
 
+            {/* Schedule Form */}
             {safeScheduleConfig.type === "once" ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -364,56 +299,39 @@ const Step4 = ({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => {
-              console.log("⬅️ Back button clicked");
-              if (typeof handlePrevStep === "function") {
-                handlePrevStep();
-              } else {
-                console.error("❌ handlePrevStep is not a function");
-              }
-            }}
+            onClick={handlePrevStep}
             disabled={isSubmitting}
           >
             Kembali
           </Button>
 
-          {isScheduling ? (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={(e) => {
-                console.log("📅 Schedule button clicked");
-                if (typeof handleSchedule === "function") {
-                  handleSchedule(e);
-                } else {
-                  console.error("❌ handleSchedule is not a function");
-                }
-              }}
-              disabled={isSubmitting}
-              isLoading={isSubmitting}
-              leftIcon={!isSubmitting && <Calendar className="h-4 w-4 mr-1" />}
-            >
-              {isSubmitting ? "Menjadwalkan..." : "Jadwalkan Pesan"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="success"
-              onClick={(e) => {
-                console.log("📤 Send button clicked");
-                if (typeof handleSend === "function") {
-                  handleSend(e);
-                } else {
-                  console.error("❌ handleSend is not a function");
-                }
-              }}
-              disabled={isSubmitting}
-              isLoading={isSubmitting}
-              leftIcon={!isSubmitting && <Send className="h-4 w-4 mr-1" />}
-            >
-              {isSubmitting ? "Mengirim..." : "Kirim Sekarang"}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant={isScheduling ? "primary" : "success"}
+            onClick={(e) => (isScheduling ? handleSchedule(e) : handleSend(e))}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isScheduling ? "Menjadwalkan..." : "Mengirim..."}
+              </>
+            ) : (
+              <>
+                {isScheduling ? (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Jadwalkan Pesan
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Kirim Sekarang
+                  </>
+                )}
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>
