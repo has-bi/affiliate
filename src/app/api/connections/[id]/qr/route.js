@@ -4,9 +4,10 @@ import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[API][ConnectionQR]");
 
-export async function GET(request, context) {
+export const runtime = "nodejs";
+export async function GET(request, { params }) {
   // Extract id from context.params directly
-  const id = context.params.id;
+  const id = params;
 
   try {
     logger.info(`Getting QR code for session: ${id}`);
