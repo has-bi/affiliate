@@ -177,12 +177,6 @@ export default function DashboardPage() {
               title: "Schedule Message",
               desc: "Set up automated messaging",
             },
-            {
-              href: "/dashboard/connections",
-              icon: LinkIcon,
-              title: "Manage Connections",
-              desc: "Add/remove WhatsApp sessions",
-            },
           ].map((action, idx) => (
             <Card key={idx} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
