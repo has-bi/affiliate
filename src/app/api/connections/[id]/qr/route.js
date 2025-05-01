@@ -1,17 +1,15 @@
 // src/app/api/connections/[id]/qr/route.js
-import baileysClient from "@/lib/whatsapp/baileysClient";
+import wahaClient from "@/lib/whatsapp/wahaClient";
 import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[API][ConnectionQR]");
 
-export const runtime = "nodejs";
-export async function GET(request, { params }) {
-  // Extract id from context.params directly
-  const id = params;
+export async function GET(request, context) {
+  const id = context.params.id;
 
   try {
     logger.info(`Getting QR code for session: ${id}`);
-    const qr = baileysClient.getSessionQRCode(id);
+    const qr = await wahaClient.getSessionQRCode(id);
 
     logger.info(`QR code for session ${id}: ${qr ? "Found" : "Not found"}`);
 

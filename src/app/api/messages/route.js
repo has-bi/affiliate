@@ -1,5 +1,5 @@
 // src/app/api/messages/route.js
-import baileysClient from "@/lib/whatsapp/baileysClient";
+import wahaClient from "@/lib/whatsapp/wahaClient";
 import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[API][Messages]");
@@ -7,14 +7,6 @@ const logger = createLogger("[API][Messages]");
 export async function POST(req) {
   try {
     const body = await req.json();
-
-    // Validate required fields
-    if (!body.session) {
-      return Response.json(
-        { error: "Session name is required" },
-        { status: 400 }
-      );
-    }
 
     if (
       !body.recipients ||
@@ -38,15 +30,11 @@ export async function POST(req) {
     const recipient = body.recipients[0];
 
     // Send message
-    const result = await baileysClient.sendText(
-      body.session,
-      recipient,
-      body.message
-    );
+    const result = await wahaClient.sendText(recipient, body.message);
 
     return Response.json({
       success: true,
-      messageId: result?.key || null,
+      messageId: result?.id || null,
       recipient,
     });
   } catch (error) {

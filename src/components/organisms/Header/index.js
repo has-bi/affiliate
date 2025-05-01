@@ -1,7 +1,7 @@
 // src/components/organisms/Header/index.js
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,13 +57,7 @@ const NAVIGATION = [
 ];
 
 // Helper components --------------------------------------------------
-const getSessionName = (s) =>
-  s?.name ??
-  s?.displayName ??
-  s?.session ??
-  s?.device?.name ??
-  s?.id ??
-  "Unknown";
+const getSessionName = (s) => s?.name || "Unknown";
 
 const DesktopNavItem = ({ item, isActive }) => {
   if (item.children) {
@@ -125,14 +119,27 @@ export default function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { sessions } = useWhatsApp();
+  const { sessions, fetchSessions, isLoading, defaultSession } = useWhatsApp();
 
-  const connectedSessions = sessions.filter((s) =>
-    ["CONNECTED", "WORKING"].includes(s.status)
+  // Set up periodic session refresh
+  useEffect(() => {
+    fetchSessions();
+
+    // Refresh session status every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchSessions();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchSessions]);
+
+  // Filter active sessions
+  const connectedSessions = sessions.filter((s) => s.isConnected);
+  const isDefaultSessionActive = connectedSessions.some(
+    (s) => s.name === defaultSession
   );
-  const sessionNames = connectedSessions.map(getSessionName);
 
-  console.log("THIS IS THE NAME OF THE", sessions);
+  const sessionNames = connectedSessions.map(getSessionName);
 
   // ------------------------------------------------------------------
   // Render
@@ -158,30 +165,29 @@ export default function Header() {
           </nav>
         </div>
 
-        {/* Right ▾ status + user + hamburger */}
         {/* Right – session indicator, user, hamburger */}
         <div className="flex items-center gap-4">
-          {/* Desktop session indicator */}
+          {/* Connection status indicator */}
           <div
             className="hidden items-center gap-1 md:flex"
-            title={sessionNames.join(", ") || undefined}
+            title={`WhatsApp: ${defaultSession} (${
+              sessions[0]?.status || "Unknown"
+            })`}
           >
-            {connectedSessions.length ? (
+            {isLoading ? (
+              <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse mr-2"></div>
+            ) : isDefaultSessionActive ? (
               <>
                 <Wifi className="h-5 w-5 text-green-500" />
                 <span className="truncate text-sm text-gray-700 max-w-[12rem]">
-                  {sessionNames.length
-                    ? sessionNames.join(", ")
-                    : `${connectedSessions.length} active session${
-                        connectedSessions.length > 1 ? "s" : ""
-                      }`}
+                  WhatsApp Connected
                 </span>
               </>
             ) : (
               <>
-                <WifiOff className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-500">
-                  No active sessions
+                <WifiOff className="h-5 w-5 text-red-500" />
+                <span className="text-sm text-red-600">
+                  WhatsApp Disconnected
                 </span>
               </>
             )}
@@ -230,22 +236,19 @@ export default function Header() {
       {mobileOpen && (
         <nav className="md:hidden">
           <div className="space-y-1 border-t bg-white px-4 pb-4 pt-2">
-            {/* Session indicator (mobile) */}
+            {/* Connection status (mobile) */}
             <div className="flex items-center gap-2 border-b pb-2">
-              {connectedSessions.length ? (
+              {isLoading ? (
+                <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></div>
+              ) : isDefaultSessionActive ? (
                 <>
                   <Wifi className="h-5 w-5 text-green-500" />
-                  <span className="text-sm">
-                    {connectedSessions.length} active session
-                    {connectedSessions.length > 1 && "s"}
-                  </span>
+                  <span className="text-sm">Connected: {defaultSession}</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-500">
-                    No active sessions
-                  </span>
+                  <WifiOff className="h-5 w-5 text-red-500" />
+                  <span className="text-sm text-red-500">Disconnected</span>
                 </>
               )}
             </div>

@@ -1,6 +1,6 @@
 // src/lib/services/schedulerService.js
 import schedule from "node-schedule";
-import baileysClient from "@/lib/whatsapp/baileysClient";
+import baileysClient from "@/lib/whatsapp/wahaClient";
 import {
   getAllSchedules,
   updateSchedule,

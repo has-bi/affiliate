@@ -1,147 +1,106 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Plus, RefreshCw } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+// src/components/molecules/ConnectionSelector/index.js
+import React, { useEffect, useState } from "react";
+import { RefreshCw, Wifi, WifiOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-export default function ConnectionSelector({ value, onChange, onNext }) {
-  const [sessions, setSessions] = useState([]);
+export default function ConnectionSelector({ onNext }) {
+  const [sessionStatus, setSessionStatus] = useState({ isConnected: false });
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [qrData, setQrData] = useState(null);
+  const defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
 
-  const pollRef = useRef(null);
-
-  /* fetch list */
-  const loadSessions = async () => {
+  /* Check session status */
+  const checkSession = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/connections");
       const json = await res.json();
-      setSessions(json.sessions || []);
+      const session = json.sessions?.[0] || {
+        name: defaultSession,
+        isConnected: false,
+      };
+      setSessionStatus(session);
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memuat koneksi");
+      toast.error("Gagal memeriksa status koneksi");
+      setSessionStatus({ name: defaultSession, isConnected: false });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSessions();
+    checkSession();
   }, []);
-
-  /* create connection */
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/connections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) throw await res.json();
-      const { qr } = await res.json();
-      setQrData(qr);
-
-      // start polling until paired
-      pollRef.current = setInterval(async () => {
-        const r = await fetch(`/api/connections/${newName.trim()}/qr`);
-        const j = await r.json();
-        if (j.qr === null) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-          toast.success("Koneksi berhasil dibuat");
-          setShowModal(false);
-          setNewName("");
-          setQrData(null);
-          loadSessions();
-        } else if (j.qr) {
-          setQrData(j.qr);
-        }
-      }, 3000);
-    } catch (err) {
-      toast.error(err.error || "Gagal membuat koneksi");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* cleanup */
-  useEffect(() => () => clearInterval(pollRef.current), []);
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Pilih Koneksi WhatsApp</h3>
-      <div className="flex gap-4 items-center">
-        <select
-          className="border rounded-md p-2 flex-1"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="" disabled>
-            -- pilih koneksi --
-          </option>
-          {sessions.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <Button variant="outline" onClick={loadSessions} disabled={loading}>
-          <RefreshCw className="w-4 h-4 mr-1" />
-        </Button>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="w-4 h-4 mr-1" /> Tambah
-        </Button>
-      </div>
+      <h3 className="text-lg font-semibold">Status Koneksi WhatsApp</h3>
 
-      {/* Next button only enabled if a session picked */}
-      <div className="text-right mt-4">
-        <Button onClick={onNext} disabled={!value}>
-          Lanjutkan
-        </Button>
-      </div>
-
-      {/* Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Buat Koneksi Baru</DialogTitle>
-          </DialogHeader>
-
-          {qrData ? (
-            <div className="flex flex-col items-center gap-4">
-              <img src={qrData} alt="QR Code" className="w-48 h-48" />
-              <p className="text-sm text-gray-600 text-center">
-                Scan QR dengan WhatsApp di ponsel Anda
-              </p>
-            </div>
+      {/* Connection status */}
+      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border border-gray-200">
+        <div className="flex items-center gap-2">
+          {sessionStatus.isConnected ? (
+            <>
+              <Wifi className="h-6 w-6 text-green-500" />
+              <div>
+                <div className="font-medium">{defaultSession}</div>
+                <div className="text-sm text-green-600">
+                  Terhubung ({sessionStatus.status})
+                </div>
+              </div>
+            </>
           ) : (
             <>
-              <Input
-                placeholder="Nama koneksi (mis. marketing)"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-              />
-              <Button
-                onClick={handleCreate}
-                disabled={loading || !newName.trim()}
-              >
-                {loading ? "Membuat…" : "Buat & Tampilkan QR"}
-              </Button>
+              <WifiOff className="h-6 w-6 text-red-500" />
+              <div>
+                <div className="font-medium">{defaultSession}</div>
+                <div className="text-sm text-red-600">
+                  Tidak terhubung ({sessionStatus.status})
+                </div>
+              </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        <Button variant="outline" onClick={checkSession} disabled={loading}>
+          <RefreshCw
+            className={`w-4 h-4 mr-1 ${loading ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Show error if one exists */}
+      {sessionStatus.error && (
+        <div className="flex items-start gap-2 p-3 text-red-600 bg-red-50 rounded-md border border-red-200 text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Connection Error</p>
+            <p>{sessionStatus.error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="p-3 bg-gray-100 rounded-md text-xs font-mono">
+          <strong>Debug Info:</strong>
+          <pre>{JSON.stringify(sessionStatus, null, 2)}</pre>
+        </div>
+      )}
+
+      {/* Action button */}
+      <div className="text-right mt-4">
+        {sessionStatus.isConnected ? (
+          <Button onClick={onNext}>Lanjutkan</Button>
+        ) : (
+          <div className="text-red-600 text-sm">
+            WhatsApp tidak terhubung. Hubungi administrator untuk mengaktifkan
+            koneksi.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

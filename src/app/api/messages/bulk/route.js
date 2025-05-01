@@ -1,5 +1,5 @@
 // src/app/api/messages/bulk/route.js
-import baileysClient from "@/lib/whatsapp/baileysClient";
+import wahaClient from "@/lib/whatsapp/wahaClient";
 import { logBroadcast } from "@/lib/sheets/spreadsheetService";
 import { createLogger } from "@/lib/utils";
 
@@ -8,14 +8,6 @@ const logger = createLogger("[API][BulkMessages]");
 export async function POST(req) {
   try {
     const body = await req.json();
-
-    // Validate required fields
-    if (!body.session) {
-      return Response.json(
-        { error: "Session name is required" },
-        { status: 400 }
-      );
-    }
 
     if (
       !body.recipients ||
@@ -39,8 +31,7 @@ export async function POST(req) {
     const delay = body.delay || 3000;
 
     // Send bulk messages
-    const result = await baileysClient.sendBulk(
-      body.session,
+    const result = await wahaClient.sendBulk(
       body.recipients,
       body.message,
       delay
