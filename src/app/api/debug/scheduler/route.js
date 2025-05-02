@@ -1,6 +1,6 @@
 // src/app/api/debug/scheduler/route.js
 import schedulerService from "@/lib/schedules/schedulerService";
-import prisma from "@/lib/db/prisma";
+import prisma from "@/lib/prisma";
 
 export async function GET(request) {
   try {

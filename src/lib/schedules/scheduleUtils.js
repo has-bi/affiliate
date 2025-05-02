@@ -1,5 +1,5 @@
 // src/lib/schedules/scheduleUtils.js
-import prisma from "@/lib/db/prisma";
+import prisma from "@/lib/prisma";
 
 /**
  * List all schedules with basic template info

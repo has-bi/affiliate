@@ -1,49 +1,49 @@
-// src/app/api/debug/schedules/route.js
-import prisma from "@/lib/db/prisma";
-import schedulerService from "@/lib/schedules/schedulerService";
-import { createLogger } from "@/lib/utils";
+// src/app/api/schedules/route.js
+import prisma from "@/lib/prisma";
+import { z } from "zod";
 
-export async function GET(request) {
+const Body = z.object({
+  name: z.string().min(3),
+  templateId: z.number().int(),
+  scheduleType: z.enum(["once", "recurring"]),
+  cronExpression: z.string().optional(), // only for recurring
+  scheduledDate: z.string().datetime().optional(), // only for once
+  sessionName: z.string(),
+  recipients: z.array(z.string().min(10)),
+  parameters: z.record(z.string(), z.string()).optional(),
+});
+
+export async function POST(req) {
   try {
-    // Get active schedules
-    const activeSchedules = await prisma.schedule.findMany({
-      where: { status: "active" },
-      include: {
-        recipients: true,
-        parameters: true,
-        template: true,
+    const data = Body.parse(await req.json());
+
+    const schedule = await prisma.schedule.create({
+      data: {
+        name: data.name,
+        templateId: data.templateId,
+        scheduleType: data.scheduleType,
+        cronExpression:
+          data.scheduleType === "recurring" ? data.cronExpression : null,
+        scheduledDate:
+          data.scheduleType === "once" ? new Date(data.scheduledDate) : null,
+        sessionName: data.sessionName,
+        recipients: {
+          createMany: { data: data.recipients.map((r) => ({ recipient: r })) },
+        },
+        parameters: {
+          createMany: {
+            data: Object.entries(data.parameters ?? {}).map(
+              ([paramId, paramValue]) => ({ paramId, paramValue })
+            ),
+          },
+        },
       },
+      include: { recipients: true, parameters: true },
     });
 
-    return Response.json({
-      message: "Active schedules found",
-      schedules: activeSchedules.map((s) => ({
-        id: s.id,
-        name: s.name,
-        nextRun: s.nextRun,
-        lastRun: s.lastRun,
-        templateId: s.templateId,
-        scheduleType: s.scheduleType,
-        recipientCount: s.recipients.length,
-        parameterCount: s.parameters.length,
-      })),
-    });
-  } catch (error) {
-    console.error("Debug endpoint error:", error);
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-}
-
-// Manually trigger check for schedules
-export async function POST(request) {
-  try {
-    const result = await schedulerService.checkAndExecuteSchedules();
-    return Response.json({
-      message: "Scheduler check triggered",
-      result,
-    });
-  } catch (error) {
-    console.error("Debug endpoint error:", error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json(schedule, { status: 201 });
+  } catch (err) {
+    console.error("Schedule‑create failed:", err);
+    return Response.json({ message: err.message }, { status: 500 });
   }
 }
