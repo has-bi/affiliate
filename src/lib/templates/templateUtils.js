@@ -1,5 +1,5 @@
 // src/lib/templates/templateUtils.js
-import prisma from "@/lib/db/prisma";
+import prisma from "@/lib/prisma";
 
 /**
  * Get a template by ID with parameters
