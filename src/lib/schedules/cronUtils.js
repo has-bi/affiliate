@@ -4,109 +4,68 @@ import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[CronUtils]");
 
-/**
- * Calculate the next run time based on schedule type and configuration
- * @param {string} scheduleType - 'once' or 'recurring'
- * @param {Object} config - Schedule configuration
- * @returns {Date|null} The next run time
- */
 export function calculateNextRunTime(scheduleType, config) {
-  if (!config) return null;
+  logger.info(
+    `Calculating next run time for ${scheduleType} schedule:`,
+    config
+  );
+
+  if (!config) {
+    logger.error("No schedule config provided");
+    return null;
+  }
 
   try {
     if (scheduleType === "once") {
       // For one-time schedules, next run is the scheduled date
-      if (!config.date) return null;
+      if (!config.date) {
+        logger.error("One-time schedule missing date");
+        return null;
+      }
 
-      return new Date(config.date);
-    } else if (scheduleType === "recurring" && config.cronExpression) {
-      // For recurring schedules, calculate next occurrence based on cron
+      // Ensure we have a valid date object
+      let nextDate;
+      if (typeof config.date === "string") {
+        // If it's a string (like from an API), parse it
+        nextDate = new Date(config.date);
+
+        // Ensure the date is valid
+        if (isNaN(nextDate.getTime())) {
+          logger.error(`Invalid date string provided: ${config.date}`);
+          return null;
+        }
+      } else if (config.date instanceof Date) {
+        // If it's already a Date object, use it directly
+        nextDate = config.date;
+      } else {
+        logger.error(`Unsupported date format: ${typeof config.date}`);
+        return null;
+      }
+
+      logger.info(`Next run for one-time schedule: ${nextDate.toISOString()}`);
+      return nextDate;
+    } else if (scheduleType === "cron") {
+      // For cron-based schedules, calculate the next run time
+      if (!config.expression) {
+        logger.error("Cron schedule missing expression");
+        return null;
+      }
+
       try {
-        const interval = parseExpression(config.cronExpression);
-        return interval.next().toDate();
+        const interval = parseExpression(config.expression);
+        const nextDate = interval.next().toDate();
+        logger.info(`Next run for cron schedule: ${nextDate.toISOString()}`);
+        return nextDate;
       } catch (cronError) {
         logger.error("Error parsing cron expression:", cronError);
         return null;
       }
+    } else {
+      logger.error(`Invalid schedule type: ${scheduleType}`);
+      return null;
     }
-    return null;
   } catch (error) {
     logger.error("Error calculating next run time:", error);
     return null;
-  }
-}
-
-/**
- * Validate a cron expression format
- * @param {string} expression - Cron expression to validate
- * @returns {boolean} Whether the expression is valid
- */
-export function validateCronExpression(expression) {
-  if (!expression) return false;
-
-  try {
-    // Attempt to parse the expression - if it throws, it's invalid
-    parseExpression(expression);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * Get a human-readable description of a cron schedule
- * @param {string} expression - Cron expression
- * @returns {string} Human-readable description
- */
-export function getScheduleDescription(expression) {
-  if (!expression) return "Invalid schedule";
-
-  try {
-    // Simple mapping for common expressions
-    const commonExpressions = {
-      "0 9 * * *": "Every day at 9 AM",
-      "0 9 * * 1": "Every Monday at 9 AM",
-      "0 9 1 * *": "First day of each month at 9 AM",
-      "0 * * * *": "Every hour",
-      "*/15 * * * *": "Every 15 minutes",
-      "0 9-17 * * 1-5": "Weekdays 9 AM to 5 PM, hourly",
-    };
-
-    if (commonExpressions[expression]) {
-      return commonExpressions[expression];
-    }
-
-    // Basic parsing for simple expressions
-    const parts = expression.split(" ");
-    if (parts.length !== 5) return "Custom schedule";
-
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
-
-    if (minute === "0" && hour !== "*") {
-      if (dayOfWeek === "*" && dayOfMonth === "*" && month === "*") {
-        return `Every day at ${hour}:00`;
-      }
-
-      if (dayOfWeek !== "*" && dayOfMonth === "*" && month === "*") {
-        const days = {
-          "0,7": "Sunday",
-          1: "Monday",
-          2: "Tuesday",
-          3: "Wednesday",
-          4: "Thursday",
-          5: "Friday",
-          6: "Saturday",
-          "1-5": "Weekdays",
-          "0,6": "Weekends",
-        };
-
-        return `Every ${days[dayOfWeek] || "specified day"} at ${hour}:00`;
-      }
-    }
-
-    // Default for complex expressions
-    return "Custom schedule";
-  } catch (error) {
-    return "Complex schedule";
   }
 }

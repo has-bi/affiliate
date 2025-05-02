@@ -3,17 +3,28 @@ import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[WAHA]");
 
+/**
+ * WhatsApp HTTP API (WAHA) Client
+ * Handles communication with the WAHA server for WhatsApp messaging
+ */
 class WAHAClient {
   constructor() {
     this.baseUrl =
       process.env.NEXT_PUBLIC_WAHA_API_URL ||
-      "https://personal-wabot.yttkys.easypanel.host"; // Use the correct URL from your config
+      "https://personal-wabot.yttkys.easypanel.host";
     this.defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
     this.apiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY || "321";
+    this.retryAttempts = 2;
+    this.retryDelay = 2000; // 2 seconds between retries
+
+    logger.info(
+      `Initialized WAHA client: ${this.baseUrl}, session: ${this.defaultSession}`
+    );
   }
 
   /**
    * Get headers with API key if needed
+   * @returns {Object} Headers object
    */
   getHeaders() {
     const headers = {
@@ -31,10 +42,13 @@ class WAHAClient {
    * Check if the default session is active
    * @returns {Promise<Object>} Session status info
    */
-  async checkSession() {
+  async checkSession(sessionName = null) {
+    const session = sessionName || this.defaultSession;
+
     try {
+      logger.info(`Checking session status for ${session}`);
+
       // Try with the sessions endpoint first
-      logger.info(`Checking session status for ${this.defaultSession}`);
       const response = await fetch(`${this.baseUrl}/api/sessions`, {
         headers: this.getHeaders(),
       });
@@ -42,40 +56,79 @@ class WAHAClient {
       if (!response.ok) {
         logger.error(`Failed to get sessions list: ${response.status}`);
         return {
-          name: this.defaultSession,
+          name: session,
           isConnected: false,
           status: "API_ERROR",
+          error: `HTTP error ${response.status}`,
         };
       }
 
       const sessions = await response.json();
+
+      // Log all sessions for debugging
+      logger.debug(
+        `Available sessions: ${JSON.stringify(sessions.map((s) => s.name))}`
+      );
+
       // Find our session in the list
-      const mySession = sessions.find((s) => s.name === this.defaultSession);
+      const mySession = sessions.find((s) => s.name === session);
 
       if (mySession) {
+        const isConnected = ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
+          mySession.status
+        );
+
+        logger.info(
+          `Session ${session} status: ${mySession.status}, connected: ${isConnected}`
+        );
+
         return {
-          name: this.defaultSession,
-          isConnected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
-            mySession.status
-          ),
+          name: session,
+          isConnected,
           status: mySession.status,
+          me: mySession.me,
         };
       }
 
       // Session not found
+      logger.warn(`Session ${session} not found in sessions list`);
       return {
-        name: this.defaultSession,
+        name: session,
         isConnected: false,
         status: "NOT_FOUND",
       };
     } catch (error) {
-      logger.error(`Error checking session ${this.defaultSession}:`, error);
+      logger.error(`Error checking session ${session}:`, error);
       return {
-        name: this.defaultSession,
+        name: session,
         isConnected: false,
         status: "ERROR",
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Validates a WhatsApp session before sending messages
+   * @param {string} sessionName Session name to validate
+   * @returns {Promise<boolean>} Whether session is valid
+   */
+  async validateSession(sessionName) {
+    const session = sessionName || this.defaultSession;
+    logger.info(`Validating session ${session} before sending`);
+
+    try {
+      const status = await this.checkSession(session);
+
+      if (!status.isConnected) {
+        logger.error(`Session ${session} is not connected (${status.status})`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      logger.error(`Error validating session ${session}:`, error);
+      return false;
     }
   }
 
@@ -111,89 +164,179 @@ class WAHAClient {
       throw new Error("Message text is required");
     }
 
+    // Validate session first
+    const isValid = await this.validateSession(session);
+    if (!isValid) {
+      throw new Error(`WhatsApp session ${session} is not valid or connected`);
+    }
+
     // Format recipient if needed
-    recipient = recipient.replace("@c.us", "");
+    if (typeof recipient === "string" && !recipient.includes("@")) {
+      recipient = `${recipient.replace(/[^\d]/g, "")}@c.us`;
+    }
 
-    try {
-      logger.info(`Sending message to ${recipient} using session ${session}`);
+    // Handle c.us suffix
+    if (recipient.endsWith("@c.us") === false) {
+      recipient = `${recipient}@c.us`;
+    }
 
-      // Construct request payload
-      const payload = {
-        chatId: `${recipient}@c.us`,
-        text: message,
-        session: session,
-      };
+    logger.info(`Sending message to ${recipient} using session ${session}`);
 
-      // Log request details for debugging
-      logger.info(`API URL: ${this.baseUrl}/api/sendText`);
-      logger.info(`Payload: ${JSON.stringify(payload)}`);
+    let lastError = null;
 
-      // Send the request
-      const response = await fetch(`${this.baseUrl}/api/sendText`, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      // Handle error responses
-      if (!response.ok) {
-        let errorMessage = "Failed to send message";
-
-        try {
-          const errorText = await response.text();
-          logger.error(`Error response: ${errorText}`);
-
-          try {
-            const errorData = JSON.parse(errorText);
-            errorMessage = errorData.message || errorData.error || errorMessage;
-          } catch (e) {
-            // If parsing fails, use the raw text
-            if (errorText) errorMessage = errorText;
-          }
-        } catch (e) {
-          // If we can't even read the response text
-          errorMessage = `Server responded with status ${response.status}`;
+    // Try sending with retries
+    for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+      try {
+        if (attempt > 0) {
+          logger.info(`Retry attempt ${attempt} for ${recipient}`);
+          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
         }
 
-        throw new Error(errorMessage);
-      }
+        // Construct request payload
+        const payload = {
+          chatId: recipient,
+          text: message,
+          session: session,
+        };
 
-      // Parse and return success response
-      const result = await response.json();
-      logger.info(
-        `Message sent successfully, result: ${JSON.stringify(result)}`
-      );
-      return result;
-    } catch (error) {
-      logger.error(`Error sending message to ${recipient}:`, error);
+        // Log request details for debugging
+        logger.debug(`Request: ${this.baseUrl}/api/sendText`);
+        logger.debug(`Payload: ${JSON.stringify(payload)}`);
 
-      // Implement retry logic
-      try {
-        logger.info(`Retrying message send to ${recipient}...`);
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
-
-        const retryResponse = await fetch(`${this.baseUrl}/api/sendText`, {
+        // Send the request
+        const response = await fetch(`${this.baseUrl}/api/sendText`, {
           method: "POST",
           headers: this.getHeaders(),
-          body: JSON.stringify({
-            chatId: `${recipient}@c.us`,
-            text: message,
-            session: session,
-          }),
+          body: JSON.stringify(payload),
         });
 
-        if (!retryResponse.ok) {
-          throw new Error("Retry failed");
+        // Handle error responses
+        if (!response.ok) {
+          let errorMessage = `Failed to send message (status ${response.status})`;
+
+          try {
+            const errorText = await response.text();
+            logger.error(`Error response: ${errorText}`);
+
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage =
+                errorData.message || errorData.error || errorMessage;
+            } catch (e) {
+              // If parsing fails, use the raw text
+              if (errorText) errorMessage = errorText;
+            }
+          } catch (e) {
+            // If we can't even read the response text
+            errorMessage = `Server responded with status ${response.status}`;
+          }
+
+          throw new Error(errorMessage);
         }
 
-        const retryResult = await retryResponse.json();
-        logger.info(`Retry successful: ${JSON.stringify(retryResult)}`);
-        return retryResult;
-      } catch (retryError) {
-        logger.error(`Retry also failed: ${retryError.message}`);
-        throw error; // Throw the original error
+        // Parse and return success response
+        const result = await response.json();
+        logger.info(`Message sent successfully to ${recipient}`);
+        logger.debug(`Response: ${JSON.stringify(result)}`);
+
+        return result;
+      } catch (error) {
+        lastError = error;
+        logger.error(
+          `Error sending message to ${recipient} (attempt ${attempt + 1}/${
+            this.retryAttempts + 1
+          }):`,
+          error
+        );
+
+        // If this is the last attempt, we'll throw outside the loop
+        if (attempt === this.retryAttempts) {
+          break;
+        }
       }
     }
+
+    // If we got here, all attempts failed
+    const errorMsg = `Failed to send message to ${recipient} after ${
+      this.retryAttempts + 1
+    } attempts: ${lastError?.message}`;
+    logger.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  /**
+   * Send messages to multiple recipients
+   * @param {Array<string>} recipients List of recipients
+   * @param {string} message Message content
+   * @param {number} delay Delay between messages (ms)
+   * @returns {Promise<Object>} Results
+   */
+  async sendBulk(recipients, message, delay = 3000) {
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      throw new Error("Recipients array is required and cannot be empty");
+    }
+
+    if (!message) {
+      throw new Error("Message text is required");
+    }
+
+    const session = this.defaultSession;
+    logger.info(
+      `Sending bulk message to ${recipients.length} recipients using session ${session}`
+    );
+
+    // Validate session first
+    const isValid = await this.validateSession(session);
+    if (!isValid) {
+      throw new Error(`WhatsApp session ${session} is not valid or connected`);
+    }
+
+    const results = {
+      totalSent: 0,
+      totalFailed: 0,
+      success: [],
+      failures: [],
+    };
+
+    // Process each recipient
+    for (const [index, recipient] of recipients.entries()) {
+      try {
+        logger.info(
+          `Sending to recipient ${index + 1}/${recipients.length}: ${recipient}`
+        );
+
+        const result = await this.sendText(session, recipient, message);
+
+        results.totalSent++;
+        results.success.push({
+          recipient,
+          messageId: result?.id || null,
+          success: true,
+        });
+
+        logger.info(`Successfully sent to ${recipient}`);
+      } catch (error) {
+        results.totalFailed++;
+        results.failures.push({
+          recipient,
+          error: error.message,
+          success: false,
+        });
+
+        logger.error(`Failed to send to ${recipient}: ${error.message}`);
+      }
+
+      // Add delay between messages (except for the last one)
+      if (index < recipients.length - 1) {
+        logger.debug(`Waiting ${delay}ms before next message`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    logger.info(
+      `Bulk message completed: ${results.totalSent} sent, ${results.totalFailed} failed`
+    );
+    return results;
   }
 }
 
