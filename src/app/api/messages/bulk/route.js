@@ -4,7 +4,6 @@ import { logBroadcast } from "@/lib/sheets/spreadsheetService";
 import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[API][BulkMessages]");
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -27,21 +26,26 @@ export async function POST(req) {
       );
     }
 
+    // Format each recipient with @c.us
+    const formattedRecipients = body.recipients.map((recipient) =>
+      formatPhoneNumber(recipient)
+    );
+
     // Get delay or use default
     const delay = body.delay || 3000;
 
     // Send bulk messages
     const result = await wahaClient.sendBulk(
-      body.recipients,
+      formattedRecipients,
       body.message,
       delay
     );
 
-    // Log the broadcast to Google Sheets
+    // Log the broadcast to Google Sheets if enabled
     try {
       await logBroadcast({
         type: "manual",
-        recipients: body.recipients,
+        recipients: formattedRecipients,
         success: result.totalSent,
         failed: result.totalFailed,
         notes: `Template: ${body.templateName || "Manual send"}`,

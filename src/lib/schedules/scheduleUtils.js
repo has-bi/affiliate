@@ -1,6 +1,7 @@
 // src/lib/schedules/scheduleUtils.js
 import prisma from "@/lib/db/prisma";
 import { calculateNextRunTime } from "./cronUtils";
+import { formatPhoneNumber } from "@/lib/utils";
 import { createLogger } from "@/lib/utils";
 
 const logger = createLogger("[Schedules]");
@@ -90,14 +91,27 @@ export async function createSchedule(data) {
       // For one-time schedules, explicitly handle the date
       if (scheduleConfig && scheduleConfig.date) {
         nextRun = new Date(scheduleConfig.date);
-        console.log(
+        logger.info(
           `Setting nextRun for one-time schedule to: ${nextRun.toISOString()}`
         );
       }
-    } else {
+    } else if (data.scheduleType === "recurring") {
       // For recurring schedules, use the calculation function
-      nextRun = calculateNextRunTime(data.scheduleType, scheduleConfig);
+      nextRun = calculateNextRunTime("recurring", {
+        cronExpression: scheduleConfig.cronExpression,
+      });
+
+      logger.info(
+        `Setting nextRun for recurring schedule to: ${
+          nextRun?.toISOString() || "null"
+        }`
+      );
     }
+
+    // Format recipients to ensure they have @c.us suffix
+    const formattedRecipients = recipients.map((recipient) =>
+      formatPhoneNumber(recipient)
+    );
 
     // Create the schedule with all its relations
     return await prisma.schedule.create({
@@ -117,7 +131,7 @@ export async function createSchedule(data) {
 
         // Create relationships
         recipients: {
-          create: recipients.map((recipient) => ({
+          create: formattedRecipients.map((recipient) => ({
             recipient,
           })),
         },
@@ -166,7 +180,16 @@ export async function updateSchedule(id, data) {
     // Calculate next run time if schedule type or config changed
     let nextRun = undefined;
     if (scheduleConfig) {
-      nextRun = calculateNextRunTime(data.scheduleType, scheduleConfig);
+      if (data.scheduleType === "once" && scheduleConfig.date) {
+        nextRun = new Date(scheduleConfig.date);
+      } else if (
+        data.scheduleType === "recurring" &&
+        scheduleConfig.cronExpression
+      ) {
+        nextRun = calculateNextRunTime("recurring", {
+          cronExpression: scheduleConfig.cronExpression,
+        });
+      }
     }
 
     // Start a transaction to update everything atomically
@@ -197,9 +220,14 @@ export async function updateSchedule(id, data) {
           where: { scheduleId: numericId },
         });
 
+        // Format recipients properly with @c.us suffix
+        const formattedRecipients = recipients.map((recipient) =>
+          formatPhoneNumber(recipient)
+        );
+
         // Create new ones
         await Promise.all(
-          recipients.map((recipient) =>
+          formattedRecipients.map((recipient) =>
             tx.scheduleRecipient.create({
               data: {
                 scheduleId: numericId,

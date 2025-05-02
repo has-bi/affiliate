@@ -1,7 +1,7 @@
 // src/lib/schedules/schedulerService.js
-import prisma from "@/lib/db/prisma"; // Correct import
+import prisma from "@/lib/db/prisma";
 import { calculateNextRunTime } from "./cronUtils";
-import { getTemplate } from "@/lib/templates/templateUtils"; // Correct import name
+import { getTemplate } from "@/lib/templates/templateUtils";
 import { formatPhoneNumber } from "@/lib/utils";
 import wahaClient from "@/lib/whatsapp/wahaClient";
 import { createLogger } from "@/lib/utils";
@@ -179,8 +179,14 @@ class SchedulerService {
           logger.error(`Error executing schedule ${schedule.id}:`, error);
         }
       }
+
+      return {
+        checked: schedulesToRun.length,
+        executed: schedulesToRun.length,
+      };
     } catch (error) {
       logger.error("Error checking and executing schedules:", error);
+      throw error;
     }
   }
 
@@ -204,7 +210,7 @@ class SchedulerService {
 
       // Check WhatsApp session before proceeding
       logger.info(`Verifying WhatsApp session ${schedule.sessionName}`);
-      const sessionStatus = await wahaClient.checkSession();
+      const sessionStatus = await wahaClient.checkSession(schedule.sessionName);
       if (!sessionStatus.isConnected) {
         logger.error(
           `WhatsApp session ${schedule.sessionName} is not connected. Status: ${sessionStatus.status}`
@@ -243,6 +249,7 @@ class SchedulerService {
       // For each recipient
       for (const [index, recipientObj] of schedule.recipients.entries()) {
         const recipient = recipientObj.recipient;
+        // Ensure recipient has @c.us suffix
         const formatted = formatPhoneNumber(recipient);
 
         logger.info(
@@ -265,7 +272,7 @@ class SchedulerService {
           finalMessage = finalMessage.replace(/\*\*(.*?)\*\*/g, "*$1*");
 
           logger.debug(
-            `Prepared message for ${recipient}: ${finalMessage.substring(
+            `Prepared message for ${formatted}: ${finalMessage.substring(
               0,
               50
             )}...`
@@ -273,7 +280,7 @@ class SchedulerService {
 
           // Send message through WhatsApp client
           logger.info(
-            `Sending message to ${recipient} via session ${schedule.sessionName}`
+            `Sending message to ${formatted} via session ${schedule.sessionName}`
           );
           const result = await wahaClient.sendText(
             schedule.sessionName, // Pass session name first
@@ -283,24 +290,26 @@ class SchedulerService {
 
           success++;
           details.push({
-            recipient,
+            recipient: formatted,
             status: "sent",
+            success: true,
             messageId: result?.id || null,
           });
 
           logger.info(
-            `Successfully sent message to ${recipient} for schedule ${schedule.id}`
+            `Successfully sent message to ${formatted} for schedule ${schedule.id}`
           );
         } catch (err) {
           failed++;
           details.push({
-            recipient,
+            recipient: formatted,
             status: "failed",
+            success: false,
             error: err.message,
           });
 
           logger.error(
-            `Failed to send message to ${recipient} for schedule ${schedule.id}: ${err.message}`
+            `Failed to send message to ${formatted} for schedule ${schedule.id}: ${err.message}`
           );
           logger.debug(`Error details:`, err);
         }
@@ -378,6 +387,7 @@ class SchedulerService {
       });
     } catch (error) {
       logger.error(`Error adding schedule history for ${scheduleId}:`, error);
+      throw error;
     }
   }
 
@@ -393,6 +403,7 @@ class SchedulerService {
       // For one-time schedules, mark as completed
       if (schedule.scheduleType === "once") {
         status = "completed";
+        logger.info(`One-time schedule ${schedule.id} marked as completed`);
       }
       // For recurring schedules, calculate next run time
       else if (schedule.scheduleType === "recurring") {
@@ -403,11 +414,19 @@ class SchedulerService {
           };
 
           nextRun = calculateNextRunTime("recurring", scheduleConfig);
+          logger.info(
+            `Next run for recurring schedule ${schedule.id}: ${
+              nextRun?.toISOString() || "null"
+            }`
+          );
 
           // Check if schedule has reached end date
           if (schedule.endDate && nextRun > new Date(schedule.endDate)) {
             status = "completed";
             nextRun = null;
+            logger.info(
+              `Recurring schedule ${schedule.id} reached end date, marked as completed`
+            );
           }
         } catch (cronError) {
           logger.error(
@@ -432,6 +451,7 @@ class SchedulerService {
         `Error updating schedule ${schedule.id} after execution:`,
         error
       );
+      throw error;
     }
   }
 }
