@@ -2,13 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createLogger } from "@/lib/utils";
-
-const logger = createLogger("[useSchedule]");
 
 /**
  * Hook for schedule management
- * Handles schedule CRUD operations
+ * Handles schedule CRUD operations and status management
  */
 export function useSchedule() {
   const [schedules, setSchedules] = useState([]);
@@ -33,13 +30,20 @@ export function useSchedule() {
       }
 
       const data = await response.json();
-      logger.info("Fetched schedules:", data.length);
+      console.log("Fetched schedules:", data); // Debug log
 
-      setSchedules(Array.isArray(data) ? data : []);
+      // Ensure the data is an array
+      if (!Array.isArray(data)) {
+        console.error("Schedules response is not an array:", data);
+        setSchedules([]);
+        return;
+      }
+
+      setSchedules(data);
     } catch (err) {
-      logger.error("Error fetching schedules:", err);
+      console.error("Error fetching schedules:", err);
       setError(err.message || "Failed to fetch schedules");
-      setSchedules([]);
+      setSchedules([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -57,9 +61,7 @@ export function useSchedule() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.error || `Failed to fetch schedule ${scheduleId}`
-        );
+        throw new Error(errorData.error || `Failed to fetch schedule`);
       }
 
       const schedule = await response.json();
@@ -77,8 +79,8 @@ export function useSchedule() {
       setSelectedScheduleId(schedule.id);
       return schedule;
     } catch (err) {
-      logger.error(`Error fetching schedule ${scheduleId}:`, err);
-      setError(err.message || `Failed to fetch schedule ${scheduleId}`);
+      console.error(`Error fetching schedule:`, err);
+      setError(err.message || `Failed to fetch schedule`);
       return null;
     } finally {
       setIsLoading(false);
@@ -86,54 +88,41 @@ export function useSchedule() {
   }, []);
 
   // Create a new schedule
-  const createSchedule = useCallback(
-    async (scheduleData) => {
-      setIsLoading(true);
-      setError(null);
+  const createSchedule = useCallback(async (scheduleData) => {
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const response = await fetch("/api/schedules", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(scheduleData),
-        });
+    try {
+      const response = await fetch("/api/schedules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scheduleData),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to create schedule");
-        }
-
-        // Handle empty response
-        const responseText = await response.text();
-        let newSchedule;
-
-        if (responseText.trim()) {
-          newSchedule = JSON.parse(responseText);
-        } else {
-          // If no response body, fetch schedules to get the new one
-          await fetchSchedules();
-          return { success: true };
-        }
-
-        // Add to schedules list if we got a response
-        if (newSchedule) {
-          setSchedules((prev) => [...prev, newSchedule]);
-          setSelectedScheduleId(newSchedule.id);
-        }
-
-        return newSchedule || { success: true };
-      } catch (err) {
-        logger.error("Error creating schedule:", err);
-        setError(err.message || "Failed to create schedule");
-        throw err; // Rethrow for the UI to handle
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create schedule");
       }
-    },
-    [fetchSchedules]
-  );
+
+      const newSchedule = await response.json();
+
+      // Add to schedules list
+      setSchedules((prev) => [...prev, newSchedule]);
+
+      // Select the new schedule
+      setSelectedScheduleId(newSchedule.id);
+
+      return newSchedule;
+    } catch (err) {
+      console.error("Error creating schedule:", err);
+      setError(err.message || "Failed to create schedule");
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Update a schedule
   const updateSchedule = useCallback(async (scheduleId, scheduleData) => {
@@ -152,7 +141,7 @@ export function useSchedule() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.error || "Failed to update schedule");
       }
 
@@ -165,9 +154,9 @@ export function useSchedule() {
 
       return updatedSchedule;
     } catch (err) {
-      logger.error(`Error updating schedule ${scheduleId}:`, err);
+      console.error(`Error updating schedule ${scheduleId}:`, err);
       setError(err.message || `Failed to update schedule`);
-      throw err; // Rethrow for the UI to handle
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -178,6 +167,10 @@ export function useSchedule() {
     async (scheduleId) => {
       if (!scheduleId) return false;
 
+      if (!confirm("Are you sure you want to delete this schedule?")) {
+        return false;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -187,21 +180,19 @@ export function useSchedule() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = await response.json();
           throw new Error(errorData.error || `Failed to delete schedule`);
         }
 
-        // Remove from schedules list
         setSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
 
-        // Reset selection if this was the selected schedule
         if (selectedScheduleId === scheduleId) {
           setSelectedScheduleId(null);
         }
 
         return true;
       } catch (err) {
-        logger.error(`Error deleting schedule ${scheduleId}:`, err);
+        console.error(`Error deleting schedule:`, err);
         setError(err.message || `Failed to delete schedule`);
         return false;
       } finally {
@@ -219,14 +210,42 @@ export function useSchedule() {
 
       const newStatus = schedule.status === "active" ? "paused" : "active";
 
+      setIsLoading(true);
+      setError(null);
+
       try {
-        return await updateSchedule(scheduleId, { status: newStatus });
+        const response = await fetch(`/api/schedules/${scheduleId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to toggle schedule status"
+          );
+        }
+
+        const updatedSchedule = await response.json();
+
+        // Update in schedules list
+        setSchedules((prev) =>
+          prev.map((s) => (s.id === updatedSchedule.id ? updatedSchedule : s))
+        );
+
+        return updatedSchedule;
       } catch (err) {
-        logger.error(`Error toggling schedule status ${scheduleId}:`, err);
+        console.error(`Error toggling schedule status:`, err);
+        setError(err.message || `Failed to toggle schedule status`);
         return null;
+      } finally {
+        setIsLoading(false);
       }
     },
-    [schedules, updateSchedule]
+    [schedules]
   );
 
   // Initialize by fetching schedules

@@ -1,10 +1,5 @@
 // src/lib/schedules/scheduleUtils.js
 import prisma from "@/lib/db/prisma";
-import { calculateNextRunTime } from "./cronUtils";
-import { formatPhoneNumber } from "@/lib/utils";
-import { createLogger } from "@/lib/utils";
-
-const logger = createLogger("[Schedules]");
 
 /**
  * List all schedules with basic template info
@@ -32,7 +27,7 @@ export async function listSchedules() {
       },
     });
   } catch (error) {
-    logger.error("Error listing schedules:", error);
+    console.error("[Schedules] Error listing schedules:", error);
     return [];
   }
 }
@@ -42,15 +37,8 @@ export async function listSchedules() {
  */
 export async function getSchedule(id) {
   try {
-    const numericId = Number(id);
-
-    if (isNaN(numericId)) {
-      logger.error(`Invalid schedule ID format: ${id}`);
-      return null;
-    }
-
     return await prisma.schedule.findUnique({
-      where: { id: numericId },
+      where: { id: Number(id) },
       include: {
         template: {
           include: {
@@ -68,7 +56,7 @@ export async function getSchedule(id) {
       },
     });
   } catch (error) {
-    logger.error(`Error fetching schedule ${id}:`, error);
+    console.error(`[Schedules] Error fetching schedule ${id}:`, error);
     return null;
   }
 }
@@ -81,44 +69,13 @@ export async function createSchedule(data) {
     // Extract related data
     const { recipients, paramValues, scheduleConfig, ...scheduleData } = data;
 
-    // Set default status to active
-    const status = scheduleData.status || "active";
-
     // Calculate next run time based on schedule type and config
-    let nextRun = null;
+    const nextRun = calculateNextRun(data.scheduleType, scheduleConfig);
 
-    if (data.scheduleType === "once") {
-      // For one-time schedules, explicitly handle the date
-      if (scheduleConfig && scheduleConfig.date) {
-        nextRun = new Date(scheduleConfig.date);
-        logger.info(
-          `Setting nextRun for one-time schedule to: ${nextRun.toISOString()}`
-        );
-      }
-    } else if (data.scheduleType === "recurring") {
-      // For recurring schedules, use the calculation function
-      nextRun = calculateNextRunTime("recurring", {
-        cronExpression: scheduleConfig.cronExpression,
-      });
-
-      logger.info(
-        `Setting nextRun for recurring schedule to: ${
-          nextRun?.toISOString() || "null"
-        }`
-      );
-    }
-
-    // Format recipients to ensure they have @c.us suffix
-    const formattedRecipients = recipients.map((recipient) =>
-      formatPhoneNumber(recipient)
-    );
-
-    // Create the schedule with all its relations
+    // Create the schedule with relations
     return await prisma.schedule.create({
       data: {
         ...scheduleData,
-        status,
-
         // Save schedule configuration
         scheduleType: data.scheduleType,
         cronExpression:
@@ -127,11 +84,11 @@ export async function createSchedule(data) {
             : null,
         scheduledDate:
           data.scheduleType === "once" ? new Date(scheduleConfig.date) : null,
-        nextRun, // Use our explicitly calculated nextRun
+        nextRun,
 
         // Create relationships
         recipients: {
-          create: formattedRecipients.map((recipient) => ({
+          create: recipients.map((recipient) => ({
             recipient,
           })),
         },
@@ -150,7 +107,7 @@ export async function createSchedule(data) {
       },
     });
   } catch (error) {
-    logger.error("Error creating schedule:", error);
+    console.error("[Schedules] Error creating schedule:", error);
     throw error; // Let the API layer handle this error
   }
 }
@@ -160,54 +117,25 @@ export async function createSchedule(data) {
  */
 export async function updateSchedule(id, data) {
   try {
-    const numericId = Number(id);
-
-    if (isNaN(numericId)) {
-      throw new Error("Invalid schedule ID format");
-    }
-
-    // Handle simple status update
-    if (data.status && Object.keys(data).length === 1) {
-      return await prisma.schedule.update({
-        where: { id: numericId },
-        data: { status: data.status },
-      });
-    }
-
-    // Handle full update with relations
     const { recipients, paramValues, scheduleConfig, ...scheduleData } = data;
 
     // Calculate next run time if schedule type or config changed
-    let nextRun = undefined;
-    if (scheduleConfig) {
-      if (data.scheduleType === "once" && scheduleConfig.date) {
-        nextRun = new Date(scheduleConfig.date);
-      } else if (
-        data.scheduleType === "recurring" &&
-        scheduleConfig.cronExpression
-      ) {
-        nextRun = calculateNextRunTime("recurring", {
-          cronExpression: scheduleConfig.cronExpression,
-        });
-      }
-    }
+    const nextRun = calculateNextRun(data.scheduleType, scheduleConfig);
 
     // Start a transaction to update everything atomically
     return await prisma.$transaction(async (tx) => {
       // 1. Update the main schedule record
       const updatedSchedule = await tx.schedule.update({
-        where: { id: numericId },
+        where: { id: Number(id) },
         data: {
           ...scheduleData,
           scheduleType: data.scheduleType,
           cronExpression:
-            data.scheduleType === "recurring" && scheduleConfig
+            data.scheduleType === "recurring"
               ? scheduleConfig.cronExpression
-              : undefined,
+              : null,
           scheduledDate:
-            data.scheduleType === "once" && scheduleConfig?.date
-              ? new Date(scheduleConfig.date)
-              : undefined,
+            data.scheduleType === "once" ? new Date(scheduleConfig.date) : null,
           nextRun,
           updatedAt: new Date(),
         },
@@ -217,20 +145,15 @@ export async function updateSchedule(id, data) {
       if (recipients) {
         // Delete existing recipients
         await tx.scheduleRecipient.deleteMany({
-          where: { scheduleId: numericId },
+          where: { scheduleId: Number(id) },
         });
-
-        // Format recipients properly with @c.us suffix
-        const formattedRecipients = recipients.map((recipient) =>
-          formatPhoneNumber(recipient)
-        );
 
         // Create new ones
         await Promise.all(
-          formattedRecipients.map((recipient) =>
+          recipients.map((recipient) =>
             tx.scheduleRecipient.create({
               data: {
-                scheduleId: numericId,
+                scheduleId: Number(id),
                 recipient,
               },
             })
@@ -242,7 +165,7 @@ export async function updateSchedule(id, data) {
       if (paramValues) {
         // Delete existing parameters
         await tx.scheduleParameter.deleteMany({
-          where: { scheduleId: numericId },
+          where: { scheduleId: Number(id) },
         });
 
         // Create new ones
@@ -250,7 +173,7 @@ export async function updateSchedule(id, data) {
           Object.entries(paramValues).map(([paramId, paramValue]) =>
             tx.scheduleParameter.create({
               data: {
-                scheduleId: numericId,
+                scheduleId: Number(id),
                 paramId,
                 paramValue,
               },
@@ -259,18 +182,11 @@ export async function updateSchedule(id, data) {
         );
       }
 
-      // Fetch and return the updated schedule with related data
-      return tx.schedule.findUnique({
-        where: { id: numericId },
-        include: {
-          recipients: true,
-          parameters: true,
-        },
-      });
+      return updatedSchedule;
     });
   } catch (error) {
-    logger.error(`Error updating schedule ${id}:`, error);
-    throw error;
+    console.error(`[Schedules] Error updating schedule ${id}:`, error);
+    throw error; // Let the API layer handle this error
   }
 }
 
@@ -279,20 +195,14 @@ export async function updateSchedule(id, data) {
  */
 export async function deleteSchedule(id) {
   try {
-    const numericId = Number(id);
-
-    if (isNaN(numericId)) {
-      throw new Error("Invalid schedule ID format");
-    }
-
-    // This will cascade delete related records due to the Prisma schema
+    // This will cascade delete related recipients, parameters, and history
+    // due to the Prisma schema configuration
     await prisma.schedule.delete({
-      where: { id: numericId },
+      where: { id: Number(id) },
     });
-
     return true;
   } catch (error) {
-    logger.error(`Error deleting schedule ${id}:`, error);
+    console.error(`[Schedules] Error deleting schedule ${id}:`, error);
     return false;
   }
 }
@@ -302,15 +212,9 @@ export async function deleteSchedule(id) {
  */
 export async function addScheduleHistory(scheduleId, results) {
   try {
-    const numericId = Number(scheduleId);
-
-    if (isNaN(numericId)) {
-      throw new Error("Invalid schedule ID format");
-    }
-
     return await prisma.scheduleHistory.create({
       data: {
-        scheduleId: numericId,
+        scheduleId: Number(scheduleId),
         successCount: results.successCount,
         failedCount: results.failedCount,
         details: results.details || {},
@@ -318,7 +222,50 @@ export async function addScheduleHistory(scheduleId, results) {
       },
     });
   } catch (error) {
-    logger.error(`Error adding schedule history for ${scheduleId}:`, error);
+    console.error(
+      `[Schedules] Error adding schedule history for ${scheduleId}:`,
+      error
+    );
     return null;
   }
+}
+
+/**
+ * Toggle a schedule's status between active and paused
+ */
+export async function toggleScheduleStatus(id) {
+  try {
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: Number(id) },
+      select: { status: true },
+    });
+
+    if (!schedule) return null;
+
+    const newStatus = schedule.status === "active" ? "paused" : "active";
+
+    return await prisma.schedule.update({
+      where: { id: Number(id) },
+      data: { status: newStatus },
+    });
+  } catch (error) {
+    console.error(`[Schedules] Error toggling schedule status ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Calculate the next run time based on schedule type and configuration
+ */
+function calculateNextRun(scheduleType, config) {
+  if (scheduleType === "once") {
+    // For one-time schedules, next run is the scheduled date
+    return new Date(config.date);
+  } else if (scheduleType === "recurring" && config.cronExpression) {
+    // For recurring schedules, calculate next occurrence based on cron
+    // You'll need a cron parser library like 'cron-parser' for this
+    // This is a placeholder - implement with proper cron parsing
+    return new Date(Date.now() + 24 * 60 * 60 * 1000); // +1 day placeholder
+  }
+  return null;
 }
