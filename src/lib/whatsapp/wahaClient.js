@@ -301,20 +301,29 @@ class WAHAClient {
     // Process each recipient
     for (const [index, recipient] of recipients.entries()) {
       try {
+        // Format the recipient with @c.us
+        const formattedRecipient = formatPhoneNumber(recipient);
+
         logger.info(
-          `Sending to recipient ${index + 1}/${recipients.length}: ${recipient}`
+          `Sending to recipient ${index + 1}/${
+            recipients.length
+          }: ${formattedRecipient}`
         );
 
-        const result = await this.sendText(session, recipient, message);
+        const result = await this.sendText(
+          session,
+          formattedRecipient,
+          message
+        );
 
         results.totalSent++;
         results.success.push({
-          recipient,
+          recipient: formattedRecipient,
           messageId: result?.id || null,
           success: true,
         });
 
-        logger.info(`Successfully sent to ${recipient}`);
+        logger.info(`Successfully sent to ${formattedRecipient}`);
       } catch (error) {
         results.totalFailed++;
         results.failures.push({

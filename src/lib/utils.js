@@ -27,6 +27,11 @@ export function formatPhoneNumber(phone) {
     cleaned = `62${cleaned.substring(1)}`;
   }
 
+  // Add @c.us suffix if not already present
+  if (!cleaned.includes("@c.us")) {
+    cleaned = `${cleaned}@c.us`;
+  }
+
   return cleaned;
 }
 

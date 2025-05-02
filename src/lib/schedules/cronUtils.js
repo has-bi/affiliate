@@ -23,38 +23,18 @@ export function calculateNextRunTime(scheduleType, config) {
         return null;
       }
 
-      // Ensure we have a valid date object
-      let nextDate;
-      if (typeof config.date === "string") {
-        // If it's a string (like from an API), parse it
-        nextDate = new Date(config.date);
-
-        // Ensure the date is valid
-        if (isNaN(nextDate.getTime())) {
-          logger.error(`Invalid date string provided: ${config.date}`);
-          return null;
-        }
-      } else if (config.date instanceof Date) {
-        // If it's already a Date object, use it directly
-        nextDate = config.date;
-      } else {
-        logger.error(`Unsupported date format: ${typeof config.date}`);
-        return null;
-      }
-
-      logger.info(`Next run for one-time schedule: ${nextDate.toISOString()}`);
-      return nextDate;
-    } else if (scheduleType === "cron") {
+      const date = new Date(config.date);
+      return date;
+    } else if (scheduleType === "recurring") {
       // For cron-based schedules, calculate the next run time
-      if (!config.expression) {
-        logger.error("Cron schedule missing expression");
+      if (!config.cronExpression) {
+        logger.error("Recurring schedule missing cronExpression");
         return null;
       }
 
       try {
-        const interval = parseExpression(config.expression);
+        const interval = parseExpression(config.cronExpression);
         const nextDate = interval.next().toDate();
-        logger.info(`Next run for cron schedule: ${nextDate.toISOString()}`);
         return nextDate;
       } catch (cronError) {
         logger.error("Error parsing cron expression:", cronError);
