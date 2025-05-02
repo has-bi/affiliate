@@ -84,7 +84,20 @@ export async function createSchedule(data) {
     const status = scheduleData.status || "active";
 
     // Calculate next run time based on schedule type and config
-    const nextRun = calculateNextRunTime(data.scheduleType, scheduleConfig);
+    let nextRun = null;
+
+    if (data.scheduleType === "once") {
+      // For one-time schedules, explicitly handle the date
+      if (scheduleConfig && scheduleConfig.date) {
+        nextRun = new Date(scheduleConfig.date);
+        console.log(
+          `Setting nextRun for one-time schedule to: ${nextRun.toISOString()}`
+        );
+      }
+    } else {
+      // For recurring schedules, use the calculation function
+      nextRun = calculateNextRunTime(data.scheduleType, scheduleConfig);
+    }
 
     // Create the schedule with all its relations
     return await prisma.schedule.create({
@@ -100,7 +113,7 @@ export async function createSchedule(data) {
             : null,
         scheduledDate:
           data.scheduleType === "once" ? new Date(scheduleConfig.date) : null,
-        nextRun,
+        nextRun, // Use our explicitly calculated nextRun
 
         // Create relationships
         recipients: {

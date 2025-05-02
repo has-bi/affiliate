@@ -86,6 +86,9 @@ class SchedulerService {
 
     try {
       // Find schedules due to run
+      logger.info(
+        `Querying for active schedules with nextRun <= ${now.toISOString()}`
+      );
       const schedulesToRun = await prisma.schedule.findMany({
         where: {
           status: "active",
@@ -101,10 +104,77 @@ class SchedulerService {
 
       logger.info(`Found ${schedulesToRun.length} schedules to execute`);
 
+      // Log schedule IDs and nextRun times for debugging
+      schedulesToRun.forEach((schedule) => {
+        logger.info(
+          `Schedule ${
+            schedule.id
+          }: nextRun = ${schedule.nextRun?.toISOString()}`
+        );
+      });
+
+      // Also log all active schedules for comparison
+      const allActive = await prisma.schedule.findMany({
+        where: { status: "active" },
+        select: { id: true, nextRun: true },
+      });
+
+      logger.info(`All active schedules: ${allActive.length}`);
+      allActive.forEach((schedule) => {
+        logger.info(
+          `Active schedule ${
+            schedule.id
+          }: nextRun = ${schedule.nextRun?.toISOString()}`
+        );
+      });
+
+      // Add debugging for when no schedules are found
+      if (schedulesToRun.length === 0) {
+        // Count active schedules
+        const activeCount = await prisma.schedule.count({
+          where: { status: "active" },
+        });
+
+        // Count schedules with future nextRun
+        const futureCount = await prisma.schedule.count({
+          where: {
+            status: "active",
+            nextRun: { gt: now },
+          },
+        });
+
+        // Count schedules with null nextRun
+        const nullCount = await prisma.schedule.count({
+          where: {
+            status: "active",
+            nextRun: null,
+          },
+        });
+
+        logger.info(
+          `Debug - Active schedules: ${activeCount}, Future: ${futureCount}, Null nextRun: ${nullCount}`
+        );
+
+        // Check a sample of active schedules to see their nextRun times
+        if (activeCount > 0) {
+          const sampleSchedules = await prisma.schedule.findMany({
+            where: { status: "active" },
+            select: { id: true, name: true, nextRun: true },
+            take: 5,
+          });
+
+          logger.info("Sample active schedules:", sampleSchedules);
+        }
+      }
+
       // Execute each schedule
       for (const schedule of schedulesToRun) {
         try {
+          logger.info(
+            `Starting execution of schedule ${schedule.id} (${schedule.name})`
+          );
           await this.executeSchedule(schedule);
+          logger.info(`Completed execution of schedule ${schedule.id}`);
         } catch (error) {
           logger.error(`Error executing schedule ${schedule.id}:`, error);
         }
@@ -116,12 +186,36 @@ class SchedulerService {
 
   /**
    * Execute a specific schedule
+   * @param {Object} schedule Schedule object with recipients and parameters
+   * @returns {Promise<Object>} Execution results with success/failure counts
    */
   async executeSchedule(schedule) {
-    logger.info(`Executing schedule ${schedule.id}`);
+    logger.info(`Executing schedule ${schedule.id}: ${schedule.name}`);
 
     try {
-      // Get the template (using the correct function name from templateUtils)
+      // Validate schedule has recipients
+      if (!schedule.recipients || schedule.recipients.length === 0) {
+        logger.warn(
+          `Schedule ${schedule.id} has no recipients, skipping execution`
+        );
+        await this.updateScheduleAfterExecution(schedule);
+        return { success: 0, failed: 0, details: [] };
+      }
+
+      // Check WhatsApp session before proceeding
+      logger.info(`Verifying WhatsApp session ${schedule.sessionName}`);
+      const sessionStatus = await wahaClient.checkSession();
+      if (!sessionStatus.isConnected) {
+        logger.error(
+          `WhatsApp session ${schedule.sessionName} is not connected. Status: ${sessionStatus.status}`
+        );
+        throw new Error(
+          `WhatsApp session not connected: ${sessionStatus.status}`
+        );
+      }
+
+      // Get the template
+      logger.info(`Fetching template ${schedule.templateId}`);
       const template = await getTemplate(schedule.templateId);
       if (!template) {
         throw new Error(`Template ${schedule.templateId} not found`);
@@ -129,19 +223,33 @@ class SchedulerService {
 
       // Convert parameters array to object for easier access
       const paramValues = {};
-      schedule.parameters.forEach((param) => {
-        paramValues[param.paramId] = param.paramValue;
-      });
+      if (schedule.parameters && schedule.parameters.length > 0) {
+        schedule.parameters.forEach((param) => {
+          paramValues[param.paramId] = param.paramValue;
+          logger.debug(`Parameter ${param.paramId} = "${param.paramValue}"`);
+        });
+      } else {
+        logger.warn(`Schedule ${schedule.id} has no parameters`);
+      }
 
       // Send messages
       let success = 0;
       let failed = 0;
       const details = [];
+      const totalRecipients = schedule.recipients.length;
+
+      logger.info(`Sending messages to ${totalRecipients} recipients`);
 
       // For each recipient
-      for (const recipientObj of schedule.recipients) {
+      for (const [index, recipientObj] of schedule.recipients.entries()) {
         const recipient = recipientObj.recipient;
         const formatted = formatPhoneNumber(recipient);
+
+        logger.info(
+          `Processing recipient ${
+            index + 1
+          }/${totalRecipients}: ${recipient} (formatted: ${formatted})`
+        );
 
         try {
           // Build message with parameters
@@ -153,35 +261,65 @@ class SchedulerService {
             finalMessage = finalMessage.replace(regex, value || `{${paramId}}`);
           });
 
-          // Format bold text
-          finalMessage = finalMessage.replace(/\*\*(.*?)\*\*/g, "$1");
+          // Format bold text (adjust for WhatsApp formatting if needed)
+          finalMessage = finalMessage.replace(/\*\*(.*?)\*\*/g, "*$1*");
+
+          logger.debug(
+            `Prepared message for ${recipient}: ${finalMessage.substring(
+              0,
+              50
+            )}...`
+          );
 
           // Send message through WhatsApp client
-          await wahaClient.sendText(
+          logger.info(
+            `Sending message to ${recipient} via session ${schedule.sessionName}`
+          );
+          const result = await wahaClient.sendText(
             schedule.sessionName, // Pass session name first
             formatted,
             finalMessage
           );
 
           success++;
-          details.push({ recipient, status: "sent" });
+          details.push({
+            recipient,
+            status: "sent",
+            messageId: result?.id || null,
+          });
+
           logger.info(
-            `Message sent to ${recipient} for schedule ${schedule.id}`
+            `Successfully sent message to ${recipient} for schedule ${schedule.id}`
           );
         } catch (err) {
           failed++;
-          details.push({ recipient, error: err.message });
+          details.push({
+            recipient,
+            status: "failed",
+            error: err.message,
+          });
+
           logger.error(
-            `Failed to send message to ${recipient} for schedule ${schedule.id}:`,
-            err
+            `Failed to send message to ${recipient} for schedule ${schedule.id}: ${err.message}`
           );
+          logger.debug(`Error details:`, err);
         }
 
         // Small delay between messages to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        if (index < totalRecipients - 1) {
+          const delayMs = 2000;
+          logger.debug(`Waiting ${delayMs}ms before sending next message`);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
       }
 
+      // Log summary
+      logger.info(
+        `Schedule ${schedule.id} execution completed: ${success} successful, ${failed} failed`
+      );
+
       // Update history
+      logger.info(`Adding execution history for schedule ${schedule.id}`);
       await this.addScheduleHistory(schedule.id, {
         successCount: success,
         failedCount: failed,
@@ -189,28 +327,38 @@ class SchedulerService {
       });
 
       // Update schedule status and next run time
+      logger.info(`Updating schedule ${schedule.id} after execution`);
       await this.updateScheduleAfterExecution(schedule);
 
       return { success, failed, details };
     } catch (error) {
-      logger.error(`Error executing schedule ${schedule.id}:`, error);
+      logger.error(`Critical error executing schedule ${schedule.id}:`, error);
 
       // Update history with failure
-      await this.addScheduleHistory(schedule.id, {
-        successCount: 0,
-        failedCount: schedule.recipients?.length || 0,
-        details: [{ error: error.message }],
-      });
-
-      // Mark as failed if it's a one-time schedule
-      if (schedule.scheduleType === "once") {
-        await prisma.schedule.update({
-          where: { id: Number(schedule.id) },
-          data: { status: "failed" },
+      try {
+        logger.info(`Recording failure in history for schedule ${schedule.id}`);
+        await this.addScheduleHistory(schedule.id, {
+          successCount: 0,
+          failedCount: schedule.recipients?.length || 0,
+          details: [{ error: error.message || "Unknown error" }],
         });
+
+        // Mark as failed if it's a one-time schedule
+        if (schedule.scheduleType === "once") {
+          logger.info(`Marking one-time schedule ${schedule.id} as failed`);
+          await prisma.schedule.update({
+            where: { id: Number(schedule.id) },
+            data: { status: "failed" },
+          });
+        }
+      } catch (historyError) {
+        logger.error(
+          `Failed to update history for schedule ${schedule.id}:`,
+          historyError
+        );
       }
 
-      throw error;
+      throw error; // Re-throw to be handled by caller
     }
   }
 
