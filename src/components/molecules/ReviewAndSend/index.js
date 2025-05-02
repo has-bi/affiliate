@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Send, Calendar, Loader2 } from "lucide-react";
+import { Send, Calendar, Loader2, AlertCircle } from "lucide-react";
 
 const Step4 = ({
   selectedTemplate,
@@ -16,6 +16,7 @@ const Step4 = ({
   isSubmitting,
   handlePrevStep,
 }) => {
+  // Safely get recipients and preview HTML with error handling
   let recipients = [];
   let recipientsError = null;
   let previewHTML = "";
@@ -41,6 +42,7 @@ const Step4 = ({
     previewError = error.message;
   }
 
+  // Ensure we have a safe schedule config object
   const safeScheduleConfig = scheduleConfig || {
     type: "once",
     date: "",
@@ -50,6 +52,76 @@ const Step4 = ({
     endDate: "",
   };
 
+  // Validate the current date/time configuration
+  const validateScheduleConfig = () => {
+    if (isScheduling) {
+      if (safeScheduleConfig.type === "once") {
+        // Check if date is missing
+        if (!safeScheduleConfig.date) {
+          return {
+            isValid: false,
+            error: "Pilih tanggal untuk jadwal pengiriman",
+          };
+        }
+
+        // Check if the date already includes a time component (T)
+        const hasTimeComponent = safeScheduleConfig.date.includes("T");
+
+        // Create a date object based on whether time is already included
+        let scheduledDate;
+
+        if (hasTimeComponent) {
+          // If date already has time component, use it directly
+          scheduledDate = new Date(safeScheduleConfig.date);
+        } else {
+          // Otherwise, append the time component
+          scheduledDate = new Date(
+            `${safeScheduleConfig.date}T${
+              safeScheduleConfig.time || "00:00"
+            }:00`
+          );
+        }
+
+        if (isNaN(scheduledDate.getTime())) {
+          return {
+            isValid: false,
+            error: "Format tanggal tidak valid",
+          };
+        }
+
+        // Check if date is in the past
+        if (scheduledDate <= new Date()) {
+          return {
+            isValid: false,
+            error: "Tanggal dan waktu harus di masa depan",
+          };
+        }
+      } else if (safeScheduleConfig.type === "recurring") {
+        // Check cron expression
+        if (!safeScheduleConfig.cronExpression) {
+          return {
+            isValid: false,
+            error: "Masukkan ekspresi cron untuk jadwal berulang",
+          };
+        }
+
+        // Check start date
+        if (!safeScheduleConfig.startDate) {
+          return {
+            isValid: false,
+            error: "Tentukan tanggal mulai untuk jadwal berulang",
+          };
+        }
+      }
+    }
+
+    return { isValid: true };
+  };
+
+  // Check for validation errors before rendering
+  const validationResult = validateScheduleConfig();
+
+  // Handle errors in functions or data
   if (recipientsError || previewError) {
     return (
       <div className="space-y-4">
@@ -93,6 +165,20 @@ const Step4 = ({
       </div>
     );
   }
+
+  // Modified handleSchedule wrapper for validation
+  const handleScheduleWithValidation = (e) => {
+    const validation = validateScheduleConfig();
+
+    if (!validation.isValid) {
+      // Show an error or alert
+      alert(validation.error);
+      return;
+    }
+
+    // If validation passes, call the original handler
+    handleSchedule(e);
+  };
 
   return (
     <div className="space-y-6">
@@ -151,6 +237,14 @@ const Step4 = ({
             <span className="ml-2">Jadwalkan Pengiriman</span>
           </label>
         </div>
+
+        {/* Display validation error if any */}
+        {isScheduling && !validationResult.isValid && (
+          <div className="mb-4 p-3 bg-red-50 rounded-md flex items-center text-red-700 text-sm">
+            <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+            {validationResult.error}
+          </div>
+        )}
 
         {isScheduling && (
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
@@ -308,8 +402,12 @@ const Step4 = ({
           <Button
             type="button"
             variant={isScheduling ? "primary" : "success"}
-            onClick={(e) => (isScheduling ? handleSchedule(e) : handleSend(e))}
-            disabled={isSubmitting}
+            onClick={(e) =>
+              isScheduling ? handleScheduleWithValidation(e) : handleSend(e)
+            }
+            disabled={
+              isSubmitting || (isScheduling && !validationResult.isValid)
+            }
           >
             {isSubmitting ? (
               <>
