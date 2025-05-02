@@ -7,7 +7,7 @@ import {
   getScheduleById,
 } from "./scheduleUtils";
 import {
-  getTemplateById,
+  getTemplate,
   fillTemplateContent,
 } from "@/lib/templates/templateUtils";
 import { formatPhoneNumber } from "@/lib/utils";
@@ -218,7 +218,7 @@ class SchedulerService {
 
       // Get template data - need to await since it's from database
       console.log(`Fetching template...`);
-      const template = await getTemplateById(scheduleData.templateId);
+      const template = await getTemplate(scheduleData.templateId);
 
       if (!template) {
         console.error(
