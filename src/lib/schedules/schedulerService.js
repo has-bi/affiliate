@@ -1,80 +1,80 @@
-// src/lib/schedules/schedulerService.js
-import prisma from "@/lib/db/prisma";
-import { calculateNextRunTime } from "./cronUtils";
-import { getTemplate } from "@/lib/templates/templateUtils";
-import { formatPhoneNumber } from "@/lib/utils";
-import wahaClient from "@/lib/whatsapp/wahaClient";
-import { createLogger } from "@/lib/utils";
+// src/lib/services/schedulerService.js
+import schedule from "node-schedule";
+import baileysClient from "@/lib/whatsapp/wahaClient";
+import {
+  getAllSchedules,
+  updateSchedule,
+  addScheduleHistory,
+  getScheduleById,
+} from "@/lib/schedules/scheduleUtils";
+import {
+  getTemplateById,
+  getFinalMessageForContact,
+} from "@/lib/templates/templateUtils";
+import { formatPhoneNumber, createLogger } from "@/lib/utils";
 
-const logger = createLogger("[SchedulerService]");
+const logger = createLogger("[API][BulkMessages]");
 
 class SchedulerService {
   constructor() {
-    this.isPolling = false;
-    this.pollingInterval = 60000; // Check every minute
-    this.pollTimer = null;
-    this.initialized = false;
+    this.jobs = new Map();
   }
 
-  /**
-   * Initialize the scheduler with database polling
-   */
   async init() {
-    logger.info("Initializing scheduler service");
+    console.log("[Scheduler] Loading active schedules...");
 
-    // Skip multiple initializations
-    if (this.initialized) {
-      logger.info("Scheduler already initialized, skipping");
-      return true;
-    }
+    const schedules = await getAllSchedules();
+    schedules
+      .filter((s) => s.status === "active")
+      .forEach((s) => this.scheduleJob(s));
 
-    // Start polling if not already running
-    if (!this.isPolling) {
-      this.startPolling();
-    }
-
-    this.initialized = true;
-    return true;
+    console.log(`[Scheduler] Loaded ${schedules.length} schedules.`);
   }
 
-  /**
-   * Start polling the database for schedules that need to be executed
-   */
-  startPolling() {
-    logger.info("Starting database polling for schedules");
-    this.isPolling = true;
+  scheduleJob(scheduleData) {
+    // Cancel previous instance if rescheduling
+    if (this.jobs.has(scheduleData.id)) {
+      this.cancelJob(scheduleData.id);
+    }
 
-    // Define the polling function
-    const poll = async () => {
-      if (!this.isPolling) return;
+    try {
+      let job;
 
-      try {
-        await this.checkAndExecuteSchedules();
-      } catch (error) {
-        logger.error("Error in schedule polling:", error);
-      } finally {
-        // Schedule next poll only if polling is still active
-        if (this.isPolling) {
-          this.pollTimer = setTimeout(poll, this.pollingInterval);
-        }
+      // ONE-TIME SCHEDULE
+      if (scheduleData.scheduleType === "once") {
+        const date = new Date(scheduleData.scheduleConfig.date);
+
+        job = schedule.scheduleJob(date, () => this._runJob(scheduleData.id));
+        console.log(`Created one-time job for schedule ${scheduleData.id}`);
       }
-    };
+      // RECURRING SCHEDULE
+      else if (scheduleData.scheduleType === "recurring") {
+        const cron = scheduleData.scheduleConfig.cronExpression;
 
-    // Start the initial poll
-    poll();
+        job = schedule.scheduleJob(cron, () => this._runJob(scheduleData.id));
+        console.log(`Created recurring job for schedule ${scheduleData.id}`);
+      }
+
+      if (!job) throw new Error("Failed to create node-schedule job");
+
+      this.jobs.set(scheduleData.id, job);
+      const nextRun = job.nextInvocation();
+      updateSchedule(scheduleData.id, {
+        nextRun: nextRun ? nextRun.toISOString() : null,
+      });
+    } catch (err) {
+      console.error(
+        `[Scheduler] Error registering schedule ${scheduleData.id}:`,
+        err
+      );
+      updateSchedule(scheduleData.id, { status: "failed" });
+    }
   }
 
-  /**
-   * Stop polling the database
-   */
-  stopPolling() {
-    logger.info("Stopping database polling for schedules");
-    this.isPolling = false;
-
-    if (this.pollTimer) {
-      clearTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
+  cancelJob(scheduleId) {
+    const job = this.jobs.get(scheduleId);
+    if (job) job.cancel();
+    this.jobs.delete(scheduleId);
   }
 
   /**
@@ -190,285 +190,90 @@ class SchedulerService {
     }
   }
 
-  /**
-   * Execute a specific schedule
-   * @param {Object} schedule Schedule object with recipients and parameters
-   * @returns {Promise<Object>} Execution results with success/failure counts
-   */
-  async executeSchedule(schedule) {
-    logger.info(`Executing schedule ${schedule.id}: ${schedule.name}`);
+  async _runJob(scheduleId) {
+    console.log(`\n===== Executing schedule ${scheduleId} =====`);
+
+    const scheduleData = await getScheduleById(scheduleId);
+    if (!scheduleData) {
+      console.error(`Schedule ${scheduleId} not found - cancelling job.`);
+      this.cancelJob(scheduleId);
+      return;
+    }
 
     try {
-      // Validate schedule has recipients
-      if (!schedule.recipients || schedule.recipients.length === 0) {
-        logger.warn(
-          `Schedule ${schedule.id} has no recipients, skipping execution`
-        );
-        await this.updateScheduleAfterExecution(schedule);
-        return { success: 0, failed: 0, details: [] };
-      }
+      // Load template
+      const template = await getTemplateById(scheduleData.templateId);
+      if (!template) throw new Error("Template not found");
 
-      // Check WhatsApp session before proceeding
-      logger.info(`Verifying WhatsApp session ${schedule.sessionName}`);
-      const sessionStatus = await wahaClient.checkSession(schedule.sessionName);
-      if (!sessionStatus.isConnected) {
-        logger.error(
-          `WhatsApp session ${schedule.sessionName} is not connected. Status: ${sessionStatus.status}`
-        );
-        throw new Error(
-          `WhatsApp session not connected: ${sessionStatus.status}`
-        );
-      }
-
-      // Get the template
-      logger.info(`Fetching template ${schedule.templateId}`);
-      const template = await getTemplate(schedule.templateId);
-      if (!template) {
-        throw new Error(`Template ${schedule.templateId} not found`);
-      }
-
-      // Convert parameters array to object for easier access
-      const paramValues = {};
-      if (schedule.parameters && schedule.parameters.length > 0) {
-        schedule.parameters.forEach((param) => {
-          paramValues[param.paramId] = param.paramValue;
-          logger.debug(`Parameter ${param.paramId} = "${param.paramValue}"`);
-        });
-      } else {
-        logger.warn(`Schedule ${schedule.id} has no parameters`);
-      }
-
-      // Send messages
       let success = 0;
       let failed = 0;
       const details = [];
-      const totalRecipients = schedule.recipients.length;
 
-      logger.info(`Sending messages to ${totalRecipients} recipients`);
-
-      // For each recipient
-      for (const [index, recipientObj] of schedule.recipients.entries()) {
-        const recipient = recipientObj.recipient;
-        // Ensure recipient has @c.us suffix
+      for (const recipient of scheduleData.recipients) {
         const formatted = formatPhoneNumber(recipient);
 
-        logger.info(
-          `Processing recipient ${
-            index + 1
-          }/${totalRecipients}: ${recipient} (formatted: ${formatted})`
-        );
-
         try {
-          // Build message with parameters
-          let finalMessage = template.content;
-
-          // Replace parameter placeholders with values
-          Object.entries(paramValues).forEach(([paramId, value]) => {
-            const regex = new RegExp(`\\{${paramId}\\}`, "g");
-            finalMessage = finalMessage.replace(regex, value || `{${paramId}}`);
-          });
-
-          // Format bold text (adjust for WhatsApp formatting if needed)
-          finalMessage = finalMessage.replace(/\*\*(.*?)\*\*/g, "*$1*");
-
-          logger.debug(
-            `Prepared message for ${formatted}: ${finalMessage.substring(
-              0,
-              50
-            )}...`
+          // Build message (with parameters)
+          const text = getFinalMessageForContact(
+            template.content,
+            { phone: formatted }, // Basic contact info
+            scheduleData.paramValues // Static parameters
           );
 
-          // Send message through WhatsApp client
-          logger.info(
-            `Sending message to ${formatted} via session ${schedule.sessionName}`
-          );
-          const result = await wahaClient.sendText(
-            schedule.sessionName, // Pass session name first
+          // Send message
+          await baileysClient.sendText(
+            scheduleData.sessionName,
             formatted,
-            finalMessage
+            text
           );
 
           success++;
-          details.push({
-            recipient: formatted,
-            status: "sent",
-            success: true,
-            messageId: result?.id || null,
-          });
-
-          logger.info(
-            `Successfully sent message to ${formatted} for schedule ${schedule.id}`
-          );
+          details.push({ phone: recipient, status: "sent" });
         } catch (err) {
           failed++;
-          details.push({
-            recipient: formatted,
-            status: "failed",
-            success: false,
-            error: err.message,
-          });
-
-          logger.error(
-            `Failed to send message to ${formatted} for schedule ${schedule.id}: ${err.message}`
-          );
-          logger.debug(`Error details:`, err);
+          details.push({ phone: recipient, error: err.message });
         }
 
         // Small delay between messages to avoid rate limiting
-        if (index < totalRecipients - 1) {
-          const delayMs = 2000;
-          logger.debug(`Waiting ${delayMs}ms before sending next message`);
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Log summary
-      logger.info(
-        `Schedule ${schedule.id} execution completed: ${success} successful, ${failed} failed`
-      );
-
       // Update history
-      logger.info(`Adding execution history for schedule ${schedule.id}`);
-      await this.addScheduleHistory(schedule.id, {
+      await addScheduleHistory(scheduleId, {
         successCount: success,
         failedCount: failed,
         details,
       });
 
-      // Update schedule status and next run time
-      logger.info(`Updating schedule ${schedule.id} after execution`);
-      await this.updateScheduleAfterExecution(schedule);
-
-      return { success, failed, details };
-    } catch (error) {
-      logger.error(`Critical error executing schedule ${schedule.id}:`, error);
-
-      // Update history with failure
-      try {
-        logger.info(`Recording failure in history for schedule ${schedule.id}`);
-        await this.addScheduleHistory(schedule.id, {
-          successCount: 0,
-          failedCount: schedule.recipients?.length || 0,
-          details: [{ error: error.message || "Unknown error" }],
-        });
-
-        // Mark as failed if it's a one-time schedule
-        if (schedule.scheduleType === "once") {
-          logger.info(`Marking one-time schedule ${schedule.id} as failed`);
-          await prisma.schedule.update({
-            where: { id: Number(schedule.id) },
-            data: { status: "failed" },
-          });
-        }
-      } catch (historyError) {
-        logger.error(
-          `Failed to update history for schedule ${schedule.id}:`,
-          historyError
-        );
-      }
-
-      throw error; // Re-throw to be handled by caller
-    }
-  }
-
-  /**
-   * Add execution history entry for a schedule
-   */
-  async addScheduleHistory(scheduleId, results) {
-    try {
-      return await prisma.scheduleHistory.create({
-        data: {
-          scheduleId: Number(scheduleId),
-          successCount: results.successCount,
-          failedCount: results.failedCount,
-          details: results.details || {},
-          runAt: new Date(),
-        },
+      // Update last/next run timestamps
+      const job = this.jobs.get(scheduleId);
+      const nextRun = job?.nextInvocation() || null;
+      await updateSchedule(scheduleId, {
+        lastRun: new Date().toISOString(),
+        nextRun: nextRun ? nextRun.toISOString() : null,
       });
-    } catch (error) {
-      logger.error(`Error adding schedule history for ${scheduleId}:`, error);
-      throw error;
-    }
-  }
 
-  /**
-   * Update schedule after execution
-   */
-  async updateScheduleAfterExecution(schedule) {
-    try {
-      const now = new Date();
-      let nextRun = null;
-      let status = schedule.status;
-
-      // For one-time schedules, mark as completed
-      if (schedule.scheduleType === "once") {
-        status = "completed";
-        logger.info(`One-time schedule ${schedule.id} marked as completed`);
-      }
-      // For recurring schedules, calculate next run time
-      else if (schedule.scheduleType === "recurring") {
-        try {
-          // Use cronExpression to calculate next run
-          const scheduleConfig = {
-            cronExpression: schedule.cronExpression,
-          };
-
-          nextRun = calculateNextRunTime("recurring", scheduleConfig);
-          logger.info(
-            `Next run for recurring schedule ${schedule.id}: ${
-              nextRun?.toISOString() || "null"
-            }`
-          );
-
-          // Check if schedule has reached end date
-          if (schedule.endDate && nextRun > new Date(schedule.endDate)) {
-            status = "completed";
-            nextRun = null;
-            logger.info(
-              `Recurring schedule ${schedule.id} reached end date, marked as completed`
-            );
-          }
-        } catch (cronError) {
-          logger.error(
-            `Error calculating next run for schedule ${schedule.id}:`,
-            cronError
-          );
-          status = "failed";
-        }
-      }
-
-      // Update the schedule
-      return await prisma.schedule.update({
-        where: { id: Number(schedule.id) },
-        data: {
-          status,
-          lastRun: now,
-          nextRun,
-        },
-      });
-    } catch (error) {
-      logger.error(
-        `Error updating schedule ${schedule.id} after execution:`,
-        error
+      console.log(
+        `Schedule ${scheduleId} finished - OK:${success} NOK:${failed}`
       );
-      throw error;
+    } catch (err) {
+      console.error(`[Scheduler] Fatal error in schedule ${scheduleId}:`, err);
+      await addScheduleHistory(scheduleId, {
+        successCount: 0,
+        failedCount: scheduleData.recipients.length,
+        details: [{ error: err.message }],
+      });
+      await updateSchedule(scheduleId, { status: "failed" });
     }
   }
 }
 
-// Singleton export
+// Singleton export & immediate init
 const schedulerService = new SchedulerService();
-
-// Initialize the scheduler service in Node.js environments (non-browser)
-if (typeof window === "undefined") {
-  // Use a global flag to prevent multiple initializations
-  if (!global.schedulerInitialized) {
-    global.schedulerInitialized = true;
-    schedulerService.init().catch((err) => {
-      logger.error("Failed to initialize scheduler:", err);
-    });
-  }
-}
+console.log("[Scheduler] Initializing...");
+schedulerService.init().catch((e) => {
+  console.error("[Scheduler] Init failed:", e);
+});
 
 export async function initializeSchedules() {
   return schedulerService.init();
