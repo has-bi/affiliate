@@ -249,20 +249,87 @@ export default function TemplateMessageSender() {
 
       // Format schedule configuration based on type
       if (scheduleConfig.type === "once") {
+        // Validate date is present
+        if (!scheduleConfig.date) {
+          throw new Error("Tanggal harus dipilih untuk jadwal tipe 'sekali'");
+        }
+
+        // Validate time format
+        const time = scheduleConfig.time || "00:00";
+        if (!/^\d{2}:\d{2}$/.test(time)) {
+          throw new Error("Format waktu tidak valid, gunakan format HH:MM");
+        }
+
+        // Check if the date string already contains a time component (T)
+        const hasTimeComponent = scheduleConfig.date.includes("T");
+
+        // Create a proper ISO string for the date, avoiding double time components
+        let dateTimeString;
+        let scheduleDate;
+
+        if (hasTimeComponent) {
+          // If date already has a time component, use it directly
+          console.log("Date already has time component:", scheduleConfig.date);
+          scheduleDate = new Date(scheduleConfig.date);
+        } else {
+          // Otherwise, append the time component
+          dateTimeString = `${scheduleConfig.date}T${time}:00`;
+          console.log("Creating date with time:", dateTimeString);
+          scheduleDate = new Date(dateTimeString);
+        }
+
+        // Check date validity
+        if (isNaN(scheduleDate.getTime())) {
+          throw new Error(`Format tanggal tidak valid: ${scheduleConfig.date}`);
+        }
+
+        // Check date is in the future
+        if (scheduleDate <= new Date()) {
+          throw new Error("Tanggal dan waktu harus di masa depan");
+        }
+
+        // Use the validated date
         scheduleData.scheduleConfig = {
-          date: new Date(
-            `${scheduleConfig.date}T${scheduleConfig.time}:00`
-          ).toISOString(),
+          date: scheduleDate.toISOString(),
         };
-      } else {
+      } else if (scheduleConfig.type === "recurring") {
+        // Validate cron expression
+        if (!scheduleConfig.cronExpression) {
+          throw new Error("Ekspresi cron wajib diisi untuk jadwal berulang");
+        }
+
+        // Validate start date
+        if (!scheduleConfig.startDate) {
+          throw new Error("Tanggal mulai wajib diisi untuk jadwal berulang");
+        }
+
+        // Create valid dates for start and end dates
+        const startDate = scheduleConfig.startDate
+          ? new Date(`${scheduleConfig.startDate}T00:00:00`)
+          : new Date();
+
+        // Validate start date
+        if (isNaN(startDate.getTime())) {
+          throw new Error("Format tanggal mulai tidak valid");
+        }
+
+        // Process end date if provided
+        let endDate = null;
+        if (scheduleConfig.endDate) {
+          endDate = new Date(`${scheduleConfig.endDate}T23:59:59`);
+          if (isNaN(endDate.getTime())) {
+            throw new Error("Format tanggal selesai tidak valid");
+          }
+          if (endDate <= startDate) {
+            throw new Error("Tanggal selesai harus setelah tanggal mulai");
+          }
+        }
+
+        // Set schedule config with validated dates
         scheduleData.scheduleConfig = {
           cronExpression: scheduleConfig.cronExpression,
-          startDate: scheduleConfig.startDate
-            ? new Date(`${scheduleConfig.startDate}T00:00:00`).toISOString()
-            : new Date().toISOString(),
-          endDate: scheduleConfig.endDate
-            ? new Date(`${scheduleConfig.endDate}T23:59:59`).toISOString()
-            : null,
+          startDate: startDate.toISOString(),
+          endDate: endDate ? endDate.toISOString() : null,
         };
       }
 
@@ -276,11 +343,18 @@ export default function TemplateMessageSender() {
         body: JSON.stringify(scheduleData),
       });
 
+      // Process response based on status
       if (!response.ok) {
+        // Get detailed error message
         let errorMsg = "Failed to schedule message";
         try {
           const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg;
+          errorMsg = errorData.error || errorData.message || errorMsg;
+
+          // Handle validation errors specifically
+          if (errorData.details) {
+            errorMsg += ": " + JSON.stringify(errorData.details);
+          }
         } catch {
           // If we can't parse JSON, try to get the text
           try {
@@ -294,28 +368,26 @@ export default function TemplateMessageSender() {
         throw new Error(errorMsg);
       }
 
-      // Parse the response, handling empty responses
+      // Parse the response
       let result = {};
-      try {
-        const text = await response.text();
-        if (text.trim()) {
-          result = JSON.parse(text);
+      const responseText = await response.text();
+
+      if (responseText.trim()) {
+        try {
+          result = JSON.parse(responseText);
+        } catch (err) {
+          console.warn("Could not parse schedule response:", err);
         }
-      } catch (err) {
-        console.warn("Could not parse schedule response:", err);
       }
 
       setSendResult({
         scheduled: true,
         scheduleId: result.id || "unknown",
-        nextRun:
-          result.nextRun ||
-          (scheduleConfig.type === "once"
-            ? new Date(
-                `${scheduleConfig.date}T${scheduleConfig.time}:00`
-              ).toISOString()
-            : "according to schedule"),
+        nextRun: result.nextRun || "according to schedule",
       });
+
+      // Show success message
+      console.log("✅ Schedule created successfully:", result);
     } catch (err) {
       console.error("❌ Error scheduling message:", err);
       setError(err.message || "Failed to schedule message");
