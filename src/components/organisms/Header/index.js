@@ -37,7 +37,6 @@ const NAVIGATION = [
       { name: "Templates", href: "/messages/templates", icon: FileText },
       { name: "Broadcast", href: "/messages/broadcast", icon: Send },
       { name: "Scheduled", href: "/messages/scheduled", icon: Clock },
-      { name: "History", href: "/messages/history", icon: History },
     ],
   },
   {
@@ -48,11 +47,6 @@ const NAVIGATION = [
       { name: "Affiliates", href: "/contacts/affiliates", icon: Users },
       { name: "Onboarding", href: "/contacts/onboarding", icon: UserPlus },
     ],
-  },
-  {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
   },
 ];
 
@@ -150,7 +144,7 @@ export default function Header() {
         {/* Left ▾ Logo + Desktop nav */}
         <div className="flex items-center gap-8">
           <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
-            WA Control
+            Youvit Affiliates
           </Link>
 
           {/* Desktop navigation */}

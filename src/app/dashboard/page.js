@@ -196,39 +196,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-
-      {/* Recent Activity */}
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          Recent Activity
-        </h2>
-        <Card>
-          <CardContent className="p-4">
-            <ul className="divide-y divide-gray-200">
-              {recentActivity.map((activity, index) => (
-                <li key={index} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.event}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Template: {activity.template}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">
-                        {activity.recipients} recipients
-                      </p>
-                      <p className="text-sm text-gray-500">{activity.time}</p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
     </PageLayout>
   );
 }
