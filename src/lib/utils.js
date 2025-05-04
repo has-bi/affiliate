@@ -19,20 +19,33 @@ export function cn(...inputs) {
 export function formatPhoneNumber(phone) {
   if (!phone) return "";
 
-  // Remove all non-numeric characters
-  let cleaned = String(phone).replace(/\D/g, "");
+  const SUFFIX = "@c.us";
+  let txt = String(phone).trim();
 
-  // If Indonesian number starting with 0, replace with 62
-  if (cleaned.startsWith("0")) {
-    cleaned = `62${cleaned.substring(1)}`;
+  // 1. Strip any existing suffix (case‑insensitive).
+  if (txt.toLowerCase().endsWith(SUFFIX)) {
+    txt = txt.slice(0, -SUFFIX.length);
   }
 
-  // Add @c.us suffix if not already present
-  if (!cleaned.includes("@c.us")) {
-    cleaned = `${cleaned}@c.us`;
+  // 2. Remove every non‑digit character.
+  let digits = txt.replace(/\D/g, "");
+
+  // 3. Normalise the Indonesian prefix.
+  if (digits.startsWith("0")) {
+    digits = "62" + digits.slice(1);
+  } else if (!digits.startsWith("62")) {
+    // Reject anything that isn’t clearly an Indonesian number.
+    throw new Error("Phone number must start with 0 or 62");
   }
 
-  return cleaned;
+  // 4. Quick sanity check (WhatsApp accepts 8–13 national digits).
+  const nationalLen = digits.length - 2; // exclude the "62"
+  if (nationalLen < 8 || nationalLen > 13) {
+    throw new Error("Invalid phone number length for WhatsApp");
+  }
+
+  // 5. Append the suffix exactly once.
+  return `${digits}${SUFFIX}`;
 }
 
 /**
