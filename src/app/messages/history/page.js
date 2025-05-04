@@ -10,9 +10,9 @@ import {
   Search,
   Filter,
 } from "lucide-react";
-import Card from "@/components/atoms/Card";
+import Card from "@/components/ui/card";
 import PageLayout from "@/components/templates/PageLayout";
-import Badge from "@/components/atoms/Badge";
+import Badge from "@/components/ui/badge";
 
 export default function MessageHistoryPage() {
   const [messageHistory, setMessageHistory] = useState([]);

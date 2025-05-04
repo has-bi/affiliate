@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { formatPhoneNumber } from "@/lib/utils";
 
 export function useAffiliates() {
   const [newAffiliates, setNewAffiliates] = useState([]);
@@ -122,6 +123,64 @@ export function useAffiliates() {
     }
   }, []);
 
+  const updateAffiliateStatus = useCallback(async (params) => {
+    try {
+      const response = await fetch("/api/affiliates/update-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update affiliate status");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error updating affiliate status:", error);
+      throw error;
+    }
+  }, []);
+
+  // Send welcome message to a new affiliate
+  const sendWelcomeMessage = useCallback(
+    async (affiliate, sessionName, message) => {
+      if (!affiliate || !affiliate.phone || !message || !sessionName) {
+        throw new Error(
+          "Missing required parameters for sending welcome message"
+        );
+      }
+
+      try {
+        const response = await fetch("/api/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            session: sessionName,
+            recipients: [formatPhoneNumber(affiliate.phone)],
+            message,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to send welcome message");
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error("Error sending welcome message:", error);
+        throw error;
+      }
+    },
+    []
+  );
+
   // Initialize by fetching affiliates data
   useEffect(() => {
     fetchAllAffiliateData();
@@ -142,5 +201,9 @@ export function useAffiliates() {
     fetchAllAffiliateData,
     fetchNewAffiliates,
     fetchActiveAffiliates,
+
+    // Onboarding actions
+    updateAffiliateStatus,
+    sendWelcomeMessage,
   };
 }
