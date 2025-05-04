@@ -1,228 +1,273 @@
-// src/components/organisms/ScheduleManager/index.js
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Calendar,
   Clock,
-  Play,
-  Pause,
   Edit,
   Trash,
   Eye,
+  Play,
+  Pause,
   Plus,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useSchedule } from "@/hooks/useSchedule";
 
-const ScheduleManager = () => {
+export default function ScheduleManager() {
   const router = useRouter();
   const { schedules, isLoading, error, deleteSchedule, toggleScheduleStatus } =
     useSchedule();
 
-  // Format date for display
+  // -------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleString();
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  // Get status badge variant
-  const getStatusVariant = (status) => {
+  const getStatusBadgeVariant = (status) => {
     switch (status) {
       case "active":
         return "success";
-      case "pending":
-        return "warning";
-      case "completed":
-        return "info";
-      case "failed":
-        return "danger";
       case "paused":
-        return "default";
+        return "secondary"; // fallback when your design‑system has no "warning"
+      case "completed":
+        return "outline";
+      case "failed":
+        return "destructive";
       default:
-        return "default";
+        return "outline";
     }
   };
 
-  // View schedule details
-  const handleViewSchedule = (id) => {
-    router.push(`/schedules/${id}`);
+  const getScheduleDescription = (schedule) => {
+    if (schedule.scheduleType === "once") {
+      return `One‑time: ${formatDate(schedule.scheduleConfig?.date)}`;
+    }
+    return `Recurring: ${schedule.scheduleConfig?.cronExpression || "Custom"}`;
   };
 
-  // Edit a schedule
-  const handleEditSchedule = (id) => {
-    router.push(`/schedules/${id}/edit`);
-  };
-
-  // Create new schedule
-  const handleCreateSchedule = () => {
-    router.push("/schedules/new");
-  };
-
+  // -------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------
   return (
     <Card>
-      <Card.Header className="flex justify-between items-center">
-        <Card.Title>Scheduled Messages</Card.Title>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleCreateSchedule}
-          className="flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Create New Schedule
-        </Button>
-      </Card.Header>
+      <CardHeader className="flex justify-between items-center">
+        <div>
+          <CardTitle>Scheduled Messages</CardTitle>
+          <CardDescription>
+            Manage your automated message schedules
+          </CardDescription>
+        </div>
+      </CardHeader>
 
-      <Card.Content>
+      <CardContent>
+        {/* -------------------------------------------------- */}
+        {/* Error banner                                      */}
+        {/* -------------------------------------------------- */}
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-md mb-4 flex items-center">
-            <AlertCircle className="h-5 w-5 mr-2" />
-            <p>{error}</p>
+          <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-start mb-4 dark:bg-red-900/20 dark:text-red-300">
+            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium">Error loading schedules</h3>
+              <p className="mt-1 text-sm">{error}</p>
+            </div>
           </div>
         )}
 
+        {/* -------------------------------------------------- */}
+        {/* Skeleton / empty‑state / list                     */}
+        {/* -------------------------------------------------- */}
         {isLoading ? (
-          <div className="text-center py-10">
-            <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading schedules...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
           </div>
-        ) : !schedules || schedules.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-md">
+        ) : schedules.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-md dark:bg-gray-800/40">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-2">No scheduled messages found</p>
-            <Button variant="primary" size="sm" onClick={handleCreateSchedule}>
-              Create Your First Schedule
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+              No schedules found
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              Create your first schedule to automate message sending
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => router.push("/messages/scheduled/new")}
+            >
+              Create Schedule
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Next Run
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Recipients
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {schedules.map((schedule) => (
-                  <tr key={schedule.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {schedule.name}
+          <div className="space-y-4">
+            {schedules.map((schedule) => (
+              <Card
+                key={schedule.id}
+                className="hover:shadow-sm transition-shadow"
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    {/* ---------------------------------- */}
+                    {/* Meta                                 */}
+                    {/* ---------------------------------- */}
+                    <div>
+                      <div className="flex items-center">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                          {schedule.name}
+                        </h3>
+                        <Badge
+                          variant={getStatusBadgeVariant(schedule.status)}
+                          className="ml-2 capitalize"
+                        >
+                          {schedule.status}
+                        </Badge>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Template: {schedule.templateId}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {schedule.scheduleType === "once" ? (
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-blue-500" />
-                          <span className="text-sm text-gray-900">
-                            One Time
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1 text-purple-500" />
-                          <span className="text-sm text-gray-900">
-                            Recurring
-                          </span>
-                        </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {getScheduleDescription(schedule)}
+                      </p>
+                    </div>
+
+                    {/* ---------------------------------- */}
+                    {/* Actions                              */}
+                    {/* ---------------------------------- */}
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          router.push(`/messages/scheduled/${schedule.id}`)
+                        }
+                        title="View details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          router.push(`/messages/scheduled/${schedule.id}/edit`)
+                        }
+                        title="Edit schedule"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {schedule.status !== "completed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            toggleScheduleStatus(schedule.id, schedule.status)
+                          }
+                          title={
+                            schedule.status === "active" ? "Pause" : "Activate"
+                          }
+                        >
+                          {schedule.status === "active" ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant={getStatusVariant(schedule.status)}>
-                        {schedule.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(schedule.nextRun)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {schedule.recipients?.length || 0} recipients
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleViewSchedule(schedule.id)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Details"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteSchedule(schedule.id)}
+                        title="Delete schedule"
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
 
-                        <button
-                          onClick={() => handleEditSchedule(schedule.id)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Edit Schedule"
-                        >
-                          <Edit className="h-5 w-5" />
-                        </button>
+                  {/* ---------------------------------- */}
+                  {/* Additional info grid                 */}
+                  {/* ---------------------------------- */}
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 block">
+                        Template
+                      </span>
+                      <span className="font-medium">
+                        #{schedule.templateId}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 block">
+                        Session
+                      </span>
+                      <span className="font-medium">
+                        {schedule.sessionName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 block">
+                        Next run
+                      </span>
+                      <span className="font-medium">
+                        {formatDate(schedule.nextRun)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 block">
+                        Last run
+                      </span>
+                      <span className="font-medium">
+                        {formatDate(schedule.lastRun)}
+                      </span>
+                    </div>
+                  </div>
 
-                        {["active", "paused", "pending"].includes(
-                          schedule.status
-                        ) && (
-                          <button
-                            onClick={() => toggleScheduleStatus(schedule.id)}
-                            className={
-                              schedule.status === "active"
-                                ? "text-amber-600 hover:text-amber-900"
-                                : "text-green-600 hover:text-green-900"
-                            }
-                            title={
-                              schedule.status === "active"
-                                ? "Pause Schedule"
-                                : "Activate Schedule"
-                            }
-                          >
-                            {schedule.status === "active" ? (
-                              <Pause className="h-5 w-5" />
+                  {/* ---------------------------------- */}
+                  {/* Recent history summary               */}
+                  {/* ---------------------------------- */}
+                  {schedule.history?.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Recent history
+                      </h4>
+                      <div className="space-y-2">
+                        {schedule.history.slice(0, 3).map((entry, idx) => (
+                          <div key={idx} className="flex items-center text-sm">
+                            {entry.failedCount === 0 ? (
+                              <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
                             ) : (
-                              <Play className="h-5 w-5" />
+                              <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
                             )}
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => deleteSchedule(schedule.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Schedule"
-                        >
-                          <Trash className="h-5 w-5" />
-                        </button>
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {formatDate(entry.runAt)}: {entry.successCount}{" "}
+                              successful, {entry.failedCount} failed
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
-      </Card.Content>
+      </CardContent>
     </Card>
   );
-};
-
-export default ScheduleManager;
+}
