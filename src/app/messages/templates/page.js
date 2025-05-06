@@ -42,7 +42,11 @@ export default function TemplatesClientPage() {
 
   // Define page actions
   const pageActions = (
-    <Button variant="primary" href="/messages/templates/new">
+    <Button
+      variant="primary"
+      href="/messages/templates/new"
+      className={"hidden"}
+    >
       <Plus className="h-4 w-4 mr-1" />
       New Template
     </Button>

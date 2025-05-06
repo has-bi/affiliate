@@ -2,7 +2,8 @@
 import { getTemplate, updateTemplate } from "@/lib/templates/templateUtils";
 
 export async function GET(_, { params }) {
-  const template = await getTemplate(params.id);
+  const id = params?.id; // Access using optional chaining
+  const template = await getTemplate(id);
   return Response.json(template);
 }
 

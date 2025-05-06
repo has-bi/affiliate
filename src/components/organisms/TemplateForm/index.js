@@ -3,15 +3,24 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Plus, AlertCircle, CheckCircle, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Save,
+  Plus,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  Eye,
+  Edit,
+  X,
+} from "lucide-react";
 import TemplateParameter from "@/components/molecules/TemplateParameter";
 import {
   extractParametersFromContent,
   formatMessageContent,
-  DYNAMIC_PARAMETERS,
-  createParameterId,
 } from "@/lib/templates/templateUtils";
 
 /**
@@ -35,6 +44,7 @@ const TemplateForm = ({ initialTemplate = null }) => {
 
   // Preview state to show formatted template with parameters
   const [preview, setPreview] = useState("");
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Category options
   const categories = [
@@ -104,8 +114,7 @@ const TemplateForm = ({ initialTemplate = null }) => {
 
   // Auto-extract parameters from content
   const handleExtractParams = () => {
-    const { dynamic, static: staticParams } =
-      extractParametersFromTemplateContent(formData.content);
+    const extractedParams = extractParametersFromContent(formData.content);
 
     // Keep existing parameters that match extracted IDs
     const existingParams = {};
@@ -116,17 +125,8 @@ const TemplateForm = ({ initialTemplate = null }) => {
     // Create updated parameter list
     const updatedParams = [];
 
-    // Add dynamic parameters
-    dynamic.forEach((param) => {
-      if (existingParams[param.id]) {
-        updatedParams.push(existingParams[param.id]);
-      } else {
-        updatedParams.push(param);
-      }
-    });
-
-    // Add static parameters
-    staticParams.forEach((param) => {
+    // Add parameters from content that don't exist yet
+    extractedParams.forEach((param) => {
       if (existingParams[param.id]) {
         updatedParams.push(existingParams[param.id]);
       } else {
@@ -250,35 +250,36 @@ const TemplateForm = ({ initialTemplate = null }) => {
     }
   };
 
+  // Toggle preview mode
+  const togglePreview = () => {
+    setPreviewMode(!previewMode);
+  };
+
   // Separate parameters by type
   const dynamicParameters = formData.parameters.filter((p) => p.isDynamic);
   const staticParameters = formData.parameters.filter((p) => !p.isDynamic);
 
   return (
-    <Card>
-      <Card.Content>
+    <Card className="shadow-sm">
+      <div className="p-6">
         <form onSubmit={handleSubmit}>
-          <h2 className="text-xl font-semibold mb-4">
-            {formData.id ? "Edit Template" : "Create New Template"}
-          </h2>
-
           {/* Form error message */}
           {formError && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+            <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
               <p>{formError}</p>
             </div>
           )}
 
           {/* Submit success message */}
           {submitSuccess && (
-            <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
-              <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+            <div className="mb-6 p-4 bg-green-50 text-green-700 rounded-md flex items-start">
+              <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
               <p>Template saved successfully!</p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Template name */}
             <div>
               <label
@@ -287,13 +288,12 @@ const TemplateForm = ({ initialTemplate = null }) => {
               >
                 Template Name <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter template name"
                 required
               />
             </div>
@@ -311,7 +311,7 @@ const TemplateForm = ({ initialTemplate = null }) => {
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {categories.map((category) => (
                   <option key={category.value} value={category.value}>
@@ -323,26 +323,24 @@ const TemplateForm = ({ initialTemplate = null }) => {
           </div>
 
           {/* Template description */}
-          <div className="mb-4">
+          <div className="mb-6">
             <label
               htmlFor="description"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
               Description
             </label>
-            <input
-              type="text"
+            <Input
               id="description"
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Brief description of the template (optional)"
             />
           </div>
 
           {/* Template content */}
-          <div className="mb-4">
+          <div className="mb-6">
             <div className="flex justify-between items-center mb-1">
               <label
                 htmlFor="content"
@@ -350,44 +348,66 @@ const TemplateForm = ({ initialTemplate = null }) => {
               >
                 Message Content <span className="text-red-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleExtractParams}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                Extract Parameters
-              </button>
+              <div className="flex space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExtractParams}
+                >
+                  Extract Parameters
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={togglePreview}
+                >
+                  {previewMode ? (
+                    <>
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Preview
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <textarea
-              id="content"
-              name="content"
-              value={formData.content}
-              onChange={handleContentChange}
-              rows={8}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-              placeholder="Type your message here. Use {parameter_name} for dynamic content."
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Use {"{parameter_name}"} to define parameters. Examples:
-              <br />- {"{name}"} for recipient name (auto-filled from contact
-              data)
-              <br />- {"{video_link}"}, {"{product_price}"}, etc. for static
-              content
-            </p>
-          </div>
 
-          {/* Message preview */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
-              Message Preview
-            </h3>
-            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: preview }}
+            {previewMode ? (
+              <div className="border border-gray-300 rounded-md p-4 bg-gray-50 min-h-[240px]">
+                <div
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: preview }}
+                />
+              </div>
+            ) : (
+              <textarea
+                id="content"
+                name="content"
+                value={formData.content}
+                onChange={handleContentChange}
+                rows={8}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                placeholder="Type your message here. Use {parameter_name} for dynamic content."
+                required
               />
+            )}
+
+            <div className="mt-1 flex space-x-1 text-xs text-gray-500">
+              <Info className="h-4 w-4" />
+              <p>
+                Use {"{parameter_name}"} for dynamic content. Example: Hi{" "}
+                {"{name}"}, your order {"{order_id}"} has been processed.
+              </p>
             </div>
+            <p className="mt-1 text-xs text-gray-500 ml-5">
+              Use <strong>**bold text**</strong> for emphasis.
+            </p>
           </div>
 
           {/* Dynamic Parameters Section */}
@@ -408,22 +428,28 @@ const TemplateForm = ({ initialTemplate = null }) => {
                   information when sending messages.
                 </p>
               </div>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {dynamicParameters.map((param, index) => (
                   <div
-                    key={index}
+                    key={param.id}
                     className="border border-blue-200 rounded-md p-3 bg-blue-50"
                   >
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-blue-800">
                         {param.name}
                       </span>
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-800"
+                      >
                         Auto-filled
-                      </span>
+                      </Badge>
                     </div>
                     <p className="text-xs text-blue-600 mt-1">
-                      Parameter ID: <code>{param.id}</code>
+                      Parameter ID:{" "}
+                      <code className="bg-blue-100 px-1 rounded">
+                        {param.id}
+                      </code>
                     </p>
                     <p className="text-xs text-blue-600">
                       Source: {param.source || `contact.${param.id}`}
@@ -434,20 +460,22 @@ const TemplateForm = ({ initialTemplate = null }) => {
             </div>
           )}
 
-          {/* Static Parameters (User-filled) */}
+          {/* Static Parameters Section */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-medium text-gray-700">
                 Static Parameters ({staticParameters.length})
               </h3>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleAddParameter}
-                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                className="flex items-center"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add Parameter
-              </button>
+              </Button>
             </div>
 
             {staticParameters.length === 0 ? (
@@ -456,43 +484,166 @@ const TemplateForm = ({ initialTemplate = null }) => {
                 button or add manually.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {staticParameters.map((param, index) => (
-                  <TemplateParameter
-                    key={index}
-                    parameter={param}
-                    index={index}
-                    onChange={handleParamChange}
-                    onRemove={handleRemoveParameter}
-                    paramTypes={paramTypes}
-                  />
+                  <div
+                    key={param.id}
+                    className="border border-gray-200 rounded-md p-4 bg-gray-50"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        Parameter #{index + 1}
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveParameter(index)}
+                        className="text-red-500 hover:text-red-700 p-1 h-auto"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          htmlFor={`param-id-${index}`}
+                          className="block text-xs font-medium text-gray-700 mb-1"
+                        >
+                          Parameter ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id={`param-id-${index}`}
+                          value={param.id}
+                          onChange={(e) =>
+                            handleParamChange(index, "id", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`param-name-${index}`}
+                          className="block text-xs font-medium text-gray-700 mb-1"
+                        >
+                          Display Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id={`param-name-${index}`}
+                          value={param.name}
+                          onChange={(e) =>
+                            handleParamChange(index, "name", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                      <div>
+                        <label
+                          htmlFor={`param-type-${index}`}
+                          className="block text-xs font-medium text-gray-700 mb-1"
+                        >
+                          Type
+                        </label>
+                        <select
+                          id={`param-type-${index}`}
+                          value={param.type}
+                          onChange={(e) =>
+                            handleParamChange(index, "type", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                        >
+                          {paramTypes.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`param-placeholder-${index}`}
+                          className="block text-xs font-medium text-gray-700 mb-1"
+                        >
+                          Placeholder
+                        </label>
+                        <input
+                          type="text"
+                          id={`param-placeholder-${index}`}
+                          value={param.placeholder || ""}
+                          onChange={(e) =>
+                            handleParamChange(
+                              index,
+                              "placeholder",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={param.required}
+                            onChange={(e) =>
+                              handleParamChange(
+                                index,
+                                "required",
+                                e.target.checked
+                              )
+                            }
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">
+                            Required field
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
           {/* Form buttons */}
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 border-t border-gray-200 pt-6">
             <Button
               type="button"
-              variant="secondary"
-              onClick={() => router.back()}
+              variant="outline"
+              onClick={() => router.push("/messages/templates")}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              variant="primary"
               disabled={isSubmitting}
-              isLoading={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Save Template
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Template
+                </>
+              )}
             </Button>
           </div>
         </form>
-      </Card.Content>
+      </div>
     </Card>
   );
 };

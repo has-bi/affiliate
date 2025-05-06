@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../../../../components/organisms/Header";
-import Card from "../../../../../components/atoms/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import ScheduleForm from "../../../../../components/molecules/ScheduleForm";
 import { AlertCircle } from "lucide-react";
 
@@ -87,7 +87,7 @@ export default function EditSchedulePage({ params }) {
           </div>
 
           <Card>
-            <Card.Content>
+            <CardContent>
               {isLoading ? (
                 <div className="text-center py-10">
                   <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -112,7 +112,7 @@ export default function EditSchedulePage({ params }) {
                   <p className="text-gray-500">Schedule not found</p>
                 </div>
               )}
-            </Card.Content>
+            </CardContent>
           </Card>
         </div>
       </main>

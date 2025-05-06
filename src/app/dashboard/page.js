@@ -160,7 +160,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             {
-              href: "/broadcasts",
+              href: "/messages/broadcast",
               icon: Send,
               title: "Send Broadcast",
               desc: "Send messages to multiple contacts",
