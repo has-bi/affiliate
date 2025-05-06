@@ -266,28 +266,6 @@ export function useTemplate(initialTemplates = []) {
   );
 
   /**
-   * Duplicate a template
-   */
-  const duplicateTemplate = useCallback(
-    async (id) => {
-      const template = templates.find((t) => t.id === id);
-      if (!template) return null;
-
-      const duplicateData = {
-        ...template,
-        name: `${template.name} (Copy)`,
-        // Remove fields that shouldn't be duplicated
-        id: undefined,
-        createdAt: undefined,
-        updatedAt: undefined,
-      };
-
-      return await createTemplate(duplicateData);
-    },
-    [templates, createTemplate]
-  );
-
-  /**
    * Export templates to JSON file
    */
   const exportTemplates = useCallback(() => {
@@ -394,7 +372,6 @@ export function useTemplate(initialTemplates = []) {
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    duplicateTemplate,
     exportTemplates,
     importTemplates,
     setSearchTerm,
