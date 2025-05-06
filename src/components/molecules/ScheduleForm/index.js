@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTemplate } from "../../../hooks/useTemplate";
-import RepeatScheduler from "@/components/molecules/FriendlyScheduler";
+import RepeatScheduler from "@/components/molecules/RepeatScheduler";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import {
   Calendar,
@@ -55,18 +55,6 @@ const ScheduleForm = ({
   const [errors, setErrors] = useState({});
   const [activeStep, setActiveStep] = useState("template");
   const [previewMode, setPreviewMode] = useState(false);
-
-  // Common cron expressions for easy selection
-  const commonCronExpressions = [
-    { label: "Every day at 9 AM", value: "0 9 * * *" },
-    { label: "Every Monday at 9 AM", value: "0 9 * * 1" },
-    { label: "First day of month at 9 AM", value: "0 9 1 * *" },
-    { label: "Every hour (on the hour)", value: "0 * * * *" },
-    {
-      label: "Every Monday, Wednesday, Friday at 1 PM",
-      value: "0 13 * * 1,3,5",
-    },
-  ];
 
   // Load initial data if editing
   useEffect(() => {
@@ -126,19 +114,6 @@ const ScheduleForm = ({
       ...prev,
       scheduleConfig: { ...prev.scheduleConfig, [name]: value },
     }));
-  };
-
-  const handleCronPresetChange = (e) => {
-    const value = e.target.value;
-    if (value) {
-      setFormData((prev) => ({
-        ...prev,
-        scheduleConfig: {
-          ...prev.scheduleConfig,
-          cronExpression: value,
-        },
-      }));
-    }
   };
 
   // Toggle preview mode for template content
@@ -329,17 +304,9 @@ const ScheduleForm = ({
 
       return `One time on ${new Date(`${date}T${time}`).toLocaleString()}`;
     } else {
-      // Try to format recurring schedule in human-readable format
-      const expr = formData.scheduleConfig.cronExpression;
-
-      // Very simple cron description (this could be improved with a library)
-      for (const preset of commonCronExpressions) {
-        if (preset.value === expr) {
-          return preset.label;
-        }
-      }
-
-      return `Recurring: ${expr}`;
+      // For recurring schedules, we'll rely on the cron expression
+      // The RepeatScheduler component will provide a human-readable description
+      return `Recurring: ${formData.scheduleConfig.cronExpression}`;
     }
   };
 
@@ -669,71 +636,18 @@ or 6281234567890, 6289876543210"
             </div>
           ) : (
             <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="cronExpression"
-                  className={`block text-sm font-medium ${
-                    errors.cronExpression ? "text-red-700" : "text-gray-700"
-                  } mb-1`}
-                >
-                  Cron Expression <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                  <div className="md:col-span-2">
-                    <input
-                      type="text"
-                      id="cronExpression"
-                      name="cronExpression"
-                      value={formData.scheduleConfig.cronExpression}
-                      onChange={(e) => {
-                        // Automatically replace "star" with "*"
-                        const cleanedValue = e.target.value.replace(
-                          /\bstar\b/g,
-                          "*"
-                        );
-                        handleScheduleConfigChange({
-                          target: {
-                            name: "cronExpression",
-                            value: cleanedValue,
-                          },
-                        });
-                      }}
-                      className={`w-full px-3 py-2 border ${
-                        errors.cronExpression
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      } rounded-md`}
-                      placeholder="e.g., 0 9 * * 1 (Every Monday at 9 AM)"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <select
-                      onChange={handleCronPresetChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    >
-                      <option value="">Select preset</option>
-                      {commonCronExpressions.map((preset, index) => (
-                        <option key={index} value={preset.value}>
-                          {preset.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                {errors.cronExpression && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.cronExpression}
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Format: minute hour day-of-month month day-of-week
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Use asterisk (*) for "every". Example: "50-59/3 10 * * *" runs
-                  every 3 minutes from :50 to :59 at 10 AM.
-                </p>
-              </div>
+              {/* Replace cron expression input with RepeatScheduler */}
+              <RepeatScheduler
+                initialCron={formData.scheduleConfig.cronExpression}
+                onChange={(cronExpression) => {
+                  handleScheduleConfigChange({
+                    target: {
+                      name: "cronExpression",
+                      value: cronExpression,
+                    },
+                  });
+                }}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

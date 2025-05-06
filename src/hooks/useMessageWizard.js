@@ -211,7 +211,7 @@ export function useMessageWizard(templates = [], initialTemplateId = null) {
         }
       } else if (scheduleConfig.type === "recurring") {
         if (!scheduleConfig.cronExpression) {
-          setError("Masukkan ekspresi cron untuk jadwal berulang");
+          setError("Silahkan pilih jadwal berulang");
           return false;
         }
 

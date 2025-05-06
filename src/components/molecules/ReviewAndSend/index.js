@@ -1,3 +1,4 @@
+// src/components/molecules/ReviewAndSend/index.js
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Calendar, Loader2, AlertCircle } from "lucide-react";
@@ -101,7 +102,7 @@ const Step4 = ({
         if (!safeScheduleConfig.cronExpression) {
           return {
             isValid: false,
-            error: "Masukkan ekspresi cron untuk jadwal berulang",
+            error: "Tidak ada jadwal berulang yang dipilih",
           };
         }
 
@@ -180,6 +181,52 @@ const Step4 = ({
     handleSchedule(e);
   };
 
+  // Helper function to get a human-readable description of the schedule
+  const getScheduleDescription = () => {
+    if (isScheduling) {
+      if (safeScheduleConfig.type === "once") {
+        const date = safeScheduleConfig.date;
+        const time = safeScheduleConfig.time || "00:00";
+
+        if (!date) return "No schedule set";
+
+        const dateObj = new Date(`${date}T${time}`);
+        return `One time on ${dateObj.toLocaleString()}`;
+      } else if (safeScheduleConfig.type === "recurring") {
+        // For recurring schedules, we'll display the cron expression
+        // and rely on the RepeatScheduler for the human-readable description
+        const cronExpression = safeScheduleConfig.cronExpression;
+
+        if (cronExpression) {
+          // Try to make some common patterns more readable
+          if (cronExpression === "0 9 * * *") {
+            return "Every day at 9:00 AM";
+          } else if (cronExpression === "0 9 * * 1") {
+            return "Every Monday at 9:00 AM";
+          } else if (cronExpression.match(/^0 \d+ \* \* \d+$/)) {
+            const [_, hour, __, ___, day] = cronExpression.split(" ");
+            const days = [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ];
+            return `Every ${days[day]} at ${hour}:00 AM`;
+          }
+
+          return `Recurring: ${cronExpression}`;
+        }
+
+        return "No recurring schedule set";
+      }
+    }
+
+    return "Send immediately";
+  };
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium text-gray-700">
@@ -246,143 +293,28 @@ const Step4 = ({
           </div>
         )}
 
+        {/* Display schedule summary */}
         {isScheduling && (
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
-            {/* Schedule Type */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipe Jadwal
-              </label>
-              <div className="flex space-x-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="once"
-                    checked={safeScheduleConfig.type === "once"}
-                    onChange={handleScheduleConfigChange}
-                    className="h-4 w-4 text-indigo-600"
-                  />
-                  <span className="ml-2">Satu Kali</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="recurring"
-                    checked={safeScheduleConfig.type === "recurring"}
-                    onChange={handleScheduleConfigChange}
-                    className="h-4 w-4 text-indigo-600"
-                  />
-                  <span className="ml-2">Berulang</span>
-                </label>
-              </div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Jadwal Pengiriman:
+            </h4>
+            <div className="flex items-center text-gray-600">
+              <Calendar className="h-5 w-5 mr-2" />
+              <span>{getScheduleDescription()}</span>
             </div>
 
-            {/* Schedule Form */}
-            {safeScheduleConfig.type === "once" ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="date"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    id="date"
-                    name="date"
-                    value={safeScheduleConfig.date || ""}
-                    onChange={handleScheduleConfigChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min={new Date().toISOString().split("T")[0]}
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="time"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Waktu
-                  </label>
-                  <input
-                    type="time"
-                    id="time"
-                    name="time"
-                    value={safeScheduleConfig.time || "09:00"}
-                    onChange={handleScheduleConfigChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
+            {safeScheduleConfig.startDate && (
+              <div className="mt-2 text-sm text-gray-600">
+                <span className="font-medium">Tanggal mulai:</span>{" "}
+                {new Date(safeScheduleConfig.startDate).toLocaleDateString()}
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="cronExpression"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Cron Expression
-                  </label>
-                  <input
-                    type="text"
-                    id="cronExpression"
-                    name="cronExpression"
-                    value={safeScheduleConfig.cronExpression || "0 9 * * 1"}
-                    onChange={handleScheduleConfigChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="0 9 * * 1"
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Format: menit jam hari-bulan bulan hari-minggu (0 9 * * 1 =
-                    Setiap Senin jam 9 pagi)
-                  </p>
-                </div>
+            )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="startDate"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Tanggal Mulai
-                    </label>
-                    <input
-                      type="date"
-                      id="startDate"
-                      name="startDate"
-                      value={safeScheduleConfig.startDate || ""}
-                      onChange={handleScheduleConfigChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      min={new Date().toISOString().split("T")[0]}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="endDate"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Tanggal Selesai (Opsional)
-                    </label>
-                    <input
-                      type="date"
-                      id="endDate"
-                      name="endDate"
-                      value={safeScheduleConfig.endDate || ""}
-                      onChange={handleScheduleConfigChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      min={
-                        safeScheduleConfig.startDate ||
-                        new Date().toISOString().split("T")[0]
-                      }
-                    />
-                  </div>
-                </div>
+            {safeScheduleConfig.endDate && (
+              <div className="mt-1 text-sm text-gray-600">
+                <span className="font-medium">Tanggal selesai:</span>{" "}
+                {new Date(safeScheduleConfig.endDate).toLocaleDateString()}
               </div>
             )}
           </div>
