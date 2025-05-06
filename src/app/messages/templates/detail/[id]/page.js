@@ -47,17 +47,6 @@ export default function TemplateDetailPage({ params }) {
     router.push(`/messages/templates/edit/${id}`);
   };
 
-  const handleDuplicate = async () => {
-    try {
-      const newTemplate = await duplicateTemplate(id);
-      if (newTemplate) {
-        router.push(`/messages/templates/detail/${newTemplate.id}`);
-      }
-    } catch (error) {
-      console.error("Error duplicating template:", error);
-    }
-  };
-
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this template?")) {
       setIsDeleting(true);
