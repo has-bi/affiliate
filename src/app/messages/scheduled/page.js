@@ -4,7 +4,7 @@ import ScheduleManager from "../../../components/organisms/ScheduleManager";
 import Header from "../../../components/organisms/Header";
 
 export const metadata = {
-  title: "Scheduled Messages | WAHA Control Panel",
+  title: "Scheduled Messages | Youvit Affiliate",
   description: "Manage scheduled WhatsApp messages",
 };
 

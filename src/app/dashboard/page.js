@@ -166,13 +166,13 @@ export default function DashboardPage() {
               desc: "Send messages to multiple contacts",
             },
             {
-              href: "/templates/new",
+              href: "/messages/templates/new",
               icon: FileText,
               title: "Create Template",
               desc: "Design a new message template",
             },
             {
-              href: "/schedules/new",
+              href: "/messages/scheduled",
               icon: Clock,
               title: "Schedule Message",
               desc: "Set up automated messaging",
