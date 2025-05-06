@@ -68,13 +68,52 @@ const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
     });
   };
 
-  // Handle template deletion with confirmation
+  // In src/components/organisms/TemplateManager/index.js
   const handleDeleteTemplate = async (e, id) => {
     e.stopPropagation();
     e.preventDefault();
 
-    if (window.confirm("Are you sure you want to delete this template?")) {
-      await deleteTemplate(id);
+    // Always ask for confirmation first
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this template? This action cannot be undone."
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`/api/templates/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+
+        // If there are dependent schedules, ask for additional confirmation
+        if (data.error?.includes("used by scheduled messages")) {
+          const confirmDeleteWithSchedules = window.confirm(
+            "This template is used by active schedules. Deleting it will also delete all associated schedules. Do you want to continue?"
+          );
+
+          if (!confirmDeleteWithSchedules) return;
+
+          // If confirmed, perform the forced delete
+          const forceResponse = await fetch(`/api/templates/${id}?force=true`, {
+            method: "DELETE",
+          });
+
+          if (!forceResponse.ok) {
+            throw new Error("Failed to delete template and its schedules");
+          }
+        } else {
+          throw new Error(data.error || "Failed to delete template");
+        }
+      }
+
+      // Remove template from UI
+      deleteTemplate(id);
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
