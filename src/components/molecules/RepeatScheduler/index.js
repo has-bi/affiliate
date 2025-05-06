@@ -109,26 +109,45 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
 
   // Convert UI selections to cron expression
   const generateCronExpression = () => {
+    // Extract exact hours and minutes to ensure precision
     const [hours, minutes] = getTimeComponents();
+
+    // Ensure hours and minutes are properly formatted as integers
+    const formattedMinutes = parseInt(minutes, 10);
+    const formattedHours = parseInt(hours, 10);
+
+    // Validate time components to prevent errors
+    if (
+      isNaN(formattedHours) ||
+      isNaN(formattedMinutes) ||
+      formattedHours < 0 ||
+      formattedHours > 23 ||
+      formattedMinutes < 0 ||
+      formattedMinutes > 59
+    ) {
+      console.error("Invalid time components:", hours, minutes);
+      return "0 0 * * *"; // Default fallback to midnight
+    }
 
     switch (frequency) {
       case "daily":
-        return `${minutes} ${hours} * * *`;
+        // Format: minute hour * * *
+        return `${formattedMinutes} ${formattedHours} * * *`;
 
       case "weekly":
         const weekdays = weeklySettings.days.join(",");
-        return `${minutes} ${hours} * * ${weekdays}`;
+        return `${formattedMinutes} ${formattedHours} * * ${weekdays}`;
 
       case "monthly":
         if (monthlySettings.type === "dayOfMonth") {
-          return `${minutes} ${hours} ${monthlySettings.dayOfMonth} * *`;
+          return `${formattedMinutes} ${formattedHours} ${monthlySettings.dayOfMonth} * *`;
         } else {
           // Day of week in specific week of month
-          return `${minutes} ${hours} * * ${monthlySettings.dayOfWeek}#${monthlySettings.weekOfMonth}`;
+          return `${formattedMinutes} ${formattedHours} * * ${monthlySettings.dayOfWeek}#${monthlySettings.weekOfMonth}`;
         }
 
       default:
-        return "0 9 * * *"; // Default to daily at 9 AM
+        return "0 0 * * *"; // Default fallback to daily at midnight
     }
   };
 
