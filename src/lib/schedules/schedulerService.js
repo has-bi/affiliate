@@ -15,13 +15,30 @@ import { formatPhoneNumber } from "@/lib/utils";
 class SchedulerService {
   constructor() {
     this.jobs = new Map();
+    this.executionLocks = new Map();
     this.wahaApiUrl =
       process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
+
+    // Log time zone information for debugging
+    console.log(
+      "Server timezone:",
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    );
+    console.log("Current server time:", new Date().toISOString());
+    console.log("Local time:", new Date().toLocaleString());
   }
 
   // Initialize scheduler and load all active jobs
   async init() {
     console.log("Initializing scheduler service...");
+
+    // Clear any existing jobs and locks to prevent duplicates
+    this.jobs.forEach((job) => job.cancel());
+    this.jobs.clear();
+    this.executionLocks.clear();
+    console.log("Cleared all existing jobs and locks");
+
+    // Log timezone info
     console.log(
       "Server timezone:",
       Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -51,17 +68,79 @@ class SchedulerService {
       `Loading ${activeSchedules.length} active schedule(s) from database`
     );
 
-    activeSchedules.forEach((scheduleData) => {
-      this.scheduleJob(scheduleData);
-    });
+    // Process each schedule sequentially to avoid race conditions
+    for (const scheduleData of activeSchedules) {
+      await this.scheduleJob(scheduleData);
+    }
   }
 
-  // Schedule a single job
-  scheduleJob(scheduleData) {
-    // Cancel any existing job for this schedule
-    if (this.jobs.has(scheduleData.id)) {
-      this.cancelJob(scheduleData.id);
+  // Validate cron expression to ensure proper format
+  validateCronExpression(cronExpression, scheduleType) {
+    const parts = cronExpression.split(" ");
+
+    if (parts.length !== 5) {
+      console.error(`Invalid cron parts length: ${parts.length}, expected 5`);
+      return false;
     }
+
+    // For daily schedules at specific time
+    if (scheduleType === "daily") {
+      const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+      // Minute and hour should be specific numbers
+      // Day of month, month, and day of week should be * for daily
+      const isValid =
+        /^\d+$/.test(minute) &&
+        /^\d+$/.test(hour) &&
+        dayOfMonth === "*" &&
+        month === "*" &&
+        dayOfWeek === "*";
+
+      if (!isValid) {
+        console.error(`Invalid daily cron format: ${cronExpression}`);
+        console.error(`Expected format for daily: MM HH * * *`);
+      }
+
+      return isValid;
+    }
+
+    return true; // For other types
+  }
+
+  // Ensure only one job exists per schedule
+  ensureSingleJob(scheduleId, job) {
+    // Cancel any existing job first
+    this.cancelJob(scheduleId);
+
+    // Double-check no job exists
+    if (this.jobs.has(scheduleId)) {
+      console.warn(
+        `Job for schedule ${scheduleId} still exists after cancellation, forcing removal`
+      );
+      this.jobs.delete(scheduleId);
+    }
+
+    // Store the new job
+    this.jobs.set(scheduleId, job);
+
+    // Verify next run time
+    const nextRun = job.nextInvocation();
+    console.log(
+      `Job for schedule ${scheduleId} registered with next run: ${
+        nextRun?.toISOString() || "unknown"
+      }`
+    );
+
+    return job;
+  }
+
+  // Schedule a single job with proper error handling and validation
+  async scheduleJob(scheduleData) {
+    // First, aggressively cancel any existing job
+    this.cancelJob(scheduleData.id);
+
+    // Also clear any execution locks that might be lingering
+    this.executionLocks.delete(scheduleData.id);
 
     try {
       let job;
@@ -69,33 +148,78 @@ class SchedulerService {
         `\n======= Creating job for schedule ${scheduleData.id} =======`
       );
       console.log(`Schedule type: ${scheduleData.scheduleType}`);
-      console.log(`Schedule config:`, scheduleData.scheduleConfig);
+      console.log(
+        `Schedule config:`,
+        JSON.stringify(scheduleData.scheduleConfig, null, 2)
+      );
 
       if (scheduleData.scheduleType === "once") {
         // One-time schedule
         const date = new Date(scheduleData.scheduleConfig.date);
+
+        // Validate date
+        if (isNaN(date.getTime())) {
+          throw new Error(`Invalid date: ${scheduleData.scheduleConfig.date}`);
+        }
 
         // Skip if date is in the past
         if (date <= new Date()) {
           console.log(
             `Schedule ${scheduleData.id} date is in the past, skipping`
           );
-          updateSchedule(scheduleData.id, { status: "completed" });
+          await updateSchedule(scheduleData.id, { status: "completed" });
           return;
         }
 
-        job = schedule.scheduleJob(date, () => {
-          this.executeSchedule(scheduleData.id);
-        });
+        // Create one-time job with unique handler
+        console.log(
+          `Creating one-time job for: ${date.toISOString()} (${date.toLocaleString()})`
+        );
 
-        console.log(`One-time job scheduled for: ${date.toISOString()}`);
+        // Use named function for better debugging
+        const executeOnce = () => {
+          const executionTime = new Date();
+          console.log(
+            `\n>>> One-time job executed at ${executionTime.toISOString()} for schedule ${
+              scheduleData.id
+            } <<<`
+          );
+
+          // Execute once then mark as completed
+          this.executeSchedule(scheduleData.id);
+
+          // Immediately cancel this job to prevent duplicates
+          this.cancelJob(scheduleData.id);
+        };
+
+        job = schedule.scheduleJob(date, executeOnce);
+
+        if (!job) {
+          throw new Error("Failed to create one-time job");
+        }
       } else if (scheduleData.scheduleType === "recurring") {
         // Recurring schedule with cron expression
         const cronExpression = scheduleData.scheduleConfig.cronExpression;
-        const dayOfWeek = cronExpression.split(" ")[4]; // Get day-of-week part
 
-        // Create job scheduling options
-        const options = {};
+        // Validate cron expression
+        if (!cronExpression || cronExpression.split(" ").length !== 5) {
+          throw new Error(
+            `Invalid cron expression: "${cronExpression}" - must have 5 parts`
+          );
+        }
+
+        // Log cron parts for debugging
+        const cronParts = cronExpression.split(" ");
+        console.log(`Cron expression: ${cronExpression}`);
+        console.log(`Cron parts: [${cronParts.join(", ")}]`);
+
+        // Build options object for more control
+        const options = {
+          scheduled: true, // Ensure the job is scheduled
+          timezone: "Asia/Jakarta", // Use explicit timezone to avoid mismatches
+        };
+
+        // Add start/end dates if provided
         if (scheduleData.scheduleConfig.startDate) {
           options.start = new Date(scheduleData.scheduleConfig.startDate);
           console.log(`Start date: ${options.start.toISOString()}`);
@@ -105,77 +229,66 @@ class SchedulerService {
           console.log(`End date: ${options.end.toISOString()}`);
         }
 
-        // Create the recurring job with detailed error handling
-        try {
-          // Parse cron expression to validate
-          const cronParts = cronExpression.split(" ");
-          if (!cronExpression || cronParts.length !== 5) {
-            throw new Error(
-              `Invalid cron expression: "${cronExpression}" - must have 5 parts`
-            );
-          }
-
-          console.log(`Cron expression parts: [${cronParts.join(", ")}]`);
-
-          // Special handling for the nth weekday of month syntax (e.g., "1#3" for third Monday)
-          if (dayOfWeek.includes("#")) {
-            console.log(`Detected special day-of-week format: ${dayOfWeek}`);
-
-            // Extract the day of week and the occurrence number
-            const [dow, week] = dayOfWeek
-              .split("#")
-              .map((n) => parseInt(n, 10));
-
-            // Create a job that checks if it's the nth occurrence of that weekday in the month
-            job = schedule.scheduleJob(
-              cronParts.slice(0, 4).join(" ") + " " + dow,
-              function () {
-                const now = new Date();
-                const dayOfMonth = now.getDate();
-                const weekOfMonth = Math.ceil(dayOfMonth / 7);
-
-                // Only run if this is the nth occurrence specified
-                if (weekOfMonth === week) {
-                  console.log(
-                    `\n>>> Recurring job triggered for schedule ${
-                      scheduleData.id
-                    } at ${new Date().toISOString()} - nth weekday of month <<<`
-                  );
-                  this.executeSchedule(scheduleData.id);
-                }
-              }.bind(this)
-            );
-          } else {
-            job = schedule.scheduleJob(cronExpression, options, () => {
-              console.log(
-                `\n>>> Recurring job triggered for schedule ${
-                  scheduleData.id
-                } at ${new Date().toISOString()} <<<`
-              );
-              this.executeSchedule(scheduleData.id);
-            });
-          }
-
-          if (!job) {
-            throw new Error("Failed to create job, null returned");
-          }
-
-          console.log(`Recurring job created successfully`);
-        } catch (cronError) {
-          console.error(
-            `Error with cron expression "${cronExpression}":`,
-            cronError
+        // Create the job with a SINGLE handler function
+        const executeRecurring = () => {
+          // Log execution with timestamp for tracking
+          const executionTime = new Date();
+          console.log(
+            `\n>>> Recurring job executed at ${executionTime.toISOString()} for schedule ${
+              scheduleData.id
+            } <<<`
           );
-          updateSchedule(scheduleData.id, {
-            status: "failed",
-            error: `Invalid cron expression: ${cronError.message}`,
+
+          // Execute the schedule exactly once
+          this.executeSchedule(scheduleData.id);
+        };
+
+        // Special handling for the nth weekday of month syntax (e.g., "1#3" for third Monday)
+        const dayOfWeek = cronParts[4];
+        if (dayOfWeek.includes("#")) {
+          console.log(`Detected special day-of-week format: ${dayOfWeek}`);
+
+          // Extract day and week occurrence
+          const [dow, week] = dayOfWeek.split("#").map((n) => parseInt(n, 10));
+
+          // Create job with custom checker for nth weekday of month
+          // Use the standard cron format but with custom execution logic
+          const baseCron = cronParts.slice(0, 4).join(" ") + " " + dow;
+
+          job = schedule.scheduleJob(baseCron, options, function () {
+            const now = new Date();
+            const dayOfMonth = now.getDate();
+            const weekOfMonth = Math.ceil(dayOfMonth / 7);
+
+            // Only execute if this is the nth occurrence specified
+            if (weekOfMonth === week) {
+              console.log(
+                `\n>>> Special format job matches week ${week} of month <<<`
+              );
+              executeRecurring();
+            } else {
+              console.log(
+                `Skipping execution: Current week of month (${weekOfMonth}) doesn't match target (${week})`
+              );
+            }
           });
-          return;
+        } else {
+          // Create standard recurring job
+          console.log(
+            `Creating standard recurring job with cron: ${cronExpression}`
+          );
+          job = schedule.scheduleJob(cronExpression, options, executeRecurring);
+        }
+
+        if (!job) {
+          throw new Error("Failed to create recurring job");
         }
       }
 
+      // Store the job with safety check
       if (job) {
-        this.jobs.set(scheduleData.id, job);
+        // Use the utility method to ensure only one job
+        this.ensureSingleJob(scheduleData.id, job);
 
         // Calculate next run
         const nextRun = job.nextInvocation();
@@ -191,7 +304,7 @@ class SchedulerService {
         }
 
         // Update schedule with active status and next run date
-        updateSchedule(scheduleData.id, {
+        await updateSchedule(scheduleData.id, {
           status: "active",
           nextRun: nextRun ? nextRun.toISOString() : null,
         });
@@ -199,15 +312,11 @@ class SchedulerService {
         console.log(`Schedule ${scheduleData.id} created successfully.`);
         console.log(`=================================================\n`);
       } else {
-        console.error(`Failed to create job for schedule ${scheduleData.id}`);
-        updateSchedule(scheduleData.id, {
-          status: "failed",
-          error: "Failed to create schedule job",
-        });
+        throw new Error("Job creation returned null or undefined");
       }
     } catch (error) {
       console.error(`Error scheduling job ${scheduleData.id}:`, error);
-      updateSchedule(scheduleData.id, {
+      await updateSchedule(scheduleData.id, {
         status: "failed",
         error: error.message || "Unknown error",
       });
@@ -226,14 +335,30 @@ class SchedulerService {
     return false;
   }
 
-  // Execute a scheduled job
+  // Execute a scheduled job with duplicate prevention
   async executeSchedule(scheduleId) {
-    console.log(`\n=========== EXECUTING SCHEDULE ${scheduleId} ===========`);
-    console.log(`Current time: ${new Date().toISOString()}`);
-    console.log(`Local time: ${new Date().toLocaleString()}`);
+    // Use a unique execution ID for each run to track in logs
+    const executionId = `${scheduleId}-${Date.now()}`;
+
+    // Check if already running
+    if (this.executionLocks.get(scheduleId)) {
+      console.warn(
+        `[DUPLICATE] Execution prevented for schedule ${scheduleId} (${executionId}) - already running`
+      );
+      return;
+    }
+
+    // Set lock and track start time
+    const startTime = new Date();
+    this.executionLocks.set(scheduleId, startTime);
+
+    console.log(
+      `\n=========== EXECUTING SCHEDULE ${scheduleId} (${executionId}) ===========`
+    );
+    console.log(`Execution started at: ${startTime.toISOString()}`);
 
     try {
-      // Get fresh schedule data - need to await since it's from database
+      // Get fresh schedule data
       const scheduleData = await getScheduleById(scheduleId);
 
       if (!scheduleData) {
@@ -245,7 +370,16 @@ class SchedulerService {
       console.log(`Template ID: ${scheduleData.templateId}`);
       console.log(`Recipients:`, scheduleData.recipients);
 
-      // Get template data - need to await since it's from database
+      // Add execution tracking to history
+      await addScheduleHistory(scheduleId, {
+        success: 0,
+        failed: 0,
+        details: [
+          { status: "execution_started", time: startTime.toISOString() },
+        ],
+      });
+
+      // Get template data
       console.log(`Fetching template...`);
       const template = await getTemplate(scheduleData.templateId);
 
@@ -328,27 +462,22 @@ class SchedulerService {
               console.log(`Formatted chat ID: ${formattedChatId}`);
 
               // Send message directly to WAHA API
-              const wahaApiUrl =
-                process.env.NEXT_PUBLIC_WAHA_API_URL ||
-                "https://wabot.youvit.co.id";
-
-              const wahaSessionName =
-                process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi-test";
-
               const requestBody = {
                 chatId: formattedChatId,
                 text: message,
                 session: scheduleData.sessionName,
               };
 
-              console.log(`Making API request to ${wahaApiUrl}/api/sendText`);
+              console.log(
+                `Making API request to ${this.wahaApiUrl}/api/sendText`
+              );
               console.log(
                 `Request body:`,
                 JSON.stringify(requestBody, null, 2)
               );
               console.log(`Session name: ${scheduleData.sessionName}`);
 
-              const response = await fetch(`${wahaApiUrl}/api/sendText`, {
+              const response = await fetch(`${this.wahaApiUrl}/api/sendText`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -462,7 +591,7 @@ class SchedulerService {
             `One-time schedule ${scheduleId} completed, marking as complete`
           );
           await updateSchedule(scheduleId, { status: "completed" });
-          this.jobs.delete(scheduleId);
+          this.cancelJob(scheduleId);
         } else {
           // Update next run time for recurring schedules
           const job = this.jobs.get(scheduleId);
@@ -481,6 +610,7 @@ class SchedulerService {
               );
             }
             await updateSchedule(scheduleId, {
+              lastRun: startTime.toISOString(),
               nextRun: nextRun ? nextRun.toISOString() : null,
             });
           }
@@ -493,11 +623,26 @@ class SchedulerService {
         throw error; // Re-throw to be caught by outer try-catch
       }
     } catch (error) {
-      console.error(`[ERROR] Error in sending process:`, error);
+      console.error(`[ERROR] Error in execution:`, error);
       console.error(`Error type: ${error.constructor.name}`);
       console.error(`Error message: ${error.message}`);
       console.error(`Error stack:`, error.stack);
-      throw error;
+
+      // Update schedule status to reflect the error
+      await updateSchedule(scheduleId, {
+        status: "error",
+        error: error.message || "Unknown error during execution",
+      });
+    } finally {
+      // Release execution lock to allow future executions
+      const endTime = new Date();
+      const duration = endTime - startTime;
+      console.log(`Execution completed at: ${endTime.toISOString()}`);
+      console.log(`Execution duration: ${duration}ms`);
+      console.log(
+        `=========== EXECUTION COMPLETE ${scheduleId} (${executionId}) ===========\n`
+      );
+      this.executionLocks.delete(scheduleId);
     }
   }
 
@@ -505,10 +650,58 @@ class SchedulerService {
   async updateJob(scheduleId) {
     const scheduleData = await getScheduleById(scheduleId);
     if (scheduleData) {
-      this.scheduleJob(scheduleData);
+      await this.scheduleJob(scheduleData);
       return true;
     }
     return false;
+  }
+
+  // Check and execute any schedules that are due
+  async checkAndExecuteSchedules() {
+    console.log("Manually checking for schedules to execute...");
+
+    try {
+      // Get all active schedules
+      const schedules = await getAllSchedules();
+      const activeSchedules = schedules.filter((s) => s.status === "active");
+
+      console.log(`Found ${activeSchedules.length} active schedules`);
+
+      // Check each schedule to see if it should be executed
+      const now = new Date();
+
+      for (const schedule of activeSchedules) {
+        // Skip if no nextRun is defined
+        if (!schedule.nextRun) {
+          console.log(
+            `Schedule ${schedule.id} has no nextRun defined, skipping`
+          );
+          continue;
+        }
+
+        const nextRun = new Date(schedule.nextRun);
+
+        // If nextRun is in the past or very close to now (within 1 minute), execute it
+        if (nextRun <= new Date(now.getTime() + 60000)) {
+          console.log(
+            `Schedule ${
+              schedule.id
+            } is due for execution (nextRun: ${nextRun.toISOString()})`
+          );
+          await this.executeSchedule(schedule.id);
+        } else {
+          console.log(
+            `Schedule ${
+              schedule.id
+            } is not due yet (nextRun: ${nextRun.toISOString()})`
+          );
+        }
+      }
+
+      console.log("Schedule check complete");
+    } catch (error) {
+      console.error("Error checking and executing schedules:", error);
+    }
   }
 }
 
