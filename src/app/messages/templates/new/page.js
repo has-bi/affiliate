@@ -1,41 +1,37 @@
-// app/templates/new/page.js
-import { Suspense } from "react";
-import { MessageSquare, Plus } from "lucide-react";
-import TemplateForm from "@/components/organisms/TemplateForm";
+// src/app/messages/templates/new/page.js
+"use client";
 
-export const metadata = {
-  title: "Create New Template",
-  description: "Create a new message template",
-};
+import React from "react";
+import { useRouter } from "next/navigation";
+import PageLayout from "@/components/templates/PageLayout";
+import TemplateForm from "@/components/organisms/TemplateForm";
+import { ArrowLeft, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function NewTemplatePage() {
+  const router = useRouter();
+
+  // Define page actions
+  const pageActions = (
+    <Button
+      variant="secondary"
+      onClick={() => router.push("/messages/templates")}
+      className="flex items-center"
+    >
+      <ArrowLeft className="h-4 w-4 mr-1" />
+      Back to Templates
+    </Button>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-green-600 text-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center">
-            <MessageSquare className="h-8 w-8 mr-3" />
-            <div>
-              <h1 className="text-2xl font-bold">Create New Template</h1>
-              <p className="text-green-100 text-sm">
-                Create a new message template for your campaigns
-              </p>
-            </div>
-          </div>
-        </div>
+    <PageLayout
+      title="Create New Template"
+      description="Create a new message template for your WhatsApp campaigns"
+      actions={pageActions}
+    >
+      <div className="space-y-6">
+        <TemplateForm />
       </div>
-
-      <main className="container mx-auto px-4 py-6">
-        <Suspense fallback={<div>Loading form...</div>}>
-          <TemplateForm />
-        </Suspense>
-      </main>
-
-      <footer className="bg-white border-t border-gray-200 py-4">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-          Message Template Manager &#169; {new Date().getFullYear()}
-        </div>
-      </footer>
-    </div>
+    </PageLayout>
   );
 }

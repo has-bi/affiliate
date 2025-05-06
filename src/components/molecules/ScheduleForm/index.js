@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTemplate } from "../../../hooks/useTemplate";
-import { useSession } from "../../../hooks/useWhatsApp";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 import {
   Calendar,
   Clock,
@@ -35,7 +35,7 @@ const ScheduleForm = ({
     getFinalMessage,
   } = useTemplate();
 
-  const { sessions } = useSession();
+  const { sessions } = useWhatsApp();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -500,15 +500,18 @@ const ScheduleForm = ({
                 variant="secondary"
                 size="sm"
                 onClick={togglePreview}
-                leftIcon={
-                  previewMode ? (
-                    <Edit className="h-4 w-4 mr-1" />
-                  ) : (
-                    <Eye className="h-4 w-4 mr-1" />
-                  )
-                }
               >
-                {previewMode ? "Edit" : "Preview"}
+                {previewMode ? (
+                  <>
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Preview
+                  </>
+                )}
               </Button>
             </div>
 
