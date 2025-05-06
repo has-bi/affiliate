@@ -319,14 +319,6 @@ export default function TemplateDetailPage({ params }) {
                 {isDeleting ? "Menghapus..." : "Hapus Template"}
               </Button>
               <Button
-                variant="secondary"
-                onClick={handleDuplicate}
-                className="flex items-center"
-              >
-                <Copy className="h-4 w-4 mr-1" />
-                Duplikasi
-              </Button>
-              <Button
                 variant="primary"
                 onClick={handleUseTemplate}
                 className="flex items-center"
