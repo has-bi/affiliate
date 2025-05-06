@@ -78,17 +78,6 @@ const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
     }
   };
 
-  // Handle template duplication
-  const handleDuplicateTemplate = async (e, id) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    const newTemplate = await duplicateTemplate(id);
-    if (newTemplate) {
-      router.push(`/messages/templates/edit/${newTemplate.id}`);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Search and filter bar */}
@@ -216,15 +205,6 @@ const TemplateManager = ({ initialTemplates = [], selectedId = null }) => {
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleDuplicateTemplate(e, template.id)}
-                    className="flex-1"
-                  >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copy
                   </Button>
                   <Button
                     variant="ghost"
