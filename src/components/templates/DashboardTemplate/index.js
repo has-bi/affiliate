@@ -4,6 +4,7 @@
 import React from "react";
 import Header from "../../organisms/Header";
 import SessionManager from "../../organisms/SessionManager";
+import Link from "next/link";
 
 const DashboardTemplate = () => {
   return (
