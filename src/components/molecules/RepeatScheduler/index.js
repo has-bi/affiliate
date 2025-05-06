@@ -143,24 +143,28 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
 
   return (
     <div className="space-y-4">
-      {/* Frequency Selection */}
+      {/* Frequency Selection - Simplified with buttons */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Send messages:
+          Kirim setiap:
         </label>
         <div className="flex space-x-2">
-          {["daily", "weekly", "monthly"].map((option) => (
+          {[
+            { id: "daily", label: "Hari" },
+            { id: "weekly", label: "Minggu" },
+            { id: "monthly", label: "Bulan" },
+          ].map((option) => (
             <Button
-              key={option}
+              key={option.id}
               type="button"
-              onClick={() => setFrequency(option)}
+              onClick={() => setFrequency(option.id)}
               className={`px-4 py-2 text-sm rounded-md ${
-                frequency === option
+                frequency === option.id
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700"
               }`}
             >
-              {option.charAt(0).toUpperCase() + option.slice(1)}
+              {option.label}
             </Button>
           ))}
         </div>
@@ -170,7 +174,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       {frequency === "daily" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Time:
+            Waktu:
           </label>
           <input
             type="time"
@@ -188,33 +192,35 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              On which days:
+              Hari:
             </label>
             <div className="grid grid-cols-7 gap-2">
-              {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-                <Button
-                  key={index}
-                  type="button"
-                  onClick={() => {
-                    const newDays = weeklySettings.days.includes(index)
-                      ? weeklySettings.days.filter((d) => d !== index)
-                      : [...weeklySettings.days, index];
-                    setWeeklySettings({ ...weeklySettings, days: newDays });
-                  }}
-                  className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    weeklySettings.days.includes(index)
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {day}
-                </Button>
-              ))}
+              {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
+                (day, index) => (
+                  <Button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      const newDays = weeklySettings.days.includes(index)
+                        ? weeklySettings.days.filter((d) => d !== index)
+                        : [...weeklySettings.days, index];
+                      setWeeklySettings({ ...weeklySettings, days: newDays });
+                    }}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                      weeklySettings.days.includes(index)
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {day}
+                  </Button>
+                )
+              )}
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time:
+              Waktu:
             </label>
             <input
               type="time"
@@ -233,7 +239,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select option:
+              Pilih opsi:
             </label>
             <div className="flex space-x-2">
               <Button
@@ -247,7 +253,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
                     : "bg-gray-100 text-gray-700"
                 }`}
               >
-                Day of month
+                Tanggal
               </Button>
               <Button
                 type="button"
@@ -260,7 +266,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
                     : "bg-gray-100 text-gray-700"
                 }`}
               >
-                Specific day
+                Hari tertentu
               </Button>
             </div>
           </div>
@@ -269,7 +275,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
           {monthlySettings.type === "dayOfMonth" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Day of month:
+                Tanggal:
               </label>
               <select
                 value={monthlySettings.dayOfMonth}
@@ -295,7 +301,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Which week:
+                  Minggu ke:
                 </label>
                 <select
                   value={monthlySettings.weekOfMonth}
@@ -307,16 +313,16 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value={1}>First</option>
-                  <option value={2}>Second</option>
-                  <option value={3}>Third</option>
-                  <option value={4}>Fourth</option>
-                  <option value={5}>Last</option>
+                  <option value={1}>Pertama</option>
+                  <option value={2}>Kedua</option>
+                  <option value={3}>Ketiga</option>
+                  <option value={4}>Keempat</option>
+                  <option value={5}>Terakhir</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Which day:
+                  Hari:
                 </label>
                 <select
                   value={monthlySettings.dayOfWeek}
@@ -328,13 +334,13 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value={0}>Sunday</option>
-                  <option value={1}>Monday</option>
-                  <option value={2}>Tuesday</option>
-                  <option value={3}>Wednesday</option>
-                  <option value={4}>Thursday</option>
-                  <option value={5}>Friday</option>
-                  <option value={6}>Saturday</option>
+                  <option value={0}>Minggu</option>
+                  <option value={1}>Senin</option>
+                  <option value={2}>Selasa</option>
+                  <option value={3}>Rabu</option>
+                  <option value={4}>Kamis</option>
+                  <option value={5}>Jumat</option>
+                  <option value={6}>Sabtu</option>
                 </select>
               </div>
             </>
@@ -342,7 +348,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time:
+              Waktu:
             </label>
             <input
               type="time"
@@ -375,47 +381,47 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
 
     switch (frequency) {
       case "daily":
-        return `Every day at ${timeFormatted}`;
+        return `Setiap hari pada ${timeFormatted}`;
 
       case "weekly": {
         const dayNames = weeklySettings.days
           .map(
             (d) =>
-              [
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-              ][d]
+              ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][
+                d
+              ]
           )
           .join(", ");
-        return `Every ${dayNames} at ${timeFormatted}`;
+        return `Setiap ${dayNames} pada ${timeFormatted}`;
       }
 
       case "monthly":
         if (monthlySettings.type === "dayOfMonth") {
-          return `On day ${monthlySettings.dayOfMonth} of every month at ${timeFormatted}`;
+          return `Pada tanggal ${monthlySettings.dayOfMonth} setiap bulan pada ${timeFormatted}`;
         } else {
-          const weekNames = ["first", "second", "third", "fourth", "last"];
-          const dayNames = [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
+          const weekNames = [
+            "pertama",
+            "kedua",
+            "ketiga",
+            "keempat",
+            "terakhir",
           ];
-          return `On the ${weekNames[monthlySettings.weekOfMonth - 1]} ${
-            dayNames[monthlySettings.dayOfWeek]
-          } of every month at ${timeFormatted}`;
+          const dayNames = [
+            "Minggu",
+            "Senin",
+            "Selasa",
+            "Rabu",
+            "Kamis",
+            "Jumat",
+            "Sabtu",
+          ];
+          return `Pada ${dayNames[monthlySettings.dayOfWeek]} ${
+            weekNames[monthlySettings.weekOfMonth - 1]
+          } setiap bulan pada ${timeFormatted}`;
         }
 
       default:
-        return "Custom schedule";
+        return "Jadwal kustom";
     }
   }
 

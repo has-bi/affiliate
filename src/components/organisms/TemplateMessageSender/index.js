@@ -328,8 +328,12 @@ export default function TemplateMessageSender() {
         // Set schedule config with validated dates
         scheduleData.scheduleConfig = {
           cronExpression: scheduleConfig.cronExpression,
-          startDate: startDate.toISOString(),
-          endDate: endDate ? endDate.toISOString() : null,
+          startDate: scheduleConfig.startDate
+            ? new Date(`${scheduleConfig.startDate}T00:00:00`).toISOString()
+            : undefined,
+          endDate: scheduleConfig.endDate
+            ? new Date(`${scheduleConfig.endDate}T23:59:59`).toISOString()
+            : undefined,
         };
       }
 

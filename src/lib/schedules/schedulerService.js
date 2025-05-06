@@ -91,18 +91,17 @@ class SchedulerService {
         console.log(`One-time job scheduled for: ${date.toISOString()}`);
       } else if (scheduleData.scheduleType === "recurring") {
         // Recurring schedule with cron expression
-        const { cronExpression, startDate, endDate } =
-          scheduleData.scheduleConfig;
-        console.log(`Creating recurring job with cron: ${cronExpression}`);
+        const cronExpression = scheduleData.scheduleConfig.cronExpression;
+        const dayOfWeek = cronExpression.split(" ")[4]; // Get day-of-week part
 
         // Create job scheduling options
         const options = {};
-        if (startDate) {
-          options.start = new Date(startDate);
+        if (scheduleData.scheduleConfig.startDate) {
+          options.start = new Date(scheduleData.scheduleConfig.startDate);
           console.log(`Start date: ${options.start.toISOString()}`);
         }
-        if (endDate) {
-          options.end = new Date(endDate);
+        if (scheduleData.scheduleConfig.endDate) {
+          options.end = new Date(scheduleData.scheduleConfig.endDate);
           console.log(`End date: ${options.end.toISOString()}`);
         }
 
@@ -119,12 +118,7 @@ class SchedulerService {
           console.log(`Cron expression parts: [${cronParts.join(", ")}]`);
 
           // Special handling for the nth weekday of month syntax (e.g., "1#3" for third Monday)
-          let finalCronExpression = cronExpression;
-          const dayOfWeek = cronParts[4];
-
           if (dayOfWeek.includes("#")) {
-            // node-schedule doesn't support the # syntax directly
-            // We need to convert it to a more complex expression or handle it specially
             console.log(`Detected special day-of-week format: ${dayOfWeek}`);
 
             // Extract the day of week and the occurrence number
