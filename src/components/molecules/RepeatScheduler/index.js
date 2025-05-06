@@ -1,5 +1,5 @@
-// src/components/molecules/RepeatScheduler/index.js
-import React, { useState, useEffect } from "react";
+// Updated version of src/components/molecules/RepeatScheduler/index.js
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
@@ -24,9 +24,13 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
     time: "09:00",
   });
 
-  // Parse initial cron expression when component mounts
+  // Use a ref to track if initialCron has been processed
+  const initialCronProcessed = useRef(false);
+
+  // Parse initial cron expression only once on mount
   useEffect(() => {
-    if (initialCron) {
+    if (initialCron && !initialCronProcessed.current) {
+      initialCronProcessed.current = true;
       parseCronExpression(initialCron);
     }
   }, [initialCron]);
@@ -87,11 +91,19 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
     }
   };
 
-  // Update the parent component with equivalent cron expression
+  // Generate cron expression and notify parent when settings change
+  // Use a ref to track the last generated cron expression
+  const lastCronExpression = useRef("");
+
   useEffect(() => {
     const cronExpression = generateCronExpression();
-    if (onChange) {
-      onChange(cronExpression);
+
+    // Only call onChange if cron has actually changed
+    if (cronExpression !== lastCronExpression.current) {
+      lastCronExpression.current = cronExpression;
+      if (onChange) {
+        onChange(cronExpression);
+      }
     }
   }, [frequency, dailySettings, weeklySettings, monthlySettings, onChange]);
 
