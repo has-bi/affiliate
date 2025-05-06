@@ -1,4 +1,4 @@
-// src/lib/scheduleUtils.js
+// src/lib/schedules/scheduleUtils.js
 import prisma from "@/lib/prisma";
 
 // Get all scheduled messages
@@ -8,7 +8,12 @@ export async function getAllSchedules() {
       include: {
         parameters: true,
         recipients: true,
-        history: true,
+        history: {
+          orderBy: {
+            runAt: "desc",
+          },
+          take: 10,
+        },
       },
     });
 
@@ -45,7 +50,12 @@ export async function getScheduleById(id) {
       include: {
         parameters: true,
         recipients: true,
-        history: true,
+        history: {
+          orderBy: {
+            runAt: "desc",
+          },
+          take: 10,
+        },
       },
     });
 

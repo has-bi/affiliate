@@ -1,4 +1,4 @@
-// src/lib/services/schedulerService.js
+// src/lib/schedules/schedulerService.js
 import schedule from "node-schedule";
 import {
   getAllSchedules,
@@ -118,14 +118,49 @@ class SchedulerService {
 
           console.log(`Cron expression parts: [${cronParts.join(", ")}]`);
 
-          job = schedule.scheduleJob(cronExpression, options, () => {
-            console.log(
-              `\n>>> Recurring job triggered for schedule ${
-                scheduleData.id
-              } at ${new Date().toISOString()} <<<`
+          // Special handling for the nth weekday of month syntax (e.g., "1#3" for third Monday)
+          let finalCronExpression = cronExpression;
+          const dayOfWeek = cronParts[4];
+
+          if (dayOfWeek.includes("#")) {
+            // node-schedule doesn't support the # syntax directly
+            // We need to convert it to a more complex expression or handle it specially
+            console.log(`Detected special day-of-week format: ${dayOfWeek}`);
+
+            // Extract the day of week and the occurrence number
+            const [dow, week] = dayOfWeek
+              .split("#")
+              .map((n) => parseInt(n, 10));
+
+            // Create a job that checks if it's the nth occurrence of that weekday in the month
+            job = schedule.scheduleJob(
+              cronParts.slice(0, 4).join(" ") + " " + dow,
+              function () {
+                const now = new Date();
+                const dayOfMonth = now.getDate();
+                const weekOfMonth = Math.ceil(dayOfMonth / 7);
+
+                // Only run if this is the nth occurrence specified
+                if (weekOfMonth === week) {
+                  console.log(
+                    `\n>>> Recurring job triggered for schedule ${
+                      scheduleData.id
+                    } at ${new Date().toISOString()} - nth weekday of month <<<`
+                  );
+                  this.executeSchedule(scheduleData.id);
+                }
+              }.bind(this)
             );
-            this.executeSchedule(scheduleData.id);
-          });
+          } else {
+            job = schedule.scheduleJob(cronExpression, options, () => {
+              console.log(
+                `\n>>> Recurring job triggered for schedule ${
+                  scheduleData.id
+                } at ${new Date().toISOString()} <<<`
+              );
+              this.executeSchedule(scheduleData.id);
+            });
+          }
 
           if (!job) {
             throw new Error("Failed to create job, null returned");
@@ -360,7 +395,9 @@ class SchedulerService {
 
                 // Check for specific error types
                 if (response.status === 404) {
-                  throw new Error(`Session not found: ${session}`);
+                  throw new Error(
+                    `Session not found: ${scheduleData.sessionName}`
+                  );
                 } else if (response.status === 400) {
                   throw new Error(`Bad request: ${errorMessage}`);
                 } else if (response.status === 401 || response.status === 403) {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTemplate } from "../../../hooks/useTemplate";
+import RepeatScheduler from "@/components/molecules/FriendlyScheduler";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import {
   Calendar,
@@ -127,7 +128,6 @@ const ScheduleForm = ({
     }));
   };
 
-  // Handle cron expression preset selection
   const handleCronPresetChange = (e) => {
     const value = e.target.value;
     if (value) {
