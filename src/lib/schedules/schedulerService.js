@@ -1,5 +1,5 @@
-// src/lib/schedules/schedulerService.js
 import { CronJob } from "cron";
+import { validateCronExpression } from "@/lib/config/cronHelper";
 import {
   getAllSchedules,
   updateSchedule,
@@ -198,28 +198,62 @@ class SchedulerService {
         };
 
         // Create a job using the CronJob constructor with Date object
-        job = new CronJob(
-          date, // Using direct Date object for one-time jobs
-          executeOnce,
-          null, // onComplete
-          true, // start
-          "Asia/Jakarta" // timeZone
-        );
-      } else if (scheduleData.scheduleType === "recurring") {
+        job = new CronJob({
+          cronTime: date, // Use the Date object directly
+          onTick: executeOnce,
+          start: true,
+          timeZone: "Asia/Jakarta",
+        });
+      } // In schedulerService.js - focus on the recurring job section:
+      else if (scheduleData.scheduleType === "recurring") {
         // Recurring schedule with cron expression
-        const cronExpression = scheduleData.scheduleConfig.cronExpression;
+        let cronExpression;
 
-        // Validate cron expression
-        if (!cronExpression || cronExpression.split(" ").length !== 5) {
+        // Ensure we're getting a valid cron expression string
+        if (typeof scheduleData.scheduleConfig?.cronExpression === "string") {
+          cronExpression = scheduleData.scheduleConfig.cronExpression;
+        } else if (typeof scheduleData.cronExpression === "string") {
+          // Fallback to directly using cronExpression from the root object
+          cronExpression = scheduleData.cronExpression;
+        } else {
           throw new Error(
-            `Invalid cron expression: "${cronExpression}" - must have 5 parts`
+            `Missing or invalid cron expression for recurring schedule ${scheduleData.id}`
           );
         }
 
-        // Log cron parts for debugging
-        const cronParts = cronExpression.split(" ");
-        console.log(`Cron expression: ${cronExpression}`);
-        console.log(`Cron parts: [${cronParts.join(", ")}]`);
+        // Enhanced validation and logging
+        if (!cronExpression || typeof cronExpression !== "string") {
+          throw new Error(
+            `Invalid cron expression type for schedule ${
+              scheduleData.id
+            }: ${typeof cronExpression}`
+          );
+        }
+
+        // Log the exact string and type to debug any issues
+        console.log(
+          `Raw cron expression: "${cronExpression}" (${typeof cronExpression})`
+        );
+
+        // Split and verify we have 5 parts
+        const cronParts = cronExpression.split(/\s+/);
+        console.log(
+          `Cron parts (${cronParts.length}): [${cronParts.join(", ")}]`
+        );
+
+        // Validate with utility function
+        if (!validateCronExpression(cronExpression)) {
+          console.error(
+            `Invalid cron expression: "${cronExpression}" for schedule ${scheduleData.id}`
+          );
+          throw new Error(
+            `Invalid cron expression: "${cronExpression}" - must have 5 properly formatted parts`
+          );
+        }
+
+        // Clean any potential double spaces or formatting issues
+        const cleanedCronExpression = cronParts.join(" ");
+        console.log(`Cleaned cron expression: "${cleanedCronExpression}"`);
 
         // Create the recurring job execution function
         const executeRecurring = () => {
@@ -235,33 +269,31 @@ class SchedulerService {
           this.executeSchedule(scheduleData.id);
         };
 
-        // Create Job options
-        const jobOptions = {
-          cronTime: cronExpression,
-          onTick: executeRecurring,
-          start: true, // Auto start the job
-          timeZone: "Asia/Jakarta", // Set timezone explicitly
-          context: null,
-          runOnInit: false, // Don't run immediately on creation
-        };
+        // Create the job using the most direct constructor form to avoid issues
+        try {
+          job = new CronJob(
+            cleanedCronExpression, // cronTime
+            executeRecurring, // onTick
+            null, // onComplete (null = no completion handler)
+            true, // start
+            "Asia/Jakarta" // timeZone
+          );
+          console.log(
+            `Created recurring job with cron: "${cleanedCronExpression}"`
+          );
+        } catch (cronError) {
+          console.error(`Error creating cron job: ${cronError.message}`);
+          console.error(`Error stack:`, cronError.stack);
 
-        // Handle start/end dates if provided
-        if (scheduleData.scheduleConfig.startDate) {
-          console.log(`Start date: ${scheduleData.scheduleConfig.startDate}`);
-          // We don't need to add specific handling for this with cron library
-          // as it will automatically start correctly
+          // Try to provide a helpful error message
+          if (cronError.message.includes("Invalid cron pattern")) {
+            throw new Error(
+              `Invalid cron pattern: "${cleanedCronExpression}" - ${cronError.message}`
+            );
+          } else {
+            throw cronError;
+          }
         }
-
-        if (scheduleData.scheduleConfig.endDate) {
-          console.log(`End date: ${scheduleData.scheduleConfig.endDate}`);
-          // We could add additional logic here to stop the job on end date
-          // For now, we'll handle this through the normal scheduling process
-        }
-
-        // Create the job
-        job = new CronJob(jobOptions);
-
-        console.log(`Created recurring job with cron: ${cronExpression}`);
       }
 
       // Store the job with safety check
@@ -269,27 +301,41 @@ class SchedulerService {
         // Use the utility method to ensure only one job
         this.ensureSingleJob(scheduleData.id, job);
 
-        // Calculate next run using the nextDate() method
-        const nextDate = job.nextDate();
-        if (nextDate) {
-          console.log(
-            `Next run for schedule ${scheduleData.id}: ${nextDate.toISO()}`
-          );
-          console.log(
-            `Next run in local time: ${nextDate.toLocal().toString()}`
+        // Calculate next run using the nextDate() method if available
+        let nextRunInfo = "unknown";
+        try {
+          const nextDate = job.nextDate();
+          if (nextDate) {
+            console.log(
+              `Next run for schedule ${scheduleData.id}: ${nextDate.toISO()}`
+            );
+            console.log(
+              `Next run in local time: ${nextDate.toLocal().toString()}`
+            );
+
+            nextRunInfo = nextDate.toJSDate().toISOString();
+
+            // Update schedule with active status and next run date
+            await updateSchedule(scheduleData.id, {
+              status: "active",
+              nextRun: nextRunInfo,
+            });
+          } else {
+            console.warn(
+              `Unable to calculate next run for schedule ${scheduleData.id}`
+            );
+
+            // Update status even without next run date
+            await updateSchedule(scheduleData.id, {
+              status: "active",
+            });
+          }
+        } catch (nextDateError) {
+          console.error(
+            `Error calculating next run date: ${nextDateError.message}`
           );
 
-          // Update schedule with active status and next run date
-          await updateSchedule(scheduleData.id, {
-            status: "active",
-            nextRun: nextDate.toJSDate().toISOString(),
-          });
-        } else {
-          console.log(
-            `Unable to calculate next run for schedule ${scheduleData.id}`
-          );
-
-          // Update status even without next run date
+          // Still update status
           await updateSchedule(scheduleData.id, {
             status: "active",
           });

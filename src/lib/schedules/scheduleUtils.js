@@ -89,13 +89,29 @@ export async function getScheduleById(id) {
 // Update a schedule
 export async function updateSchedule(id, data) {
   try {
-    const updateData = {
-      ...data,
-      updatedAt: new Date(),
-    };
+    // 1) Whitelist valid columns
+    const allowed = [
+      "name",
+      "templateId",
+      "scheduleType",
+      "cronExpression",
+      "scheduledDate",
+      "status",
+      "nextRun",
+      "lastRun",
+      "errorMessage",
+    ];
 
+    const updateData = Object.fromEntries(
+      Object.entries(data).filter(([key]) => allowed.includes(key))
+    );
+
+    // Always touch updatedAt
+    updateData.updatedAt = new Date();
+
+    // 2) Persist
     const updated = await prisma.schedule.update({
-      where: { id: parseInt(id) },
+      where: { id: Number(id) },
       data: updateData,
       include: {
         parameters: true,
@@ -103,6 +119,7 @@ export async function updateSchedule(id, data) {
       },
     });
 
+    // 3) Normalised return value
     return {
       id: updated.id,
       name: updated.name,
@@ -120,9 +137,10 @@ export async function updateSchedule(id, data) {
       recipients: updated.recipients.map((r) => r.recipient),
       nextRun: updated.nextRun,
       lastRun: updated.lastRun,
+      errorMessage: updated.errorMessage ?? null,
     };
-  } catch (error) {
-    console.error(`Error updating schedule ${id}:`, error);
+  } catch (err) {
+    console.error(`Error updating schedule ${id}:`, err);
     return null;
   }
 }
