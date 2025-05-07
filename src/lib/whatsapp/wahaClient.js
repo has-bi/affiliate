@@ -9,6 +9,11 @@ class WAHAClient {
       process.env.NEXT_PUBLIC_WAHA_API_URL ||
       "https://personal-wabot.yttkys.easypanel.host";
     this.defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
+
+    // Add these cache properties to the class
+    this.sessionCache = null;
+    this.lastCheckTime = 0;
+    this.CACHE_TTL = 30000; // 30 seconds cache
   }
 
   // Get headers with API key if needed
@@ -52,9 +57,9 @@ class WAHAClient {
   async checkSession() {
     // Return cached result if valid
     const now = Date.now();
-    if (sessionCache && now - lastCheckTime < CACHE_TTL) {
+    if (this.sessionCache && now - this.lastCheckTime < this.CACHE_TTL) {
       logger.info("Using cached session info");
-      return sessionCache;
+      return this.sessionCache;
     }
 
     try {
@@ -67,21 +72,25 @@ class WAHAClient {
         );
       } catch (fetchError) {
         logger.warn(`Session check timed out: ${fetchError.message}`);
-        return {
+        const result = {
           name: this.defaultSession,
           isConnected: false,
           status: "TIMEOUT_ERROR",
           error: fetchError.message,
         };
+
+        // Update cache
+        this.sessionCache = result;
+        this.lastCheckTime = now;
+        return result;
       }
 
-      // Handle rest of the function as before with minor modifications
+      // Rest of the code remains similar, just update cache references
       if (!response.ok) {
         logger.info(
           "Failed to get specific session, trying to list all sessions"
         );
 
-        // Try the generic sessions endpoint with timeout
         try {
           response = await this.fetchWithTimeout(
             `${this.baseUrl}/api/sessions`,
@@ -89,12 +98,16 @@ class WAHAClient {
           );
         } catch (listError) {
           logger.warn(`List sessions request timed out: ${listError.message}`);
-          return {
+          const result = {
             name: this.defaultSession,
             isConnected: false,
             status: "TIMEOUT_ERROR",
             error: listError.message,
           };
+
+          this.sessionCache = result;
+          this.lastCheckTime = now;
+          return result;
         }
 
         if (response.ok) {
@@ -111,9 +124,8 @@ class WAHAClient {
               status: mySession.status,
             };
 
-            // Update cache
-            sessionCache = result;
-            lastCheckTime = now;
+            this.sessionCache = result;
+            this.lastCheckTime = now;
             return result;
           }
         }
@@ -124,9 +136,8 @@ class WAHAClient {
           status: "NOT_FOUND",
         };
 
-        // Update cache
-        sessionCache = result;
-        lastCheckTime = now;
+        this.sessionCache = result;
+        this.lastCheckTime = now;
         return result;
       }
 
@@ -147,9 +158,8 @@ class WAHAClient {
           status: status,
         };
 
-        // Update cache
-        sessionCache = result;
-        lastCheckTime = now;
+        this.sessionCache = result;
+        this.lastCheckTime = now;
         return result;
       } else {
         logger.warn("Unexpected session response format:", sessionData);
@@ -159,9 +169,8 @@ class WAHAClient {
           status: "UNKNOWN",
         };
 
-        // Update cache
-        sessionCache = result;
-        lastCheckTime = now;
+        this.sessionCache = result;
+        this.lastCheckTime = now;
         return result;
       }
     } catch (error) {
@@ -180,9 +189,8 @@ class WAHAClient {
             : error.message,
       };
 
-      // Still cache errors to prevent hammering the API
-      sessionCache = result;
-      lastCheckTime = now;
+      this.sessionCache = result;
+      this.lastCheckTime = now;
       return result;
     }
   }
