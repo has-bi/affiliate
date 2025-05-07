@@ -7,7 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "WAHA Control Panel",
+  title: "Youvit Affiliate Control Panel",
   description:
     "A control panel for managing WhatsApp sessions and broadcasting messages",
 };
