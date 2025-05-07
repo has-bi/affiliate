@@ -1,23 +1,22 @@
-// app/messages/templates/page.js
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import TemplateManager from "@/components/organisms/TemplateManager";
 import PageLayout from "@/components/templates/PageLayout";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function TemplatesClientPage() {
+// Create a separate component for the search params functionality
+function TemplateContent() {
   const searchParams = useSearchParams();
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const hasFetchedRef = useRef(false);
 
-  // Get the id param once
+  // Get the id param
   const selectedId = searchParams ? parseInt(searchParams.get("id"), 10) : null;
 
-  // Fetch templates only once
   useEffect(() => {
     if (!hasFetchedRef.current) {
       const fetchTemplates = async () => {
@@ -40,6 +39,20 @@ export default function TemplatesClientPage() {
     }
   }, []);
 
+  return (
+    <>
+      {isLoading ? (
+        <div className="flex justify-center items-center p-12">
+          <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+        <TemplateManager templates={templates} selectedId={selectedId} />
+      )}
+    </>
+  );
+}
+
+export default function TemplatesClientPage() {
   // Define page actions
   const pageActions = (
     <Button
@@ -58,13 +71,15 @@ export default function TemplatesClientPage() {
       description="Create and manage message templates for your WhatsApp campaigns"
       actions={pageActions}
     >
-      {isLoading ? (
-        <div className="flex justify-center items-center p-12">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
-        </div>
-      ) : (
-        <TemplateManager templates={templates} selectedId={selectedId} />
-      )}
+      <Suspense
+        fallback={
+          <div className="flex justify-center items-center p-12">
+            <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+          </div>
+        }
+      >
+        <TemplateContent />
+      </Suspense>
     </PageLayout>
   );
 }
