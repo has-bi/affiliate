@@ -2,12 +2,16 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,26 +24,39 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+    // Add a timeout to prevent hanging on the "Signing in..." state
+    const loginTimeout = setTimeout(() => {
+      console.log("Login timed out after 10 seconds");
+      setLoading(false);
+      setError("Login request timed out. Please try again.");
+    }, 10000); // 10 second timeout
+
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      console.log("Starting login process...");
+      const result = await login(username, password);
+      console.log("Login result:", result);
 
-      const data = await response.json();
+      clearTimeout(loginTimeout);
 
-      if (!response.ok) {
-        setError(data.error || "Login failed");
+      if (!result.success) {
+        setError(result.error || "Login failed");
         setLoading(false);
         return;
       }
 
-      // If login successful, redirect to dashboard
+      // Try Next.js router first
+      console.log("Login successful, redirecting to dashboard...");
       window.location.href = "/dashboard";
+
+      // Fallback to window.location after a short delay if router doesn't work
+      setTimeout(() => {
+        console.log("Using fallback redirect");
+        window.location.href = "/dashboard";
+      }, 1000);
     } catch (error) {
+      clearTimeout(loginTimeout);
       console.error("Login error:", error);
-      setError("An unexpected error occurred");
+      setError("An unexpected error occurred: " + error.message);
       setLoading(false);
     }
   };
@@ -49,7 +66,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            WAHA Control Panel
+            Youvit Affiliate Control Panel
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign in to access your WhatsApp manager
