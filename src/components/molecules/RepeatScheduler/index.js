@@ -1,6 +1,11 @@
-// Updated version of src/components/molecules/RepeatScheduler/index.js
+// src/components/molecules/RepeatScheduler/index.js
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  validateCronExpression,
+  generateCronExpression,
+  debugCronExpression,
+} from "@/lib/config/cronHelper";
 
 const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
   // Main frequency selection
@@ -31,19 +36,45 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
   useEffect(() => {
     if (initialCron && !initialCronProcessed.current) {
       initialCronProcessed.current = true;
-      parseCronExpression(initialCron);
+
+      // Log the initial cron value for debugging
+      console.log(`Initial cron: "${initialCron}"`);
+
+      // Validate before attempting to parse
+      if (validateCronExpression(initialCron)) {
+        parseCronExpression(initialCron);
+      } else {
+        console.error(`Invalid initial cron expression: "${initialCron}"`);
+        // Fall back to default (daily at 9 AM)
+        parseCronExpression("0 9 * * *");
+      }
     }
   }, [initialCron]);
 
   // Parse existing cron expression and set appropriate UI state
   const parseCronExpression = (cronExpression) => {
-    const parts = cronExpression.split(" ");
-    if (parts.length !== 5) return; // Invalid cron
+    const parts = cronExpression.split(/\s+/);
+    if (parts.length !== 5) {
+      console.error(`Invalid cron parts length: ${parts.length}, expected 5`);
+      return; // Invalid cron
+    }
 
     const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
 
     // Parse time
-    const timeStr = `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+    const hourNum = parseInt(hour, 10);
+    const minuteNum = parseInt(minute, 10);
+
+    if (isNaN(hourNum) || isNaN(minuteNum)) {
+      console.error(
+        `Invalid hour/minute values: hour=${hour}, minute=${minute}`
+      );
+      return;
+    }
+
+    const timeStr = `${hourNum.toString().padStart(2, "0")}:${minuteNum
+      .toString()
+      .padStart(2, "0")}`;
 
     // Determine frequency and settings
     if (dayOfMonth === "*" && dayOfWeek !== "*") {
@@ -51,12 +82,15 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       setFrequency("weekly");
 
       // Parse days of week
-      const days = dayOfWeek.split(",").map((d) => {
-        return parseInt(d, 10);
-      });
+      const days = dayOfWeek
+        .split(",")
+        .map((d) => {
+          return parseInt(d, 10);
+        })
+        .filter((d) => !isNaN(d));
 
       setWeeklySettings({
-        days: days,
+        days: days.length > 0 ? days : [1], // Default to Monday if parsing fails
         time: timeStr,
       });
     } else if (dayOfMonth !== "*" && dayOfWeek === "*") {
@@ -64,7 +98,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       setFrequency("monthly");
       setMonthlySettings({
         type: "dayOfMonth",
-        dayOfMonth: parseInt(dayOfMonth, 10),
+        dayOfMonth: parseInt(dayOfMonth, 10) || 1,
         dayOfWeek: 1,
         weekOfMonth: 1,
         time: timeStr,
@@ -84,8 +118,8 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       setMonthlySettings({
         type: "dayOfWeek",
         dayOfMonth: 1,
-        dayOfWeek: dow,
-        weekOfMonth: week,
+        dayOfWeek: dow || 1,
+        weekOfMonth: week || 1,
         time: timeStr,
       });
     }
@@ -96,11 +130,18 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
   const lastCronExpression = useRef("");
 
   useEffect(() => {
-    const cronExpression = generateCronExpression();
+    const cronExpression = generateCronExpressionFromUI();
 
-    // Only call onChange if cron has actually changed
-    if (cronExpression !== lastCronExpression.current) {
+    // Only call onChange if cron has actually changed and is valid
+    if (
+      cronExpression !== lastCronExpression.current &&
+      validateCronExpression(cronExpression)
+    ) {
       lastCronExpression.current = cronExpression;
+
+      // Debug log the generated expression
+      debugCronExpression(cronExpression);
+
       if (onChange) {
         onChange(cronExpression);
       }
@@ -108,7 +149,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
   }, [frequency, dailySettings, weeklySettings, monthlySettings, onChange]);
 
   // Convert UI selections to cron expression
-  const generateCronExpression = () => {
+  const generateCronExpressionFromUI = () => {
     // Extract exact hours and minutes to ensure precision
     const [hours, minutes] = getTimeComponents();
 
@@ -129,26 +170,43 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       return "0 0 * * *"; // Default fallback to midnight
     }
 
+    // Ensure the cron expression has proper spacing between all parts
+    let cronExpression;
+
     switch (frequency) {
       case "daily":
         // Format: minute hour * * *
-        return `${formattedMinutes} ${formattedHours} * * *`;
+        cronExpression = `${formattedMinutes} ${formattedHours} * * *`;
+        break;
 
       case "weekly":
         const weekdays = weeklySettings.days.join(",");
-        return `${formattedMinutes} ${formattedHours} * * ${weekdays}`;
+        cronExpression = `${formattedMinutes} ${formattedHours} * * ${weekdays}`;
+        break;
 
       case "monthly":
         if (monthlySettings.type === "dayOfMonth") {
-          return `${formattedMinutes} ${formattedHours} ${monthlySettings.dayOfMonth} * *`;
+          cronExpression = `${formattedMinutes} ${formattedHours} ${monthlySettings.dayOfMonth} * *`;
         } else {
           // Day of week in specific week of month
-          return `${formattedMinutes} ${formattedHours} * * ${monthlySettings.dayOfWeek}#${monthlySettings.weekOfMonth}`;
+          cronExpression = `${formattedMinutes} ${formattedHours} * * ${monthlySettings.dayOfWeek}#${monthlySettings.weekOfMonth}`;
         }
+        break;
 
       default:
-        return "0 0 * * *"; // Default fallback to daily at midnight
+        cronExpression = "0 0 * * *"; // Default fallback to daily at midnight
     }
+
+    // Double-check we have a valid 5-part expression
+    const parts = cronExpression.split(/\s+/);
+    if (parts.length !== 5) {
+      console.error(
+        `Generated invalid cron with ${parts.length} parts: "${cronExpression}"`
+      );
+      return "0 0 * * *"; // Safe fallback
+    }
+
+    return cronExpression;
   };
 
   // Helper to extract hours and minutes from time string
@@ -235,6 +293,12 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
                       const newDays = weeklySettings.days.includes(index)
                         ? weeklySettings.days.filter((d) => d !== index)
                         : [...weeklySettings.days, index];
+
+                      // Ensure we always have at least one day selected
+                      if (newDays.length === 0) {
+                        newDays.push(index);
+                      }
+
                       setWeeklySettings({ ...weeklySettings, days: newDays });
                     }}
                     className={`h-10 w-10 rounded-full flex items-center justify-center ${
@@ -399,7 +463,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
           {generateScheduleDescription()}
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          Cron expression: {generateCronExpression()}
+          Cron expression: {generateCronExpressionFromUI()}
         </p>
       </div>
     </div>
