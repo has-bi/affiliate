@@ -5,6 +5,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const AuthContext = createContext(null);
+const AUTH_STORAGE_KEY = "auth_user";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -13,28 +14,25 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    const checkLoginStatus = async () => {
+    const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (storedUser) {
       try {
-        const response = await fetch("/api/auth/me");
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
+        setUser(JSON.parse(storedUser));
       } catch (error) {
-        console.error("Auth check failed:", error);
-      } finally {
-        setLoading(false);
+        console.error("Failed to parse stored user:", error);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
       }
-    };
-
-    checkLoginStatus();
+    }
+    setLoading(false);
   }, []);
 
   // Login function
   const login = async (username, password) => {
     setLoading(true);
+    console.log("useAuth: Starting login process");
 
     try {
+      console.log("useAuth: Sending fetch request");
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -42,16 +40,33 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ username, password }),
       });
-
-      const data = await response.json();
+      console.log("useAuth: Received response", response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("useAuth: Login response error:", errorText);
+        return {
+          success: false,
+          error: "Login failed: " + response.statusText,
+        };
+      }
+
+      console.log("useAuth: Parsing response JSON");
+      const data = await response.json();
+      console.log("useAuth: Parsed data", data);
+
+      if (!data.success) {
         return { success: false, error: data.error || "Login failed" };
       }
 
+      // Store user in localStorage for persistence
+      console.log("useAuth: Setting localStorage");
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
       setUser(data.user);
+      console.log("useAuth: Login complete");
       return { success: true };
     } catch (error) {
+      console.error("useAuth: Login error:", error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
@@ -61,7 +76,8 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      // Clear localStorage
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       setUser(null);
       router.push("/login");
     } catch (error) {

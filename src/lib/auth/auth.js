@@ -21,29 +21,52 @@ export function verifyCredentials(username, password) {
   return username === adminUsername && password === adminPassword;
 }
 
-// Login function - sets cookies/session
+// Login function
 export async function login(credentials) {
   const { username, password } = credentials;
 
-  // Verify credentials
   if (!verifyCredentials(username, password)) {
     return { success: false, error: "Invalid credentials" };
   }
 
-  // Return user info for frontend
+  const user = {
+    id: "1",
+    name: "Admin User",
+    username: username,
+    role: "admin",
+  };
+
   return {
     success: true,
-    user: {
-      id: "1",
-      name: "Admin User",
-      username: username,
-      role: "admin",
-    },
+    user: user,
   };
 }
 
-// Logout function - clears cookies/session
+// Logout function
 export async function logout() {
-  // Clear session/cookies
   return { success: true };
+}
+
+async function handleLogin(username, password) {
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    // Check if response is OK before parsing as JSON
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response:", errorText);
+      throw new Error(`Login failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Login error:", error);
+    // Handle error appropriately in your UI
+    throw error;
+  }
 }

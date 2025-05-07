@@ -1,7 +1,11 @@
 // src/app/api/auth/logout/route.js
-import { logout } from "@/lib/auth/auth";
+import { cookies } from "next/headers";
 
 export async function POST() {
-  const result = await logout();
-  return Response.json(result);
+  const cookieStore = cookies();
+
+  // Delete the auth cookie
+  cookieStore.delete("auth_token");
+
+  return Response.json({ success: true });
 }
