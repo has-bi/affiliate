@@ -110,7 +110,7 @@ const DesktopNavItem = ({ item, isActive, pathname }) => {
 };
 
 export default function Header() {
-  const pathname = usePathname(); // Call usePathname at the top level of the component
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const { sessions, fetchSessions, isLoading, defaultSession } = useWhatsApp();
@@ -135,6 +135,9 @@ export default function Header() {
 
   const sessionNames = connectedSessions.map(getSessionName);
 
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-white/80 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -271,5 +274,69 @@ export default function Header() {
         </nav>
       )}
     </header>
+  );
+}
+
+// Mobile nav item (with accordion support) ---------------------------
+function MobileNavItem({ item, pathname, onNavigate }) {
+  const [open, setOpen] = useState(false);
+
+  const active = pathname.startsWith(item.href);
+
+  if (item.children) {
+    return (
+      <div>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+          ${
+            active
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          <item.icon className="h-5 w-5" /> {item.name}
+          <ChevronDown
+            className={`ml-auto h-5 w-5 transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {open && (
+          <div className="ml-6 space-y-1">
+            {item.children.map((sub) => (
+              <Link
+                key={sub.name}
+                href={sub.href}
+                onClick={onNavigate}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors
+                ${
+                  pathname === sub.href
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {sub.icon && <sub.icon className="h-4 w-4" />} {sub.name}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+      ${
+        active
+          ? "bg-indigo-50 text-indigo-700"
+          : "text-gray-600 hover:bg-gray-50"
+      }`}
+    >
+      <item.icon className="h-5 w-5" /> {item.name}
+    </Link>
   );
 }
