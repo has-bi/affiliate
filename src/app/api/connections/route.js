@@ -9,7 +9,6 @@ export async function GET() {
     const sessionInfo = await wahaClient.checkSession();
     logger.info(`Session status: ${JSON.stringify(sessionInfo)}`);
 
-    // Always return 200 to prevent UI breaking
     return Response.json({
       sessions: [sessionInfo],
     });
@@ -21,6 +20,7 @@ export async function GET() {
           name: wahaClient.defaultSession,
           isConnected: false,
           status: "ERROR",
+          error: error.message || "Unknown error occurred",
         },
       ],
     });

@@ -11,9 +11,7 @@ class WAHAClient {
     this.defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
   }
 
-  /**
-   * Get headers with API key if needed
-   */
+  // Get headers with API key if needed
   getHeaders() {
     const headers = {
       "Content-Type": "application/json",
@@ -26,99 +24,166 @@ class WAHAClient {
     return headers;
   }
 
+  // Wrapper for fetch with timeout
+  async fetchWithTimeout(url, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error(`Request to ${url} timed out after ${timeout}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   /**
    * Check if the default session is active
    * @returns {Promise<Object>} Session status info
    */
   async checkSession() {
-    try {
-      // First try with /api/sessions/SESSION_NAME
-      let response = await fetch(
-        `${this.baseUrl}/api/sessions/${this.defaultSession}`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
+    // Return cached result if valid
+    const now = Date.now();
+    if (sessionCache && now - lastCheckTime < CACHE_TTL) {
+      logger.info("Using cached session info");
+      return sessionCache;
+    }
 
-      // If that doesn't work, try the generic sessions endpoint
+    try {
+      // First try with /api/sessions/SESSION_NAME with timeout
+      let response;
+      try {
+        response = await this.fetchWithTimeout(
+          `${this.baseUrl}/api/sessions/${this.defaultSession}`,
+          { headers: this.getHeaders() }
+        );
+      } catch (fetchError) {
+        logger.warn(`Session check timed out: ${fetchError.message}`);
+        return {
+          name: this.defaultSession,
+          isConnected: false,
+          status: "TIMEOUT_ERROR",
+          error: fetchError.message,
+        };
+      }
+
+      // Handle rest of the function as before with minor modifications
       if (!response.ok) {
         logger.info(
-          `Failed to get specific session, trying to list all sessions`
+          "Failed to get specific session, trying to list all sessions"
         );
-        response = await fetch(`${this.baseUrl}/api/sessions`, {
-          headers: this.getHeaders(),
-        });
+
+        // Try the generic sessions endpoint with timeout
+        try {
+          response = await this.fetchWithTimeout(
+            `${this.baseUrl}/api/sessions`,
+            { headers: this.getHeaders() }
+          );
+        } catch (listError) {
+          logger.warn(`List sessions request timed out: ${listError.message}`);
+          return {
+            name: this.defaultSession,
+            isConnected: false,
+            status: "TIMEOUT_ERROR",
+            error: listError.message,
+          };
+        }
 
         if (response.ok) {
           const sessions = await response.json();
-          // Find our session in the list
           const mySession = sessions.find(
             (s) => s.name === this.defaultSession
           );
           if (mySession) {
-            return {
+            const result = {
               name: this.defaultSession,
               isConnected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
                 mySession.status
               ),
               status: mySession.status,
             };
+
+            // Update cache
+            sessionCache = result;
+            lastCheckTime = now;
+            return result;
           }
         }
 
-        // If we can connect to the API but can't find our session
-        return {
+        const result = {
           name: this.defaultSession,
           isConnected: false,
           status: "NOT_FOUND",
         };
+
+        // Update cache
+        sessionCache = result;
+        lastCheckTime = now;
+        return result;
       }
 
       // Process the session-specific response
       const sessionData = await response.json();
 
-      // Check if we got a valid session response
       if (sessionData && typeof sessionData === "object") {
-        // WAHA might return different formats, try to handle them
         const status =
           sessionData.status ||
           sessionData.engine?.state ||
           (sessionData.engine?.connected ? "CONNECTED" : "DISCONNECTED");
 
-        return {
+        const result = {
           name: this.defaultSession,
           isConnected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
             status
           ),
           status: status,
         };
+
+        // Update cache
+        sessionCache = result;
+        lastCheckTime = now;
+        return result;
       } else {
-        logger.warn(`Unexpected session response format:`, sessionData);
-        return {
+        logger.warn("Unexpected session response format:", sessionData);
+        const result = {
           name: this.defaultSession,
           isConnected: false,
           status: "UNKNOWN",
         };
+
+        // Update cache
+        sessionCache = result;
+        lastCheckTime = now;
+        return result;
       }
     } catch (error) {
       logger.error(`Error checking session ${this.defaultSession}:`, error);
 
-      // Check if it's a fetch error (network issue)
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        return {
-          name: this.defaultSession,
-          isConnected: false,
-          status: "CONNECTION_ERROR",
-          error: "Cannot connect to WAHA server",
-        };
-      }
-
-      return {
+      const result = {
         name: this.defaultSession,
         isConnected: false,
-        status: "ERROR",
-        error: error.message,
+        status:
+          error.name === "TypeError" && error.message.includes("fetch")
+            ? "CONNECTION_ERROR"
+            : "ERROR",
+        error:
+          error.name === "TypeError" && error.message.includes("fetch")
+            ? "Cannot connect to WAHA server"
+            : error.message,
       };
+
+      // Still cache errors to prevent hammering the API
+      sessionCache = result;
+      lastCheckTime = now;
+      return result;
     }
   }
 
