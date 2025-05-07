@@ -57,6 +57,8 @@ class WAHAClient {
   async checkSession() {
     try {
       // First try with /api/sessions/SESSION_NAME
+      // Define the 'now' variable here
+      const now = Date.now();
       let response;
       try {
         response = await this.fetchWithTimeout(
@@ -71,11 +73,6 @@ class WAHAClient {
           status: "TIMEOUT_ERROR",
           error: fetchError.message,
         };
-
-        // Update cache
-        this.sessionCache = result;
-        this.lastCheckTime = now;
-        return result;
       }
 
       // Rest of the code remains similar, just update cache references
