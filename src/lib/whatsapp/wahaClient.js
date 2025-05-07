@@ -55,15 +55,8 @@ class WAHAClient {
    * @returns {Promise<Object>} Session status info
    */
   async checkSession() {
-    // Return cached result if valid
-    const now = Date.now();
-    if (this.sessionCache && now - this.lastCheckTime < this.CACHE_TTL) {
-      logger.info("Using cached session info");
-      return this.sessionCache;
-    }
-
     try {
-      // First try with /api/sessions/SESSION_NAME with timeout
+      // First try with /api/sessions/SESSION_NAME
       let response;
       try {
         response = await this.fetchWithTimeout(
@@ -72,7 +65,7 @@ class WAHAClient {
         );
       } catch (fetchError) {
         logger.warn(`Session check timed out: ${fetchError.message}`);
-        const result = {
+        return {
           name: this.defaultSession,
           isConnected: false,
           status: "TIMEOUT_ERROR",
