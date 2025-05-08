@@ -8,9 +8,10 @@ import {
 } from "./scheduleUtils";
 import {
   getTemplate,
-  fillTemplateContent,
+  processAllParameters,
 } from "@/lib/templates/templateUtils";
-import { formatPhoneNumber } from "@/lib/utils";
+import { formatPhoneNumber, phoneKey } from "@/lib/utils";
+import { getActiveAffiliates } from "@/lib/sheets/spreadsheetService";
 
 class SchedulerService {
   constructor() {
@@ -198,12 +199,7 @@ class SchedulerService {
         };
 
         // Create a job using the CronJob constructor with Date object
-        job = new CronJob({
-          cronTime: date, // Use the Date object directly
-          onTick: executeOnce,
-          start: true,
-          timeZone: "Asia/Jakarta",
-        });
+        job = new CronJob(date, executeOnce, null, true, "Asia/Jakarta");
       } // In schedulerService.js - focus on the recurring job section:
       else if (scheduleData.scheduleType === "recurring") {
         // Recurring schedule with cron expression
@@ -434,38 +430,8 @@ class SchedulerService {
       }
 
       console.log(`Template found: ${template.name}`);
-
-      // Fill template with parameters
-      console.log(
-        `Filling template with parameters:`,
-        scheduleData.paramValues
-      );
-      const message = fillTemplateContent(
-        template.content,
-        scheduleData.paramValues
-      );
-
-      if (!message) {
-        console.error(
-          `[ERROR] Failed to fill template for schedule ${scheduleId}`
-        );
-        await addScheduleHistory(scheduleId, {
-          success: 0,
-          failed: scheduleData.recipients?.length || 0,
-          details: [{ error: "Failed to fill template" }],
-        });
-        return;
-      }
-
-      console.log(`Message prepared successfully`);
-      console.log(`Message preview: ${message.substring(0, 100)}...`);
-
-      // Send messages to all recipients
-      console.log(
-        `Preparing to send messages to ${
-          scheduleData.recipients?.length || 0
-        } recipients...`
-      );
+      console.log(`Template content: ${template.content.substring(0, 100)}...`);
+      console.log(`Parameters:`, scheduleData.paramValues);
 
       // Safety check for recipients
       if (!scheduleData.recipients || scheduleData.recipients.length === 0) {
@@ -478,13 +444,35 @@ class SchedulerService {
         return;
       }
 
+      // NEW: Fetch active affiliates to get contact information
+      console.log(`Fetching affiliate data from Google Sheets...`);
+      const activeAffiliates = await getActiveAffiliates();
+
+      // Create lookup map by phone number for quick access
+      const affiliateMap = new Map();
+      activeAffiliates.forEach((affiliate) => {
+        if (affiliate.phone) {
+          // Use the phoneKey function to normalize phone numbers for comparison
+          const key = phoneKey(affiliate.phone);
+          if (key) {
+            affiliateMap.set(key, affiliate);
+          }
+        }
+      });
+
+      console.log(
+        `Loaded ${affiliateMap.size} affiliates for contact info lookup`
+      );
+
       console.log(`Starting message sending process...`);
+      console.log(`Processing ${scheduleData.recipients.length} recipients...`);
 
       try {
+        // Process each recipient
         const results = await Promise.allSettled(
           scheduleData.recipients.map(async (recipient) => {
             try {
-              console.log(`Processing recipient: ${recipient}`);
+              console.log(`\nProcessing recipient: ${recipient}`);
 
               // Format phone number if needed
               const formattedChatId = recipient.includes("@c.us")
@@ -493,10 +481,44 @@ class SchedulerService {
 
               console.log(`Formatted chat ID: ${formattedChatId}`);
 
-              // Send message directly to WAHA API
+              // Extract phone number for lookup
+              const contactPhone = formattedChatId.split("@")[0];
+              const normalizedPhone = phoneKey(contactPhone);
+
+              // Look up affiliate info by phone number
+              const affiliateInfo = affiliateMap.get(normalizedPhone);
+
+              // Create contact object with real name if found, or fallback
+              const contactData = affiliateInfo
+                ? {
+                    name: affiliateInfo.name || "Affiliate",
+                    phone: contactPhone,
+                    platform: affiliateInfo.platform,
+                    // Include other fields from affiliate data as needed
+                  }
+                : {
+                    name: "Affiliate", // Default fallback name
+                    phone: contactPhone,
+                  };
+
+              console.log(`Contact data for ${contactPhone}:`, contactData);
+
+              // Process the template with both dynamic and static parameters
+              const processedMessage = processAllParameters(
+                template.content,
+                contactData,
+                scheduleData.paramValues
+              );
+
+              // Log the preview
+              console.log(
+                `Message preview: ${processedMessage.substring(0, 50)}...`
+              );
+
+              // Send message via WAHA API
               const requestBody = {
                 chatId: formattedChatId,
-                text: message,
+                text: processedMessage,
                 session: scheduleData.sessionName,
               };
 

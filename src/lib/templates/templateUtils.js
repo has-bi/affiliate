@@ -145,9 +145,78 @@ export function formatMessageContent(content) {
   // Format bold text
   let formatted = content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-  // Add more formatting rules as needed
+  // Format italic text (single asterisks, not double)
+  formatted = formatted.replace(
+    /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,
+    "<em>$1</em>"
+  );
+
+  // Format links
+  formatted = formatted.replace(
+    /(https?:\/\/[^\s]+)/g,
+    '<a href="$1" class="text-blue-600 underline" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
 
   return formatted;
+}
+
+/**
+ * Process all parameters in a template (both dynamic and static)
+ * @param {string} content - Template content
+ * @param {Object} contact - Contact data with dynamic fields
+ * @param {Object} staticParams - Static parameter values
+ * @returns {string} Processed content with all parameters replaced
+ */
+export function processAllParameters(content, contact = {}, staticParams = {}) {
+  if (!content) return "";
+
+  let processedContent = content;
+
+  // Process dynamic parameters from contact
+  if (contact) {
+    // Replace {name} parameter
+    if (contact.name && processedContent.includes("{name}")) {
+      processedContent = processedContent.replace(/\{name\}/g, contact.name);
+    }
+
+    // Replace {phone} parameter if available
+    if (contact.phone && processedContent.includes("{phone}")) {
+      processedContent = processedContent.replace(/\{phone\}/g, contact.phone);
+    }
+
+    // Replace {platform} parameter if available
+    if (contact.platform && processedContent.includes("{platform}")) {
+      processedContent = processedContent.replace(
+        /\{platform\}/g,
+        contact.platform
+      );
+    }
+
+    // Add other dynamic fields as needed
+    // Loop through all properties in contact to replace any matching parameters
+    Object.entries(contact).forEach(([key, value]) => {
+      if (
+        value &&
+        typeof value === "string" &&
+        processedContent.includes(`{${key}}`)
+      ) {
+        const regex = new RegExp(`\\{${key}\\}`, "g");
+        processedContent = processedContent.replace(regex, value);
+      }
+    });
+  }
+
+  // Process static parameters (same as before)
+  if (staticParams && typeof staticParams === "object") {
+    Object.entries(staticParams).forEach(([key, value]) => {
+      if (key && value !== undefined && value !== null) {
+        const regex = new RegExp(`\\{${key}\\}`, "g");
+        processedContent = processedContent.replace(regex, String(value));
+      }
+    });
+  }
+
+  return processedContent;
 }
 
 /**
@@ -157,17 +226,8 @@ export function formatMessageContent(content) {
  * @returns {string} Content with parameters replaced
  */
 export function fillTemplateContent(content, paramValues = {}) {
-  if (!content) return "";
-
-  let filledContent = content;
-
-  // Replace each parameter placeholder with its value
-  Object.entries(paramValues).forEach(([paramId, value]) => {
-    const regex = new RegExp(`\\{${paramId}\\}`, "g");
-    filledContent = filledContent.replace(regex, value || `{${paramId}}`);
-  });
-
-  return filledContent;
+  // Use processAllParameters for consistency
+  return processAllParameters(content, {}, paramValues);
 }
 
 /**
@@ -233,18 +293,34 @@ export function getFinalMessageForContact(
 ) {
   if (!content) return "";
 
-  let finalContent = content;
+  // Use processAllParameters for consistency
+  return processAllParameters(content, contact, staticParams);
+}
 
-  // First fill dynamic parameters from contact
-  if (contact) {
-    // Special handling for name parameter
-    if (contact.name && finalContent.includes("{name}")) {
-      finalContent = finalContent.replace(/\{name\}/g, contact.name);
-    }
+/**
+ * Convert HTML-formatted content to WhatsApp formatting
+ * @param {string} htmlContent HTML formatted content
+ * @returns {string} WhatsApp formatted content
+ */
+export function convertHtmlToWhatsApp(htmlContent) {
+  if (!htmlContent) return "";
 
-    // Handle other contact fields if needed
-  }
+  let whatsAppFormatted = htmlContent;
 
-  // Then fill static parameters
-  return fillTemplateContent(finalContent, staticParams);
+  // Convert HTML strong tags to WhatsApp bold (double asterisks)
+  whatsAppFormatted = whatsAppFormatted.replace(
+    /<strong>(.*?)<\/strong>/g,
+    "*$1*"
+  );
+
+  // Convert HTML em tags to WhatsApp italic (single underscores)
+  whatsAppFormatted = whatsAppFormatted.replace(/<em>(.*?)<\/em>/g, "_$1_");
+
+  // Remove HTML link tags, keep the text
+  whatsAppFormatted = whatsAppFormatted.replace(/<a[^>]*>(.*?)<\/a>/g, "$1");
+
+  // Remove any other HTML tags
+  whatsAppFormatted = whatsAppFormatted.replace(/<[^>]*>/g, "");
+
+  return whatsAppFormatted;
 }

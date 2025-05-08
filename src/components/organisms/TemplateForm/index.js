@@ -182,6 +182,20 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     }));
   };
 
+  // Handle parameter changes
+  const handleParamChange = (index, field, value) => {
+    const updatedParams = [...formData.parameters];
+    updatedParams[index] = {
+      ...updatedParams[index],
+      [field]: value,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      parameters: updatedParams,
+    }));
+  };
+
   // Add new parameter
   const handleAddParameter = () => {
     const newParam = {
