@@ -5,7 +5,10 @@ import React, { useState, useEffect } from "react";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { useMessageWizard } from "@/hooks/useMessageWizard";
-import { formatMessageContent } from "@/lib/templates/templateUtils";
+import {
+  formatMessageContent,
+  fillTemplateContent,
+} from "@/lib/templates/templateUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Check, Search } from "lucide-react";
@@ -170,53 +173,47 @@ export default function TemplateMessageSender() {
     e.preventDefault();
     console.log("📤 Handling send...");
 
-    if (!validateForm(sessionName)) {
-      console.log("❌ Form validation failed");
-      return;
-    }
+    // 1️⃣  Guard‑rails
+    if (!validateForm(sessionName)) return;
 
     setIsSubmitting(true);
     setSendResult(null);
 
     try {
-      const allRecipients = getAllRecipients();
-      console.log("📋 All recipients:", allRecipients);
+      // 2️⃣  Get the full, de‑duplicated recipient list
+      const allRecipients = getAllRecipients(); // <- your existing helper
 
-      const messages =
-        selectedContacts.length > 0
-          ? selectedContacts.map((contact) => ({
-              recipient: contact.phone,
-              message: getFinalMessageForContact(contact),
-            }))
-          : allRecipients.map((phone) => ({
-              recipient: phone,
-              message: selectedTemplate.content,
-            }));
+      // 3️⃣  Build ready‑to‑send, styled messages
+      const messages = allRecipients.map((phone) => {
+        // a. personalise merge‑tags for this phone
+        const personalised = fillTemplateContent(
+          selectedTemplate.content,
+          paramValues[phone] ?? {} // {name,email,…}
+        );
 
-      console.log("💬 Messages to send:", messages);
+        // b. convert <b>, <i>, <u>, etc. to WhatsApp markdown
+        return {
+          to: phone,
+          text: formatMessageContent(personalised),
+        };
+      });
 
+      // 4️⃣  POST to the bulk‑send API
       const response = await fetch("/api/messages/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          session: sessionName,
-          recipients: allRecipients,
-          message: messages[0].message,
-          delay: 3000,
+          session: sessionName, // WAHA session alias
+          messages,
+          delay: 3000, // ms pause between each contact
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to send messages");
-      }
-
       const result = await response.json();
-      console.log("✅ Send result:", result);
-      setSendResult(result);
+      setSendResult(result); // triggers success/fail UI
     } catch (err) {
-      console.error("❌ Error sending message:", err);
-      setError(err.message || "Failed to send message");
+      console.error("❌ Kirim Sekarang failed:", err);
+      setFormError(err.message ?? "Unknown error");
     } finally {
       setIsSubmitting(false);
     }

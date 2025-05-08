@@ -8,7 +8,8 @@ class WAHAClient {
     this.baseUrl =
       process.env.NEXT_PUBLIC_WAHA_API_URL ||
       "https://personal-wabot.yttkys.easypanel.host";
-    this.defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
+    this.defaultSession =
+      process.env.NEXT_PUBLIC_WAHA_SESSION || "session_qowxr7";
 
     // Add these cache properties to the class
     this.sessionCache = null;
@@ -202,6 +203,9 @@ class WAHAClient {
 
     // Format recipient if needed (remove @c.us if present and ensure it has the format)
     let recipient = to.replace("@c.us", "");
+    const whatsappFormattedText = text
+      .replace(/<strong>(.*?)<\/strong>/g, "*$1*")
+      .replace(/<em>(.*?)<\/em>/g, "_$1_");
 
     try {
       // First check if the session is connected
@@ -218,7 +222,7 @@ class WAHAClient {
         headers: this.getHeaders(),
         body: JSON.stringify({
           chatId: `${recipient}@c.us`,
-          text,
+          text: whatsappFormattedText,
           session: this.defaultSession,
         }),
       });
