@@ -183,17 +183,20 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
   };
 
   // Handle parameter changes
-  const handleParamChange = (index, field, value) => {
-    const updatedParams = [...formData.parameters];
-    updatedParams[index] = {
-      ...updatedParams[index],
-      [field]: value,
-    };
+  const handleParamChange = (paramId, field, value) => {
+    setFormData((prev) => {
+      const newParameters = prev.parameters.map((param) => {
+        if (param.id === paramId) {
+          return { ...param, [field]: value };
+        }
+        return param;
+      });
 
-    setFormData((prev) => ({
-      ...prev,
-      parameters: updatedParams,
-    }));
+      return {
+        ...prev,
+        parameters: newParameters,
+      };
+    });
   };
 
   // Add new parameter
@@ -201,11 +204,13 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     const newParam = {
       id: `param_${Date.now()}`,
       name: "",
-      type: "text",
+      type: "text", // Default tipe
       placeholder: "",
       required: false,
       isDynamic: false,
     };
+
+    console.log("Adding new parameter:", newParam);
 
     setFormData((prev) => ({
       ...prev,
@@ -222,6 +227,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
   };
 
   // Extract parameters from template content
+  // Fungsi extractParametersFromContent yang sudah dimodifikasi
   const extractParametersFromContent = (content) => {
     if (!content) return [];
     const paramRegex = /\{([a-zA-Z0-9_-]+)\}/g;
@@ -232,16 +238,26 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
       new Set(matches.map((match) => match.substring(1, match.length - 1)))
     );
 
-    // Convert to parameter objects
-    return uniqueParams.map((paramId) => ({
-      id: paramId,
-      name:
-        paramId.charAt(0).toUpperCase() + paramId.slice(1).replace(/_/g, " "),
-      type: "text",
-      placeholder: `Enter ${paramId.replace(/_/g, " ")}`,
-      required: false,
-      isDynamic: paramId === "name", // Automatically set name as dynamic
-    }));
+    // Convert to parameter objects, preserving existing types
+    return uniqueParams.map((paramId) => {
+      // Cek apakah parameter ini sudah ada dalam formData.parameters
+      const existingParam = formData.parameters.find(
+        (param) => param.id === paramId
+      );
+
+      // Jika ada, gunakan tipe yang sudah ada, jika tidak gunakan default "text"
+      return {
+        id: paramId,
+        name:
+          existingParam?.name ||
+          paramId.charAt(0).toUpperCase() + paramId.slice(1).replace(/_/g, " "),
+        type: existingParam?.type || "text", // Gunakan tipe yang ada atau default ke "text"
+        placeholder:
+          existingParam?.placeholder || `Enter ${paramId.replace(/_/g, " ")}`,
+        required: existingParam?.required || false,
+        isDynamic: existingParam?.isDynamic || paramId === "name",
+      };
+    });
   };
 
   // Handle form submission
@@ -249,6 +265,9 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     e.preventDefault();
     setFormError("");
     setSubmitSuccess(false);
+
+    // Debugging: Log nilai parameter
+    console.log("Parameters sebelum submit:", formData.parameters);
 
     // Validate form
     if (!formData.name.trim()) {
@@ -285,10 +304,20 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
         ? `/api/templates/${formData.id}`
         : "/api/templates";
 
-      // Create a copy of the data to send to the API
-      const dataToSend = { ...formData };
+      // Buat salinan data untuk dikirim ke API
+      const dataToSend = {
+        ...formData,
+        // Pastikan tipe parameter dipertahankan dengan benar
+        parameters: formData.parameters.map((param) => ({
+          ...param,
+          type: param.type || "text", // Default ke text jika tidak ada nilai
+        })),
+      };
 
-      // If we're creating a new template, remove the id field
+      // Log data yang akan dikirim
+      console.log("Data yang akan dikirim ke server:", dataToSend);
+
+      // Jika membuat template baru, hapus id
       if (!isEditing) {
         delete dataToSend.id;
       }
@@ -616,7 +645,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveParameter(index)}
+                        onClick={() => handleRemoveParameter(param.id)} // Ubah ini untuk menggunakan param.id
                         className="text-red-500 hover:text-red-700 p-1 h-auto"
                       >
                         <X className="h-4 w-4" />
@@ -626,17 +655,18 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label
-                          htmlFor={`param-id-${index}`}
+                          htmlFor={`param-id-${param.id}`} // Gunakan param.id untuk ID yang unik
                           className="block text-xs font-medium text-gray-700 mb-1"
                         >
                           Parameter ID <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          id={`param-id-${index}`}
+                          id={`param-id-${param.id}`}
                           value={param.id}
-                          onChange={(e) =>
-                            handleParamChange(index, "id", e.target.value)
+                          onChange={
+                            (e) =>
+                              handleParamChange(param.id, "id", e.target.value) // Gunakan param.id untuk identifikasi
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                           required
@@ -644,17 +674,22 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
                       </div>
                       <div>
                         <label
-                          htmlFor={`param-name-${index}`}
+                          htmlFor={`param-name-${param.id}`}
                           className="block text-xs font-medium text-gray-700 mb-1"
                         >
                           Display Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          id={`param-name-${index}`}
+                          id={`param-name-${param.id}`}
                           value={param.name}
-                          onChange={(e) =>
-                            handleParamChange(index, "name", e.target.value)
+                          onChange={
+                            (e) =>
+                              handleParamChange(
+                                param.id,
+                                "name",
+                                e.target.value
+                              ) // Gunakan param.id untuk identifikasi
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                           required
@@ -665,16 +700,21 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
                       <div>
                         <label
-                          htmlFor={`param-type-${index}`}
+                          htmlFor={`param-type-${param.id}`}
                           className="block text-xs font-medium text-gray-700 mb-1"
                         >
                           Type
                         </label>
                         <select
-                          id={`param-type-${index}`}
+                          id={`param-type-${param.id}`}
                           value={param.type}
-                          onChange={(e) =>
-                            handleParamChange(index, "type", e.target.value)
+                          onChange={
+                            (e) =>
+                              handleParamChange(
+                                param.id,
+                                "type",
+                                e.target.value
+                              ) // Gunakan param.id untuk identifikasi
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                         >
@@ -687,26 +727,44 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
                       </div>
                       <div>
                         <label
-                          htmlFor={`param-placeholder-${index}`}
+                          htmlFor={`param-placeholder-${param.id}`}
                           className="block text-xs font-medium text-gray-700 mb-1"
                         >
                           Placeholder
                         </label>
                         <input
                           type="text"
-                          id={`param-placeholder-${index}`}
+                          id={`param-placeholder-${param.id}`}
                           value={param.placeholder || ""}
-                          onChange={(e) =>
-                            handleParamChange(
-                              index,
-                              "placeholder",
-                              e.target.value
-                            )
+                          onChange={
+                            (e) =>
+                              handleParamChange(
+                                param.id,
+                                "placeholder",
+                                e.target.value
+                              ) // Gunakan param.id untuk identifikasi
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                         />
                       </div>
-                      <div className="flex items-end"></div>
+                      <div className="flex items-end">
+                        <label className="flex items-center text-xs font-medium text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={param.required || false}
+                            onChange={
+                              (e) =>
+                                handleParamChange(
+                                  param.id,
+                                  "required",
+                                  e.target.checked
+                                ) // Tambahkan checkbox untuk required
+                            }
+                            className="h-4 w-4 mr-2 text-blue-600 rounded"
+                          />
+                          Required field
+                        </label>
+                      </div>
                     </div>
                   </div>
                 ))}
