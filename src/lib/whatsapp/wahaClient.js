@@ -192,7 +192,7 @@ class WAHAClient {
    * @param {string} text - Message text
    * @returns {Promise<Object>} Message info
    */
-  async sendText(to, text) {
+  async sendText(session, to, text) {
     if (!to) {
       throw new Error("Recipient is required");
     }
@@ -201,18 +201,27 @@ class WAHAClient {
       throw new Error("Message text is required");
     }
 
-    // Format recipient if needed (remove @c.us if present and ensure it has the format)
+    // Format recipient if needed
     let recipient = to.replace("@c.us", "");
-    const whatsappFormattedText = text
+
+    // Make sure text is a string
+    const textContent = String(text);
+
+    // Apply WhatsApp formatting (bold/italic)
+    const whatsappFormattedText = textContent
       .replace(/<strong>(.*?)<\/strong>/g, "*$1*")
-      .replace(/<em>(.*?)<\/em>/g, "_$1_");
+      .replace(/<em>(.*?)<\/em>/g, "_$1_")
+      // Also remove any HTML tags that might remain
+      .replace(/<[^>]*>/g, "");
 
     try {
-      // First check if the session is connected
+      // Check if the session is connected
       const sessionStatus = await this.checkSession();
       if (!sessionStatus.isConnected) {
         throw new Error(
-          `WhatsApp session '${this.defaultSession}' is not connected (${sessionStatus.status})`
+          `WhatsApp session '${
+            session || this.defaultSession
+          }' is not connected (${sessionStatus.status})`
         );
       }
 
@@ -223,7 +232,7 @@ class WAHAClient {
         body: JSON.stringify({
           chatId: `${recipient}@c.us`,
           text: whatsappFormattedText,
-          session: this.defaultSession,
+          session: session || this.defaultSession,
         }),
       });
 

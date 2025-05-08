@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Check, Search } from "lucide-react";
+import { processAllParameters } from "@/lib/templates/templateUtils";
 
 // Import step components
 import Step1 from "@/components/molecules/TemplateSelector";
@@ -173,47 +174,109 @@ export default function TemplateMessageSender() {
     e.preventDefault();
     console.log("📤 Handling send...");
 
-    // 1️⃣  Guard‑rails
+    // 1️⃣ Validate input
     if (!validateForm(sessionName)) return;
 
     setIsSubmitting(true);
     setSendResult(null);
 
     try {
-      // 2️⃣  Get the full, de‑duplicated recipient list
-      const allRecipients = getAllRecipients(); // <- your existing helper
+      // 2️⃣ Get all recipients
+      const allRecipients = getAllRecipients();
+      console.log("📋 Recipients:", allRecipients);
 
-      // 3️⃣  Build ready‑to‑send, styled messages
-      const messages = allRecipients.map((phone) => {
-        // a. personalise merge‑tags for this phone
-        const personalised = fillTemplateContent(
+      // 3️⃣ Fetch active affiliates to get contact information
+      // This is the same approach used in the scheduler
+      let affiliateData = [];
+      try {
+        const response = await fetch("/api/affiliates?status=active");
+        if (response.ok) {
+          affiliateData = await response.json();
+          console.log(`📋 Loaded ${affiliateData.length} affiliate contacts`);
+        }
+      } catch (error) {
+        console.warn("Could not load affiliate data:", error);
+      }
+
+      // 4️⃣ Create a lookup map by phone number (just like in scheduler)
+      const affiliateMap = new Map();
+      if (Array.isArray(affiliateData)) {
+        affiliateData.forEach((affiliate) => {
+          if (affiliate.phone) {
+            // Use phoneKey to normalize phone numbers
+            const key = affiliate.phone.replace(/\D/g, "");
+            if (key) {
+              affiliateMap.set(key, affiliate);
+            }
+          }
+        });
+      }
+      console.log(`🔍 Created lookup map with ${affiliateMap.size} affiliates`);
+
+      // 5️⃣ Process each recipient
+      const processedMessages = [];
+      for (const recipient of allRecipients) {
+        // Format the phone number
+        const phoneNumber = recipient.replace(/\D/g, "");
+        const formattedChatId = recipient.includes("@c.us")
+          ? recipient
+          : `${phoneNumber}@c.us`;
+
+        // Look up affiliate info by phone number (just like scheduler)
+        const affiliateInfo = affiliateMap.get(phoneNumber);
+
+        // Create contact object with real name if found, or fallback
+        const contactData = affiliateInfo
+          ? {
+              name: affiliateInfo.name || "Affiliate",
+              phone: phoneNumber,
+              platform: affiliateInfo.platform || "",
+              // Include other fields as needed
+            }
+          : {
+              name: "Affiliate", // Default fallback
+              phone: phoneNumber,
+            };
+
+        // Process the template with both dynamic and static parameters
+        // THIS IS THE IDENTICAL APPROACH TO THE SCHEDULER
+        const processedMessage = processAllParameters(
           selectedTemplate.content,
-          paramValues[phone] ?? {} // {name,email,…}
+          contactData,
+          paramValues
         );
 
-        // b. convert <b>, <i>, <u>, etc. to WhatsApp markdown
-        return {
-          to: phone,
-          text: formatMessageContent(personalised),
-        };
-      });
+        processedMessages.push({
+          recipient: formattedChatId,
+          message: processedMessage,
+          contactData: contactData,
+        });
+      }
 
-      // 4️⃣  POST to the bulk‑send API
+      // 6️⃣ Send the processed messages
       const response = await fetch("/api/messages/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          session: sessionName, // WAHA session alias
-          messages,
-          delay: 3000, // ms pause between each contact
+          session: sessionName,
+          processedMessages: processedMessages,
+          templateId: selectedTemplate.id,
+          templateName: selectedTemplate.name,
         }),
       });
 
+      // Handle response
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
+
       const result = await response.json();
-      setSendResult(result); // triggers success/fail UI
+      setSendResult(result);
+      console.log("✅ Send result:", result);
     } catch (err) {
       console.error("❌ Kirim Sekarang failed:", err);
-      setFormError(err.message ?? "Unknown error");
+      setError(err.message ?? "Unknown error");
     } finally {
       setIsSubmitting(false);
     }
@@ -478,7 +541,10 @@ export default function TemplateMessageSender() {
               <div className="bg-white p-3 rounded-md shadow-sm">
                 <p className="text-sm text-gray-500">Total</p>
                 <p className="text-xl font-bold">
-                  {sendResult.totalSent + sendResult.totalFailed}
+                  {typeof sendResult.totalSent === "number" &&
+                  typeof sendResult.totalFailed === "number"
+                    ? sendResult.totalSent + sendResult.totalFailed
+                    : 0}
                 </p>
               </div>
               <div className="bg-white p-3 rounded-md shadow-sm">
