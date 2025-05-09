@@ -9,11 +9,10 @@ const config = {
    */
   api: {
     // WAHA API base URL
-    wahaApiUrl:
-      process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id",
+    wahaApiUrl: process.env.NEXT_PUBLIC_WAHA_API_URL,
 
     // Default session name
-    defaultSession: process.env.NEXT_PUBLIC_WAHA_SESSION || "",
+    defaultSession: process.env.NEXT_PUBLIC_WAHA_SESSION,
 
     // Endpoints
     endpoints: {

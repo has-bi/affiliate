@@ -15,8 +15,8 @@ export async function getCurrentUser() {
 // Verify credentials with simple comparison
 export function verifyCredentials(username, password) {
   // Set your credentials via environment variables
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "***REMOVED***";
+  const adminUsername = process.env.ADMIN_USERNAME;
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
   return username === adminUsername && password === adminPassword;
 }
