@@ -17,8 +17,7 @@ class SchedulerService {
   constructor() {
     this.jobs = new Map();
     this.executionLocks = new Map();
-    this.wahaApiUrl =
-      process.env.NEXT_PUBLIC_WAHA_API_URL || "https://wabot.youvit.co.id";
+    this.wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
 
     // Log time zone information for debugging
     console.log(
