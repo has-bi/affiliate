@@ -9,7 +9,6 @@ import {
   RefreshCw,
   AlertCircle,
   UserPlus,
-  Check,
   X,
   MessageSquare,
 } from "lucide-react";
@@ -18,20 +17,13 @@ import { useAffiliates } from "@/hooks/useAffiliates";
 // Import formatPhoneNumber utility function directly
 const formatPhoneNumber = (phone) => {
   if (!phone) return "";
-
-  // Remove all non-numeric characters
   let cleaned = String(phone).replace(/\D/g, "");
-
-  // If Indonesian number starting with 0, replace with 62
   if (cleaned.startsWith("0")) {
     cleaned = `62${cleaned.substring(1)}`;
   }
-
-  // Add @c.us suffix if not already present
   if (!cleaned.includes("@c.us")) {
     cleaned = `${cleaned}@c.us`;
   }
-
   return cleaned;
 };
 
@@ -95,23 +87,33 @@ const OnboardingAffiliatesList = () => {
     setFilteredAffiliates(filtered);
   }, [searchTerm, newAffiliates]);
 
-  // Generate welcome message template
-  const getWelcomeMessage = (affiliate) => {
-    return `✨**Welcome to Youvit Affiliate Club**✨
-Hai Kak ${affiliate.name}! 👋
-Selamat datang di Youvit Affiliate Club! 🥳 Seneng banget Kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀
-Nah, biar makin siap promosikan produk Youvit, yuk request Free Sample Kakak sekarang!
-Klik link ini buat isi formnya:
-🎁 **Pengajuan Sample** 🎁
-bit.ly/sampleyouvitindo 
-*sample akan diproses maksimal 7 hari
-Kalau ada pertanyaan, langsung aja tanya di grup atau hubungi Vita +62 851-7988-0454
-Let's go, waktunya gaspol jualan bareng Youvit! 💪💚
-Salam cuan,
-Tim Youvit Affiliate`;
-  };
+  const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
 
-  // Handle accept affiliate action
+  // Hardcoded welcome message template
+const getWelcomeMessage = (name) => {
+  return `✨Welcome to Youvit Affiliate Club✨ Hai Kak ${name}👋
+
+Selamat datang di Youvit Affiliate Club! 🥳 Seneng banget kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀
+
+Nah, biar makin siap promosikan produk Youvit, jangan lupa request Free Sample Kakak sekarang!
+
+➡️Khusus Affiliate Shopee cukup request sample lewat platform
+➡️Khusus Affiliate TikTok bisa klik link ini dan isi formnya https://bit.ly/sampleyouvitindo
+
+*Notes*
+- Maksimal request sample 3 produk kemasan 7 hari
+- Untuk request melalui form pilih tier New Affiliate
+- Sampel akan diproses maksimal 14 hari
+- Mohon balas chat ini jika sudah selesai request
+
+Jangan lupa join grupnya ya https://bit.ly/YouvitAffiliatesClub 
+Sampel akan diproses setelah kakak join grupnya☺️🥰
+
+Salam cuan, 
+Tim Youvit Affiliate`;
+};
+
+   // Handle accept affiliate - simplified version
   const handleAccept = async (affiliate) => {
     if (!sessionName) {
       alert("Please select a WhatsApp session first");
@@ -121,26 +123,43 @@ Tim Youvit Affiliate`;
     setProcessingAffiliate(affiliate);
 
     try {
-      // Send welcome message
-      await sendWelcomeMessage(
-        affiliate,
-        sessionName,
-        getWelcomeMessage(affiliate)
-      );
+      const formattedChatId = formatPhoneNumber(affiliate.phone);
+      const processedMessage = getWelcomeMessage(affiliate.name || "");
 
-      // Update affiliate status to "contacted"
+      const requestBody = {
+        chatId: formattedChatId,
+        text: processedMessage,
+        session: sessionName,
+      };
+
+      console.log(`Sending welcome message to ${formattedChatId}`);
+      
+      const response = await fetch(`${wahaApiUrl}/api/sendText`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const responseData = await response.json();
+        throw new Error(responseData.error || responseData.message || "Failed to send message");
+      }
+
+      console.log(`✅ Message sent successfully`);
+
       await updateAffiliateStatus({
         rowIndex: affiliate.rowIndex,
         status: "contacted",
       });
 
-      // Refresh the list
       await fetchNewAffiliates();
+      
     } catch (error) {
       console.error("Error accepting affiliate:", error);
-      alert(
-        "Failed to process affiliate: " + (error.message || "Unknown error")
-      );
+      alert("Failed to process affiliate: " + (error.message || "Unknown error"));
     } finally {
       setProcessingAffiliate(null);
     }
