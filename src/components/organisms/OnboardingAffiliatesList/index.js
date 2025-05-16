@@ -95,17 +95,6 @@ const getWelcomeMessage = (name) => {
 
 Selamat datang di Youvit Affiliate Club! 🥳 Seneng banget kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀
 
-Nah, biar makin siap promosikan produk Youvit, jangan lupa request Free Sample Kakak sekarang!
-
-➡️Khusus Affiliate Shopee cukup request sample lewat platform
-➡️Khusus Affiliate TikTok bisa klik link ini dan isi formnya https://bit.ly/sampleyouvitindo
-
-*Notes*
-- Maksimal request sample 3 produk kemasan 7 hari
-- Untuk request melalui form pilih tier New Affiliate
-- Sampel akan diproses maksimal 14 hari
-- Mohon balas chat ini jika sudah selesai request
-
 Jangan lupa join grupnya ya https://bit.ly/YouvitAffiliatesClub 
 Sampel akan diproses setelah kakak join grupnya☺️🥰
 
