@@ -96,7 +96,7 @@ const getWelcomeMessage = (name) => {
 Selamat datang di Youvit Affiliate Club! 🥳 Seneng banget kakak udah join bareng kita. Sekarang saatnya siap-siap cuan bareng Youvit! 🚀
 
 Jangan lupa join grupnya ya https://bit.ly/YouvitAffiliatesClub 
-Sampel akan diproses setelah kakak join grupnya☺️🥰
+Sampel akan diproses setelah kakak join grupnya. Setelah itu jangan lupa balas pesan ini untuk konfirmasi sampel☺️🥰
 
 Salam cuan, 
 Tim Youvit Affiliate`;
