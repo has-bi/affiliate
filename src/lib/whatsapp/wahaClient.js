@@ -9,7 +9,7 @@ class WAHAClient {
       process.env.NEXT_PUBLIC_WAHA_API_URL ||
       "https://personal-wabot.yttkys.easypanel.host";
     this.defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "youvit";
-    this.apiKey = process.env.WAHA_API_KEY;
+    this.apiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
 
     // Add these cache properties to the class
     this.sessionCache = null;
