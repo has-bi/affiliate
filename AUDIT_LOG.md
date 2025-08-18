@@ -45,10 +45,10 @@ This audit was conducted to optimize the Youvit Affiliate Control Panel for prod
 
 ```bash
 # FOUND IN .env:
-DATABASE_URL="postgres://neondb_owner:***REMOVED***@ep-wispy-union-a18x47cv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
-NEXT_PUBLIC_WAHA_API_KEY=***REMOVED***
-GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
-ADMIN_PASSWORD=***REMOVED***
+DATABASE_URL="[REDACTED - CREDENTIALS REMOVED FOR SECURITY]"
+NEXT_PUBLIC_WAHA_API_KEY=[REDACTED]
+GOOGLE_SHEETS_PRIVATE_KEY="[REDACTED]"
+ADMIN_PASSWORD=[REDACTED]
 ```
 
 #### Debug Files in Production

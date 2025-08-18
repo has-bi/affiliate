@@ -88,7 +88,7 @@ DATABASE_URL="postgresql://username:password@localhost:5432/youvit_affiliate"
 
 # Authentication
 ADMIN_USERNAME="your_admin_username"
-ADMIN_PASSWORD="your_admin_password"
+ADMIN_PASSWORD="your_secure_admin_password"
 
 # Google Sheets Integration
 GOOGLE_SHEETS_CLIENT_EMAIL="your-service-account@project.iam.gserviceaccount.com"
