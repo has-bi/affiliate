@@ -20,15 +20,17 @@ const BroadcastForm = () => {
     sessionName: "",
     recipients: "",
     message: "",
-    delaySeconds: 5,
+    delaySeconds: 3,
   });
 
   const [validationError, setValidationError] = useState("");
   const [recipientCount, setRecipientCount] = useState(0);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Update recipient count when recipients change
   const handleRecipientsChange = (value) => {
     setFormData((prev) => ({ ...prev, recipients: value }));
+    setValidationError(""); // Clear validation errors when user types
 
     // Count valid recipients
     const recipients = value
@@ -37,37 +39,67 @@ const BroadcastForm = () => {
       .filter(Boolean);
 
     setRecipientCount(recipients.length);
+    
+    // Real-time validation feedback
+    if (recipients.length > 100) {
+      setValidationError("Warning: Large recipient lists may take longer to process and could hit rate limits.");
+    }
   };
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError("");
+    setIsValidating(true);
 
-    // Validate form
-    if (!formData.sessionName) {
-      setValidationError("Please select a WhatsApp session");
-      return;
+    try {
+      // Validate form
+      if (!formData.sessionName) {
+        setValidationError("Please select a WhatsApp session");
+        return;
+      }
+
+      if (!formData.recipients.trim()) {
+        setValidationError("Please enter at least one recipient");
+        return;
+      }
+
+      if (!formData.message.trim()) {
+        setValidationError("Please enter a message");
+        return;
+      }
+
+      // Parse recipients
+      const recipients = formData.recipients
+        .split(/[\n,]+/)
+        .map((r) => r.trim())
+        .filter(Boolean);
+
+      // Validate recipients format
+      const invalidRecipients = recipients.filter(r => {
+        try {
+          formatPhoneNumber(r);
+          return false;
+        } catch {
+          return true;
+        }
+      });
+
+      if (invalidRecipients.length > 0) {
+        setValidationError(`Invalid phone numbers detected: ${invalidRecipients.slice(0, 3).join(", ")}${invalidRecipients.length > 3 ? ` and ${invalidRecipients.length - 3} more` : ""}`);
+        return;
+      }
+
+      if (recipients.length > 200) {
+        setValidationError("Maximum 200 recipients allowed per broadcast. Please split into smaller batches.");
+        return;
+      }
+
+      // Send broadcast
+      await broadcastMessage(formData.sessionName, recipients, formData.message);
+    } finally {
+      setIsValidating(false);
     }
-
-    if (!formData.recipients.trim()) {
-      setValidationError("Please enter at least one recipient");
-      return;
-    }
-
-    if (!formData.message.trim()) {
-      setValidationError("Please enter a message");
-      return;
-    }
-
-    // Parse recipients
-    const recipients = formData.recipients
-      .split(/[\n,]+/)
-      .map((r) => r.trim())
-      .filter(Boolean);
-
-    // Send broadcast
-    await broadcastMessage(formData.sessionName, recipients, formData.message);
   };
 
   // Reset form
@@ -156,9 +188,20 @@ const BroadcastForm = () => {
 
               {/* Error Display */}
               {(validationError || error) && (
-                <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-start">
+                <div className={`p-4 rounded-md flex items-start ${
+                  validationError && validationError.startsWith('Warning:')
+                    ? 'bg-amber-50 border border-amber-200 text-amber-700'
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
                   <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <p>{validationError || error}</p>
+                  <div className="flex-1">
+                    <p>{validationError || error}</p>
+                    {recipientCount > 50 && (
+                      <p className="mt-2 text-sm">
+                        💡 Tip: For large broadcasts, consider using a delay of 5+ seconds between messages to avoid rate limiting.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -175,12 +218,14 @@ const BroadcastForm = () => {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={isSending || recipientCount === 0}
-                  isLoading={isSending}
-                  leftIcon={!isSending && <Send className="h-4 w-4" />}
+                  disabled={isSending || isValidating || recipientCount === 0 || !formData.sessionName || !formData.message.trim()}
+                  isLoading={isSending || isValidating}
+                  leftIcon={!(isSending || isValidating) && <Send className="h-4 w-4" />}
                 >
                   {isSending
-                    ? "Sending..."
+                    ? `Sending... (${Math.round((result?.successCount || 0) / recipientCount * 100) || 0}%)`
+                    : isValidating
+                    ? "Validating..."
                     : `Send to ${recipientCount} Recipient${
                         recipientCount !== 1 ? "s" : ""
                       }`}

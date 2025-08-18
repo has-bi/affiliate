@@ -29,10 +29,9 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (username, password) => {
     setLoading(true);
-    console.log("useAuth: Starting login process");
-
+    
     try {
-      console.log("useAuth: Sending fetch request");
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -40,8 +39,7 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ username, password }),
       });
-      console.log("useAuth: Received response", response.status);
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error("useAuth: Login response error:", errorText);
@@ -51,19 +49,17 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      console.log("useAuth: Parsing response JSON");
       const data = await response.json();
-      console.log("useAuth: Parsed data", data);
-
+      
       if (!data.success) {
         return { success: false, error: data.error || "Login failed" };
       }
 
       // Store user in localStorage for persistence
-      console.log("useAuth: Setting localStorage");
+      
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
       setUser(data.user);
-      console.log("useAuth: Login complete");
+      
       return { success: true };
     } catch (error) {
       console.error("useAuth: Login error:", error);

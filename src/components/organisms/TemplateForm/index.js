@@ -210,8 +210,6 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
       isDynamic: false,
     };
 
-    console.log("Adding new parameter:", newParam);
-
     setFormData((prev) => ({
       ...prev,
       parameters: [...prev.parameters, newParam],
@@ -267,8 +265,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     setSubmitSuccess(false);
 
     // Debugging: Log nilai parameter
-    console.log("Parameters sebelum submit:", formData.parameters);
-
+    
     // Validate form
     if (!formData.name.trim()) {
       setFormError("Template name is required");
@@ -315,8 +312,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
       };
 
       // Log data yang akan dikirim
-      console.log("Data yang akan dikirim ke server:", dataToSend);
-
+      
       // Jika membuat template baru, hapus id
       if (!isEditing) {
         delete dataToSend.id;
@@ -394,13 +390,53 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
   const dynamicParameters = formData.parameters.filter((p) => p.isDynamic);
   const staticParameters = formData.parameters.filter((p) => !p.isDynamic);
 
-  // Show loading state
+  // Show loading state with skeleton
   if (isLoadingTemplate) {
     return (
       <Card className="shadow-sm">
-        <div className="p-6 text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Loading template...</p>
+        <div className="p-6">
+          <div className="animate-pulse">
+            {/* Header skeleton */}
+            <div className="flex items-center mb-6">
+              <div className="h-8 w-8 bg-gray-200 rounded-full mr-3"></div>
+              <div className="h-6 bg-gray-200 rounded w-48"></div>
+            </div>
+            
+            {/* Form fields skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+              <div>
+                <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+            
+            {/* Description skeleton */}
+            <div className="mb-6">
+              <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+            
+            {/* Content area skeleton */}
+            <div className="mb-6">
+              <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+              <div className="h-48 bg-gray-200 rounded"></div>
+            </div>
+            
+            {/* Buttons skeleton */}
+            <div className="flex justify-end space-x-3">
+              <div className="h-10 w-20 bg-gray-200 rounded"></div>
+              <div className="h-10 w-32 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+          
+          <div className="text-center mt-6">
+            <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading template...</p>
+          </div>
         </div>
       </Card>
     );
@@ -784,18 +820,18 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              disabled={isSubmitting || !formData.name.trim() || !formData.content.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white"
             >
               {isSubmitting ? (
                 <>
-                  <span className="animate-spin mr-2">⟳</span>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
                   Saving...
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Template
+                  {formData.id ? 'Update Template' : 'Save Template'}
                 </>
               )}
             </Button>

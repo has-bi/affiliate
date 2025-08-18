@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "@/hooks/useWhatsApp";
+import { formatPhoneNumber } from "@/lib/utils";
 
 const MessageSender = () => {
   // Session handling
@@ -47,24 +48,6 @@ const MessageSender = () => {
       .map((num) => num.trim())
       .filter((num) => num.length > 0)
       .map(formatPhoneNumber);
-  };
-
-  // Format phone number to WhatsApp format
-  const formatPhoneNumber = (phone) => {
-    // Clean the number
-    let cleaned = phone.replace(/\D/g, "");
-
-    // Handle Indonesian format
-    if (cleaned.startsWith("0")) {
-      cleaned = `62${cleaned.substring(1)}`;
-    }
-
-    // Ensure it has the @c.us suffix
-    if (!cleaned.includes("@c.us")) {
-      cleaned = `${cleaned}@c.us`;
-    }
-
-    return cleaned;
   };
 
   // Handle sending a single message
@@ -194,19 +177,33 @@ const MessageSender = () => {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           WhatsApp Session <span className="text-red-500">*</span>
         </label>
-        <select
-          value={sessionName}
-          onChange={(e) => setSessionName(e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-          disabled={isLoading || isLoadingSessions}
-        >
-          <option value="">Select a session</option>
-          {sessions.map((session) => (
-            <option key={session.name} value={session.name}>
-              {session.name} {session.status ? `(${session.status})` : ""}
+        <div className="relative">
+          <select
+            value={sessionName}
+            onChange={(e) => setSessionName(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            disabled={isLoading || isLoadingSessions}
+          >
+            <option value="">
+              {isLoadingSessions ? "Loading sessions..." : "Select a session"}
             </option>
-          ))}
-        </select>
+            {sessions.map((session) => (
+              <option key={session.name} value={session.name}>
+                {session.name} {session.status ? `(${session.status})` : ""}
+              </option>
+            ))}
+          </select>
+          {isLoadingSessions && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          )}
+        </div>
+        {sessions.length === 0 && !isLoadingSessions && (
+          <p className="mt-1 text-sm text-amber-600">
+            No WhatsApp sessions available. Please ensure your WhatsApp is connected.
+          </p>
+        )}
       </div>
 
       {/* Mode Toggle */}
@@ -254,9 +251,16 @@ const MessageSender = () => {
               disabled={isLoading}
               required
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Recipients parsed: {parseRecipients().length}
-            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-xs text-gray-500">
+                Recipients parsed: <span className="font-medium text-green-600">{parseRecipients().length}</span>
+              </p>
+              {parseRecipients().length > 50 && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ Large batch detected. Consider smaller groups.
+                </p>
+              )}
+            </div>
 
             <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -297,7 +301,12 @@ const MessageSender = () => {
             </div>
             {recipient && (
               <p className="mt-1 text-xs text-gray-500">
-                Will be formatted as: {formatPhoneNumber(recipient)}
+                Will be formatted as: <code className="bg-gray-100 px-1 rounded">{formatPhoneNumber(recipient)}</code>
+              </p>
+            )}
+            {recipient && !/^[0-9+\-\s()]+$/.test(recipient) && (
+              <p className="mt-1 text-xs text-red-500">
+                ⚠️ Please enter a valid phone number
               </p>
             )}
           </div>
@@ -323,18 +332,18 @@ const MessageSender = () => {
         <div className="flex space-x-3">
           <button
             type="submit"
-            disabled={isLoading}
-            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md flex items-center justify-center transition"
+            disabled={isLoading || !sessionName || (!recipient.trim() && !bulkMode) || (!recipients.trim() && bulkMode) || !message.trim()}
+            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-md flex items-center justify-center transition"
           >
             {isLoading ? (
               <>
                 <Loader className="h-5 w-5 mr-2 animate-spin" />
-                Sending...
+                {bulkMode ? `Sending ${parseRecipients().length > 0 ? 'to ' + parseRecipients().length + ' recipients' : ''}...` : "Sending..."}
               </>
             ) : (
               <>
                 <Send className="h-5 w-5 mr-2" />
-                {bulkMode ? "Send to All" : "Send Message"}
+                {bulkMode ? `Send to ${parseRecipients().length} Recipients` : "Send Message"}
               </>
             )}
           </button>
@@ -349,7 +358,7 @@ const MessageSender = () => {
               setError(null);
             }}
             disabled={isLoading}
-            className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md transition"
+            className="py-2 px-4 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-700 font-medium rounded-md transition"
           >
             Reset
           </button>
@@ -361,24 +370,43 @@ const MessageSender = () => {
         <div className="mt-6 border-t border-gray-200 pt-4">
           <h3 className="text-lg font-medium text-gray-700 mb-3">Results</h3>
 
-          <div className="bg-gray-50 rounded-md p-4 mb-4">
+          <div className={`rounded-md p-4 mb-4 ${results.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
             <div className="flex items-center mb-2">
               {results.success ? (
                 <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
               )}
-              <span className="font-medium">
+              <span className={`font-medium ${results.success ? 'text-green-800' : 'text-red-800'}`}>
                 {results.success
-                  ? `Successfully sent ${results.sent} of ${results.total} message(s)`
-                  : `Failed to send messages`}
+                  ? `✅ Successfully sent ${results.sent} of ${results.total} message(s)`
+                  : `❌ Failed to send messages`}
               </span>
             </div>
 
             {results.sent > 0 && results.failed > 0 && (
-              <p className="text-sm text-amber-600 ml-7">
-                {results.failed} message(s) failed to send
-              </p>
+              <div className="ml-7">
+                <p className="text-sm text-amber-700 bg-amber-100 px-2 py-1 rounded inline-block">
+                  ⚠️ {results.failed} message(s) failed to send
+                </p>
+              </div>
+            )}
+            
+            {results.total > 0 && (
+              <div className="mt-3 ml-7">
+                <div className="bg-white rounded p-2 text-sm">
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Success Rate:</span>
+                    <span className="font-medium">{Math.round((results.sent / results.total) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${(results.sent / results.total) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 

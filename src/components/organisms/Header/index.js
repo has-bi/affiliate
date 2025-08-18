@@ -20,6 +20,7 @@ import {
   Clock,
   History,
   UserPlus,
+  TrendingUp,
 } from "lucide-react";
 
 // Navigation schema --------------------------------------------------
@@ -47,6 +48,11 @@ const NAVIGATION = [
       { name: "Affiliates", href: "/contacts/affiliates", icon: Users },
       { name: "Onboarding", href: "/contacts/onboarding", icon: UserPlus },
     ],
+  },
+  {
+    name: "A/B Testing",
+    href: "/ab-testing",
+    icon: TrendingUp,
   },
 ];
 

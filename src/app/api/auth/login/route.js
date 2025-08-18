@@ -3,14 +3,12 @@ import { login } from "@/lib/auth/auth";
 import { cookies } from "next/headers";
 
 export async function POST(req) {
-  console.log("API: Login request received");
+  
   try {
     const body = await req.json();
-    console.log("API: Request body parsed");
-
+    
     const result = await login(body);
-    console.log("API: Login result", result);
-
+    
     // If login successful, set the cookie that middleware is checking for
     if (result.success) {
       const cookieStore = cookies();

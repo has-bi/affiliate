@@ -21,8 +21,7 @@ import Step3 from "@/components/molecules/RecipientSelector";
 import Step4 from "@/components/molecules/ReviewAndSend";
 
 export default function TemplateMessageSender() {
-  console.log("🚀 TemplateMessageSender: Rendering");
-
+  
   // Session state
   const { sessions, isLoading: isLoadingSessions } = useWhatsApp();
   const [sessionName, setSessionName] = useState("");
@@ -79,17 +78,7 @@ export default function TemplateMessageSender() {
 
   // Debug logging
   useEffect(() => {
-    console.log("📊 State Debug:", {
-      step,
-      selectedTemplateId,
-      selectedTemplate: selectedTemplate ? "exists" : "null",
-      sessionName,
-      paramValues,
-      selectedContacts: selectedContacts.length,
-      manualRecipients,
-      scheduleConfig,
-      isScheduling,
-    });
+    
   }, [
     step,
     selectedTemplateId,
@@ -104,16 +93,15 @@ export default function TemplateMessageSender() {
 
   // Handle template change (wrapper for the hook function)
   const handleTemplateChangeWrapper = (e) => {
-    console.log("🔄 Template change event:", e.target.value);
+    
     const newId = handleTemplateChange(e);
-    console.log("📝 New template ID:", newId);
+    
     setSelectedTemplateId(newId);
   };
 
   // Handle navigation
   const handleNextStep = () => {
-    console.log(`➡️ Moving to next step from step ${step}`);
-
+    
     if (step === 1) {
       if (!selectedTemplate) {
         setError("Silakan pilih template terlebih dahulu");
@@ -153,7 +141,7 @@ export default function TemplateMessageSender() {
       setStep(3);
     } else if (step === 3) {
       const recipients = getAllRecipients();
-      console.log("📋 Recipients before step 4:", recipients);
+      
       if (recipients.length === 0) {
         setError("Silakan pilih minimal satu penerima pesan");
         return;
@@ -164,7 +152,7 @@ export default function TemplateMessageSender() {
   };
 
   const handlePrevStep = () => {
-    console.log(`⬅️ Moving to previous step from step ${step}`);
+    
     setError(null);
     setStep((prev) => Math.max(1, prev - 1));
   };
@@ -172,8 +160,7 @@ export default function TemplateMessageSender() {
   // Handle send messages
   const handleSend = async (e) => {
     e.preventDefault();
-    console.log("📤 Handling send...");
-
+    
     // 1️⃣ Validate input
     if (!validateForm(sessionName)) return;
 
@@ -183,8 +170,7 @@ export default function TemplateMessageSender() {
     try {
       // 2️⃣ Get all recipients
       const allRecipients = getAllRecipients();
-      console.log("📋 Recipients:", allRecipients);
-
+      
       // 3️⃣ Fetch active affiliates to get contact information
       // This is the same approach used in the scheduler
       let affiliateData = [];
@@ -192,10 +178,10 @@ export default function TemplateMessageSender() {
         const response = await fetch("/api/affiliates?status=active");
         if (response.ok) {
           affiliateData = await response.json();
-          console.log(`📋 Loaded ${affiliateData.length} affiliate contacts`);
+          
         }
       } catch (error) {
-        console.warn("Could not load affiliate data:", error);
+        
       }
 
       // 4️⃣ Create a lookup map by phone number (just like in scheduler)
@@ -211,8 +197,7 @@ export default function TemplateMessageSender() {
           }
         });
       }
-      console.log(`🔍 Created lookup map with ${affiliateMap.size} affiliates`);
-
+      
       // 5️⃣ Process each recipient
       const processedMessages = [];
       for (const recipient of allRecipients) {
@@ -273,7 +258,7 @@ export default function TemplateMessageSender() {
 
       const result = await response.json();
       setSendResult(result);
-      console.log("✅ Send result:", result);
+      
     } catch (err) {
       console.error("❌ Kirim Sekarang failed:", err);
       setError(err.message ?? "Unknown error");
@@ -285,8 +270,7 @@ export default function TemplateMessageSender() {
   // Handle scheduling messages
   const handleSchedule = async (e) => {
     e.preventDefault();
-    console.log("📅 Handling schedule...");
-
+    
     if (!validateForm(sessionName)) return;
 
     setIsSubmitting(true);
@@ -294,8 +278,7 @@ export default function TemplateMessageSender() {
 
     try {
       const allRecipients = getAllRecipients();
-      console.log("📋 Schedule recipients:", allRecipients);
-
+      
       // Format schedule data
       let scheduleData = {
         name: `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
@@ -329,12 +312,12 @@ export default function TemplateMessageSender() {
 
         if (hasTimeComponent) {
           // If date already has a time component, use it directly
-          console.log("Date already has time component:", scheduleConfig.date);
+          
           scheduleDate = new Date(scheduleConfig.date);
         } else {
           // Otherwise, append the time component
           dateTimeString = `${scheduleConfig.date}T${time}:00`;
-          console.log("Creating date with time:", dateTimeString);
+          
           scheduleDate = new Date(dateTimeString);
         }
 
@@ -397,8 +380,6 @@ export default function TemplateMessageSender() {
         };
       }
 
-      console.log("📝 Schedule data:", scheduleData);
-
       const response = await fetch("/api/schedules", {
         method: "POST",
         headers: {
@@ -440,7 +421,7 @@ export default function TemplateMessageSender() {
         try {
           result = JSON.parse(responseText);
         } catch (err) {
-          console.warn("Could not parse schedule response:", err);
+          
         }
       }
 
@@ -451,7 +432,7 @@ export default function TemplateMessageSender() {
       });
 
       // Show success message
-      console.log("✅ Schedule created successfully:", result);
+      
     } catch (err) {
       console.error("❌ Error scheduling message:", err);
       setError(err.message || "Failed to schedule message");
@@ -463,7 +444,7 @@ export default function TemplateMessageSender() {
   // Handle schedule config change
   const handleScheduleConfigChange = (e) => {
     const { name, value } = e.target;
-    console.log(`⚙️ Schedule config change: ${name} = ${value}`);
+    
     setScheduleConfig((prev) => ({
       ...prev,
       [name]: value,

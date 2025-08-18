@@ -4,8 +4,7 @@ import prisma from "@/lib/prisma";
 import schedulerService from "@/lib/schedules/schedulerService";
 
 export async function GET() {
-  console.log("API: Fetching schedules...");
-
+  
   try {
     const schedules = await prisma.schedule.findMany({
       include: {
@@ -22,8 +21,6 @@ export async function GET() {
         createdAt: "desc",
       },
     });
-
-    console.log("API: Found schedules:", schedules.length);
 
     // Transform the data to match the expected format
     const transformedSchedules = schedules.map((schedule) => {
@@ -49,14 +46,9 @@ export async function GET() {
         updatedAt: schedule.updatedAt,
       };
 
-      console.log("API: Transformed schedule:", transformed);
       return transformed;
     });
 
-    console.log(
-      "API: Returning transformed schedules:",
-      transformedSchedules.length
-    );
     return NextResponse.json(transformedSchedules);
   } catch (error) {
     console.error("API: Error fetching schedules:", error);

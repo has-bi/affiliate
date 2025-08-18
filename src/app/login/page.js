@@ -26,16 +26,15 @@ export default function LoginPage() {
 
     // Add a timeout to prevent hanging on the "Signing in..." state
     const loginTimeout = setTimeout(() => {
-      console.log("Login timed out after 10 seconds");
+      
       setLoading(false);
       setError("Login request timed out. Please try again.");
     }, 10000); // 10 second timeout
 
     try {
-      console.log("Starting login process...");
+      
       const result = await login(username, password);
-      console.log("Login result:", result);
-
+      
       clearTimeout(loginTimeout);
 
       if (!result.success) {
@@ -45,12 +44,12 @@ export default function LoginPage() {
       }
 
       // Try Next.js router first
-      console.log("Login successful, redirecting to dashboard...");
+      
       window.location.href = "/dashboard";
 
       // Fallback to window.location after a short delay if router doesn't work
       setTimeout(() => {
-        console.log("Using fallback redirect");
+        
         window.location.href = "/dashboard";
       }, 1000);
     } catch (error) {

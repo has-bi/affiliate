@@ -18,6 +18,7 @@ model Template {
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
   parameters  Parameter[]
   schedules   Schedule[]
+  abVariants  ABVariant[]
 
   @@map("templates")
 }
@@ -87,4 +88,142 @@ model ScheduleHistory {
   details      Json?     // Stores detailed results of the send operation
 
   @@map("scheduled_message_history")
+}
+
+// A/B Testing Models
+model ABExperiment {
+  id                 Int       @id @default(autoincrement())
+  name               String
+  description        String?
+  status             String    @default("draft") // draft, active, paused, completed, cancelled
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+  startedAt          DateTime? @map("started_at")
+  endedAt            DateTime? @map("ended_at")
+  sessionName        String    @map("session_name")
+  totalRecipients    Int       @default(0) @map("total_recipients")
+  cooldownMinutes    Int       @default(5) @map("cooldown_minutes")
+  batchSize          Int       @default(50) @map("batch_size")
+  createdBy          String?   @map("created_by")
+  settings           Json?     // Additional experiment settings
+  
+  // Relations
+  variants           ABVariant[]
+  recipients         ABRecipient[]
+  batches            ABBatch[]
+  results            ABResult[]
+  analytics          ABAnalytics[]
+
+  @@map("ab_experiments")
+}
+
+model ABVariant {
+  id                   Int       @id @default(autoincrement())
+  experimentId         Int       @map("experiment_id")
+  name                 String    // 'A', 'B', 'C', etc.
+  templateId           Int?      @map("template_id")
+  customMessage        String?   @map("custom_message")
+  allocationPercentage Int       @default(50) @map("allocation_percentage")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+  
+  // Relations
+  experiment           ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  template             Template?    @relation(fields: [templateId], references: [id])
+  recipients           ABRecipient[]
+  batches              ABBatch[]
+  results              ABResult[]
+  analytics            ABAnalytics[]
+
+  @@map("ab_variants")
+}
+
+model ABRecipient {
+  id           Int       @id @default(autoincrement())
+  experimentId Int       @map("experiment_id")
+  variantId    Int       @map("variant_id")
+  phoneNumber  String    @map("phone_number")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  status       String    @default("assigned") // assigned, sent, failed, excluded
+  
+  // Relations
+  experiment   ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant      ABVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  results      ABResult[]
+
+  @@unique([experimentId, phoneNumber])
+  @@map("ab_recipients")
+}
+
+model ABBatch {
+  id                  Int       @id @default(autoincrement())
+  experimentId        Int       @map("experiment_id")
+  variantId           Int       @map("variant_id")
+  batchNumber         Int       @map("batch_number")
+  sentAt              DateTime  @default(now()) @map("sent_at")
+  recipientCount      Int       @default(0) @map("recipient_count")
+  successCount        Int       @default(0) @map("success_count")
+  failedCount         Int       @default(0) @map("failed_count")
+  nextBatchAllowedAt  DateTime? @map("next_batch_allowed_at")
+  status              String    @default("pending") // pending, sending, completed, failed
+  
+  // Relations
+  experiment          ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant             ABVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  results             ABResult[]
+
+  @@map("ab_batches")
+}
+
+model ABResult {
+  id                Int        @id @default(autoincrement())
+  experimentId      Int        @map("experiment_id")
+  variantId         Int        @map("variant_id")
+  recipientId       Int        @map("recipient_id")
+  batchId           Int?       @map("batch_id")
+  sentAt            DateTime?  @map("sent_at")
+  status            String?    // sent, failed, pending
+  errorMessage      String?    @map("error_message")
+  whatsappMessageId String?    @map("whatsapp_message_id")
+  deliveryStatus    String?    @map("delivery_status") // delivered, read, failed
+  responseData      Json?      @map("response_data")
+  
+  // Relations
+  experiment        ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant           ABVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  recipient         ABRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  batch             ABBatch?     @relation(fields: [batchId], references: [id])
+
+  @@map("ab_results")
+}
+
+model ABAnalytics {
+  id             Int       @id @default(autoincrement())
+  experimentId   Int       @map("experiment_id")
+  variantId      Int       @map("variant_id")
+  date           DateTime  @db.Date
+  totalSent      Int       @default(0) @map("total_sent")
+  totalDelivered Int       @default(0) @map("total_delivered")
+  totalRead      Int       @default(0) @map("total_read")
+  totalFailed    Int       @default(0) @map("total_failed")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+  
+  // Relations
+  experiment     ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant        ABVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([experimentId, variantId, date])
+  @@map("ab_analytics")
+}
+
+model ABRateLimit {
+  id               Int       @id @default(autoincrement())
+  sessionName      String    @unique @map("session_name")
+  lastSendAt       DateTime  @default(now()) @map("last_send_at")
+  messagesSentHour Int       @default(0) @map("messages_sent_hour")
+  messagesSentDay  Int       @default(0) @map("messages_sent_day")
+  cooldownUntil    DateTime? @map("cooldown_until")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("ab_rate_limits")
 }

@@ -15,20 +15,16 @@ export async function GET(request) {
 
     if (status === "new") {
       const newAffiliates = await getNewAffiliates();
-      console.log(`Returning ${newAffiliates.length} new affiliates`);
+      
       affiliatesData = newAffiliates;
     } else if (status === "active") {
       const activeAffiliates = await getActiveAffiliates();
-      console.log(`Returning ${activeAffiliates.length} active affiliates`);
+      
       affiliatesData = activeAffiliates;
     } else {
       // If no status specified, return both with counts
       const newAffiliates = await getNewAffiliates();
       const activeAffiliates = await getActiveAffiliates();
-
-      console.log(
-        `Combined response: ${newAffiliates.length} new, ${activeAffiliates.length} active`
-      );
 
       affiliatesData = {
         new: newAffiliates,

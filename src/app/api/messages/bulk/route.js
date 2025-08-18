@@ -11,14 +11,10 @@ const logger = createLogger("[API][BulkMessages]");
 export async function POST(req) {
   try {
     const body = await req.json();
-    console.log("Bulk message API called:", typeof body);
-
+    
     // New approach: accept pre-processed messages
     if (body.processedMessages && Array.isArray(body.processedMessages)) {
-      console.log(
-        `Processing ${body.processedMessages.length} prepared messages`
-      );
-
+      
       // Get delay or use default
       const delay = body.delay || 3000;
 
@@ -52,8 +48,6 @@ export async function POST(req) {
             success: true,
             messageId: sendResult.id || "unknown",
           });
-
-          console.log(`✅ Message sent to ${item.recipient}`);
 
           // Add delay between messages
           if (

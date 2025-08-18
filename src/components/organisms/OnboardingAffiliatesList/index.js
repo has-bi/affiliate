@@ -11,6 +11,7 @@ import {
   UserPlus,
   X,
   MessageSquare,
+  CheckCircle,
 } from "lucide-react";
 import { useAffiliates } from "@/hooks/useAffiliates";
 
@@ -43,6 +44,7 @@ const OnboardingAffiliatesList = () => {
   const [sessionName, setSessionName] = useState("");
   const [sessions, setSessions] = useState([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Initial load
   useEffect(() => {
@@ -105,11 +107,12 @@ Tim Youvit Affiliate`;
    // Handle accept affiliate - simplified version
   const handleAccept = async (affiliate) => {
     if (!sessionName) {
-      alert("Please select a WhatsApp session first");
+      setError("Please select a WhatsApp session first");
       return;
     }
 
     setProcessingAffiliate(affiliate);
+    setError(null); // Clear any previous errors
 
     try {
       const formattedChatId = formatPhoneNumber(affiliate.phone);
@@ -121,8 +124,6 @@ Tim Youvit Affiliate`;
         session: sessionName,
       };
 
-      console.log(`Sending welcome message to ${formattedChatId}`);
-      
       const response = await fetch(`${wahaApiUrl}/api/sendText`, {
         method: "POST",
         headers: {
@@ -137,18 +138,24 @@ Tim Youvit Affiliate`;
         throw new Error(responseData.error || responseData.message || "Failed to send message");
       }
 
-      console.log(`✅ Message sent successfully`);
-
+      // Update status in Google Sheets
       await updateAffiliateStatus({
         rowIndex: affiliate.rowIndex,
         status: "contacted",
       });
 
+      // Show success message
+      setSuccessMessage(`✅ Welcome message sent to ${affiliate.name} successfully!`);
+      
+      // Refresh the list
       await fetchNewAffiliates();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
       
     } catch (error) {
       console.error("Error accepting affiliate:", error);
-      alert("Failed to process affiliate: " + (error.message || "Unknown error"));
+      setError(`Failed to process ${affiliate.name}: ${error.message || "Unknown error"}`);
     } finally {
       setProcessingAffiliate(null);
     }
@@ -156,11 +163,12 @@ Tim Youvit Affiliate`;
 
   // Handle reject affiliate action
   const handleReject = async (affiliate) => {
-    if (!confirm(`Are you sure you want to reject ${affiliate.name}?`)) {
+    if (!confirm(`Are you sure you want to reject ${affiliate.name}?\n\nThis action cannot be undone.`)) {
       return;
     }
 
     setProcessingAffiliate(affiliate);
+    setError(null); // Clear any previous errors
 
     try {
       // Update affiliate status to "rejected"
@@ -169,13 +177,17 @@ Tim Youvit Affiliate`;
         status: "rejected",
       });
 
+      // Show success message
+      setSuccessMessage(`🚫 ${affiliate.name} has been rejected successfully.`);
+      
       // Refresh the list
       await fetchNewAffiliates();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error("Error rejecting affiliate:", error);
-      alert(
-        "Failed to reject affiliate: " + (error.message || "Unknown error")
-      );
+      setError(`Failed to reject ${affiliate.name}: ${error.message || "Unknown error"}`);
     } finally {
       setProcessingAffiliate(null);
     }
@@ -240,14 +252,36 @@ Tim Youvit Affiliate`;
           </div>
         </div>
 
+        {/* Success state */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 p-4 rounded-md text-green-700 flex items-start mb-4">
+            <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium">{successMessage}</p>
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="ml-2 text-green-500 hover:text-green-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Error state */}
         {error && (
-          <div className="bg-red-50 p-4 rounded-md text-red-700 flex items-start mb-4">
+          <div className="bg-red-50 border border-red-200 p-4 rounded-md text-red-700 flex items-start mb-4">
             <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium">Error loading affiliates</h3>
+            <div className="flex-1">
+              <h3 className="font-medium">Error</h3>
               <p className="mt-1">{error}</p>
             </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-2 text-red-500 hover:text-red-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
 
@@ -332,14 +366,15 @@ Tim Youvit Affiliate`;
                           size="sm"
                           onClick={() => handleAccept(affiliate)}
                           disabled={
-                            !sessionName || processingAffiliate === affiliate
+                            !sessionName || processingAffiliate !== null || isLoadingSessions
                           }
-                          className="flex items-center"
+                          className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={!sessionName ? "Please select a WhatsApp session first" : "Send welcome message and accept affiliate"}
                         >
                           {processingAffiliate === affiliate ? (
                             <>
                               <div className="animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full"></div>
-                              Processing...
+                              Sending...
                             </>
                           ) : (
                             <>
@@ -352,11 +387,21 @@ Tim Youvit Affiliate`;
                           variant="danger"
                           size="sm"
                           onClick={() => handleReject(affiliate)}
-                          disabled={processingAffiliate === affiliate}
-                          className="flex items-center"
+                          disabled={processingAffiliate !== null}
+                          className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reject this affiliate application"
                         >
-                          <X className="h-4 w-4 mr-1" />
-                          Reject
+                          {processingAffiliate === affiliate ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full"></div>
+                              Rejecting...
+                            </>
+                          ) : (
+                            <>
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </>
+                          )}
                         </Button>
                       </div>
                     </td>

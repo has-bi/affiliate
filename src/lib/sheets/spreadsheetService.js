@@ -30,7 +30,7 @@ const SHEETS = {
 export async function initSheets() {
   try {
     await doc.loadInfo();
-    console.log("[Sheets] Successfully initialized Google Sheets");
+    
     return doc;
   } catch (error) {
     console.error("[Sheets] Failed to initialize Google Sheets:", error);
@@ -59,7 +59,7 @@ export function phoneKey(value = "") {
   if (typeof value === "number") {
     // For numeric values, ensure we don't lose leading zeros by converting to a fixed string format
     str = value.toString();
-    console.log(`Converting numeric phone ${value} to string: ${str}`);
+    
   } else {
     str = String(value);
   }
@@ -132,9 +132,7 @@ export async function getActiveAffiliates() {
         const phone = phoneKey(phoneValue);
 
         if (!phone) {
-          console.log(
-            `Row ${index}: Found 'contacted' row but phone is empty or invalid`
-          );
+          
           return;
         }
 
@@ -162,11 +160,6 @@ export async function getActiveAffiliates() {
         });
       }
     });
-
-    console.log(`Found ${contactedCount} rows with 'contacted' status`);
-    console.log(
-      `Created array with ${activeAffiliates.length} active affiliates`
-    );
 
     return activeAffiliates;
   } catch (error) {
@@ -217,9 +210,7 @@ export async function getNewAffiliates() {
         const phone = phoneKey(phoneStr);
 
         if (!phone) {
-          console.log(
-            `Row ${index}: Found blank status row but phone is empty or invalid after conversion`
-          );
+          
           return;
         }
 

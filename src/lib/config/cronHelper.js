@@ -211,8 +211,7 @@ export function getHumanReadableCron(expression) {
  * @param {string} expression - The cron expression
  */
 export function debugCronExpression(expression) {
-  console.log(`Cron expression: "${expression}"`);
-
+  
   if (!expression) {
     console.error("Empty cron expression");
     return;
@@ -222,8 +221,7 @@ export function debugCronExpression(expression) {
   console.log(`Parts (${parts.length}): [${parts.join(", ")}]`);
 
   const isValid = validateCronExpression(expression);
-  console.log(`Validation result: ${isValid ? "Valid" : "INVALID"}`);
-
+  
   if (isValid) {
     console.log(`Human-readable: ${getHumanReadableCron(expression)}`);
   }

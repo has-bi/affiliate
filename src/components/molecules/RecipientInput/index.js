@@ -94,17 +94,28 @@ or 6281234567890, 6289876543210"
             >
               Delay between messages (seconds)
             </label>
-            <input
-              id="delay"
-              type="number"
-              min="1"
-              max="60"
-              className="w-20 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              value={delaySeconds}
-              onChange={(e) => onUpdateDelay(parseInt(e.target.value) || 5)}
-            />
+            <div className="flex items-center space-x-3">
+              <input
+                id="delay"
+                type="number"
+                min="1"
+                max="30"
+                className="w-20 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={delaySeconds}
+                onChange={(e) => onUpdateDelay(parseInt(e.target.value) || 3)}
+              />
+              <span className="text-sm text-gray-500">
+                {delaySeconds < 3 && parsedCount > 10 && (
+                  <span className="text-amber-600">⚠️ Consider longer delay for large batches</span>
+                )}
+                {delaySeconds >= 3 && parsedCount > 0 && (
+                  <span className="text-green-600">✅ Good rate limiting</span>
+                )}
+              </span>
+            </div>
             <p className="mt-1 text-xs text-gray-500">
-              A delay helps to avoid being blocked by WhatsApp for spam
+              Recommended: 3-5 seconds for small batches, 5+ for large batches. 
+              {parsedCount > 0 && `Estimated time: ~${Math.ceil(parsedCount * delaySeconds / 60)} minutes`}
             </p>
           </div>
         </div>

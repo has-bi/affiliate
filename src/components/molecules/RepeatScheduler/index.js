@@ -38,8 +38,7 @@ const RepeatScheduler = ({ initialCron = "0 9 * * *", onChange }) => {
       initialCronProcessed.current = true;
 
       // Log the initial cron value for debugging
-      console.log(`Initial cron: "${initialCron}"`);
-
+      
       // Validate before attempting to parse
       if (validateCronExpression(initialCron)) {
         parseCronExpression(initialCron);

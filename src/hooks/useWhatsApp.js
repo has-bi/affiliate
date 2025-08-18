@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export function useWhatsApp() {
   const [sessions, setSessions] = useState([]);
+  const [currentSession, setCurrentSession] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const defaultSession = process.env.NEXT_PUBLIC_WAHA_SESSION || "hasbi";
@@ -19,17 +20,25 @@ export function useWhatsApp() {
     try {
       const response = await fetch("/api/connections");
       const data = await response.json();
-      setSessions(data.sessions || []);
+      const sessionList = data.sessions || [];
+      setSessions(sessionList);
+      
+      // Set current session to the first connected session or default
+      const connectedSession = sessionList.find(s => s.isConnected);
+      setCurrentSession(connectedSession || sessionList[0] || { name: defaultSession, isConnected: false, status: "ERROR" });
     } catch (err) {
       console.error("Error checking session:", err);
       setError(err.message || "Failed to check session status");
-      setSessions([
-        { name: defaultSession, isConnected: false, status: "ERROR" },
-      ]);
+      const fallbackSession = { name: defaultSession, isConnected: false, status: "ERROR" };
+      setSessions([fallbackSession]);
+      setCurrentSession(fallbackSession);
     } finally {
       setIsLoading(false);
     }
   }, [defaultSession]);
+
+  // Alias for backward compatibility
+  const fetchSession = fetchSessions;
 
   /**
    * Send a message to a single recipient
@@ -109,13 +118,18 @@ export function useWhatsApp() {
   return {
     // State
     sessions,
+    currentSession,
     defaultSession,
     isLoading,
     error,
 
     // Actions
     fetchSessions,
+    fetchSession, // Alias for backward compatibility
     sendMessage,
     sendBulkMessages,
   };
 }
+
+// Alias for backward compatibility
+export const useSession = useWhatsApp;

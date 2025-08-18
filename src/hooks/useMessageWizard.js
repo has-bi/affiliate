@@ -43,7 +43,7 @@ export function useMessageWizard(templates = [], initialTemplateId = null) {
       );
 
       if (template) {
-        console.log("📋 Template found:", template.name);
+        
         setSelectedTemplate(template);
 
         // Initialize parameter values
@@ -55,7 +55,7 @@ export function useMessageWizard(templates = [], initialTemplateId = null) {
           setParamValues(defaultParams);
         }
       } else {
-        console.log("⚠️ Template not found for ID:", selectedTemplateId);
+        
         setSelectedTemplate(null);
       }
     } else {
