@@ -113,7 +113,6 @@ export async function POST(request) {
       cooldownMinutes = 5,
       batchSize = 50,
       variants = [],
-      recipients = [],
       settings = {},
     } = body;
 
@@ -127,41 +126,41 @@ export async function POST(request) {
       );
     }
 
-    // Validate variant allocation percentages sum to 100
-    const totalAllocation = variants.reduce((sum, variant) => sum + (variant.allocationPercentage || 0), 0);
-    if (Math.abs(totalAllocation - 100) > 0.01) {
+    // Validate that each variant has recipients
+    const variantsWithoutRecipients = variants.filter(variant => 
+      !variant.recipients || variant.recipients.length === 0
+    );
+
+    if (variantsWithoutRecipients.length > 0) {
       return NextResponse.json(
         { 
-          error: "Variant allocation percentages must sum to 100%" 
+          error: `The following variants need recipients: ${variantsWithoutRecipients.map(v => v.name).join(', ')}` 
         },
         { status: 400 }
       );
     }
 
-    // Validate recipients
-    if (!recipients || recipients.length === 0) {
-      return NextResponse.json(
-        { error: "At least one recipient is required" },
-        { status: 400 }
-      );
-    }
+    // Validate recipients format in each variant
+    for (const variant of variants) {
+      const invalidRecipients = variant.recipients.filter(recipient => {
+        if (typeof recipient === 'string') {
+          return !recipient.trim();
+        } else if (typeof recipient === 'object') {
+          return !recipient.phoneNumber || !recipient.phoneNumber.trim();
+        }
+        return true;
+      });
 
-    // Validate recipients format (now supports objects with name and phoneNumber)
-    const invalidRecipients = recipients.filter(recipient => {
-      if (typeof recipient === 'string') {
-        return !recipient.trim();
-      } else if (typeof recipient === 'object') {
-        return !recipient.phoneNumber || !recipient.phoneNumber.trim();
+      if (invalidRecipients.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid recipient format found in variant ${variant.name}` },
+          { status: 400 }
+        );
       }
-      return true;
-    });
-
-    if (invalidRecipients.length > 0) {
-      return NextResponse.json(
-        { error: "Invalid recipient format found" },
-        { status: 400 }
-      );
     }
+
+    // Calculate total recipients across all variants
+    const totalRecipients = variants.reduce((sum, variant) => sum + variant.recipients.length, 0);
 
     // Create experiment in a transaction
     const experiment = await prisma.$transaction(async (tx) => {
@@ -173,7 +172,7 @@ export async function POST(request) {
           sessionName,
           cooldownMinutes,
           batchSize,
-          totalRecipients: recipients.length,
+          totalRecipients,
           settings,
           status: "draft",
         },
@@ -188,56 +187,40 @@ export async function POST(request) {
               name: variant.name || String.fromCharCode(65 + index), // A, B, C, etc.
               templateId: variant.templateId || null,
               customMessage: variant.customMessage || null,
-              allocationPercentage: variant.allocationPercentage,
             },
           });
         })
       );
 
-      // Normalize recipients to objects with phoneNumber and name
-      const normalizedRecipients = recipients.map(recipient => {
-        if (typeof recipient === 'string') {
-          return { phoneNumber: recipient, name: null };
-        } else if (typeof recipient === 'object') {
-          return {
-            phoneNumber: recipient.phoneNumber,
-            name: recipient.name || null
-          };
-        }
-        return { phoneNumber: '', name: null };
-      });
-
-      // Assign recipients to variants based on allocation
+      // Assign recipients directly to their respective variants
       const recipientAssignments = [];
-      let recipientIndex = 0;
+      
+      for (let i = 0; i < createdVariants.length; i++) {
+        const variant = createdVariants[i];
+        const variantData = variants[i];
+        
+        // Normalize recipients for this variant
+        const normalizedRecipients = variantData.recipients.map(recipient => {
+          if (typeof recipient === 'string') {
+            return { phoneNumber: recipient, name: null };
+          } else if (typeof recipient === 'object') {
+            return {
+              phoneNumber: recipient.phoneNumber,
+              name: recipient.name || null
+            };
+          }
+          return { phoneNumber: recipient, name: null };
+        });
 
-      for (const variant of createdVariants) {
-        const variantRecipientCount = Math.floor(
-          (variant.allocationPercentage / 100) * normalizedRecipients.length
-        );
-
-        for (let i = 0; i < variantRecipientCount && recipientIndex < normalizedRecipients.length; i++) {
-          const recipient = normalizedRecipients[recipientIndex];
+        // Add all recipients for this variant
+        for (const recipient of normalizedRecipients) {
           recipientAssignments.push({
             experimentId: newExperiment.id,
             variantId: variant.id,
             phoneNumber: recipient.phoneNumber,
             name: recipient.name,
           });
-          recipientIndex++;
         }
-      }
-
-      // Assign any remaining recipients to the first variant
-      while (recipientIndex < normalizedRecipients.length) {
-        const recipient = normalizedRecipients[recipientIndex];
-        recipientAssignments.push({
-          experimentId: newExperiment.id,
-          variantId: createdVariants[0].id,
-          phoneNumber: recipient.phoneNumber,
-          name: recipient.name,
-        });
-        recipientIndex++;
       }
 
       // Create recipient assignments

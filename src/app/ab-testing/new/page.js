@@ -29,10 +29,9 @@ export default function NewABTestPage() {
     cooldownMinutes: 5,
     batchSize: 50,
     variants: [
-      { name: "A", templateId: "", customMessage: "", allocationPercentage: 50 },
-      { name: "B", templateId: "", customMessage: "", allocationPercentage: 50 }
-    ],
-    recipients: []
+      { name: "A", templateId: "", customMessage: "", recipients: [] },
+      { name: "B", templateId: "", customMessage: "", recipients: [] }
+    ]
   });
   const [errors, setErrors] = useState({});
   const [recipientCount, setRecipientCount] = useState(0);
@@ -43,9 +42,12 @@ export default function NewABTestPage() {
   }, []);
 
   useEffect(() => {
-    // Count recipients (now an array)
-    setRecipientCount(Array.isArray(formData.recipients) ? formData.recipients.length : 0);
-  }, [formData.recipients]);
+    // Count total recipients across all variants
+    const totalRecipients = formData.variants.reduce((sum, variant) => {
+      return sum + (Array.isArray(variant.recipients) ? variant.recipients.length : 0);
+    }, 0);
+    setRecipientCount(totalRecipients);
+  }, [formData.variants]);
 
   const fetchTemplates = async () => {
     try {
@@ -85,20 +87,14 @@ export default function NewABTestPage() {
     // Validate variants
     formData.variants.forEach((variant, index) => {
       if (!variant.templateId && !variant.customMessage.trim()) {
-        newErrors[`variant_${index}`] = "Either select a template or enter a custom message";
+        newErrors[`variant_${index}_content`] = "Either select a template or enter a custom message";
+      }
+      
+      // Validate that each variant has recipients
+      if (!variant.recipients || variant.recipients.length === 0) {
+        newErrors[`variant_${index}_recipients`] = `Variant ${variant.name} must have recipients`;
       }
     });
-
-    // Validate allocation percentages
-    const totalAllocation = formData.variants.reduce((sum, v) => sum + v.allocationPercentage, 0);
-    if (Math.abs(totalAllocation - 100) > 0.01) {
-      newErrors.allocation = "Variant allocations must sum to 100%";
-    }
-
-    // Validate recipients
-    if (!formData.recipients || formData.recipients.length === 0) {
-      newErrors.recipients = "At least one recipient is required";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -106,8 +102,6 @@ export default function NewABTestPage() {
 
   const addVariant = () => {
     const newVariantName = String.fromCharCode(65 + formData.variants.length); // A, B, C, etc.
-    const currentAllocation = formData.variants.reduce((sum, v) => sum + v.allocationPercentage, 0);
-    const newAllocation = Math.max(0, 100 - currentAllocation);
     
     setFormData(prev => ({
       ...prev,
@@ -117,7 +111,7 @@ export default function NewABTestPage() {
           name: newVariantName,
           templateId: "",
           customMessage: "",
-          allocationPercentage: newAllocation
+          recipients: []
         }
       ]
     }));
@@ -141,10 +135,14 @@ export default function NewABTestPage() {
     }));
   };
 
-  const handleRecipientsLoaded = (recipients) => {
+  const handleVariantRecipientsLoaded = (variantIndex, recipients) => {
     setFormData(prev => ({
       ...prev,
-      recipients
+      variants: prev.variants.map((variant, index) =>
+        index === variantIndex 
+          ? { ...variant, recipients }
+          : variant
+      )
     }));
   };
 
@@ -155,7 +153,6 @@ export default function NewABTestPage() {
     try {
       const payload = {
         ...formData,
-        recipients: formData.recipients, // Now already an array
         settings: {
           autoStart: action === 'start'
         }
@@ -313,7 +310,7 @@ export default function NewABTestPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Template (Optional)
@@ -331,75 +328,63 @@ export default function NewABTestPage() {
                       ))}
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Allocation Percentage
-                    </label>
-                    <Input
-                      type="number"
-                      value={variant.allocationPercentage}
-                      onChange={(e) => updateVariant(index, 'allocationPercentage', parseInt(e.target.value) || 0)}
-                      min={0}
-                      max={100}
-                    />
-                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Custom Message {!variant.templateId && <span className="text-red-500">*</span>}
-                  </label>
-                  <textarea
-                    value={variant.customMessage}
-                    onChange={(e) => updateVariant(index, 'customMessage', e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder={variant.templateId ? "Leave empty to use template content" : "Enter your message content..."}
-                  />
-                  {errors[`variant_${index}`] && (
-                    <p className="text-red-500 text-sm mt-1">{errors[`variant_${index}`]}</p>
-                  )}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Custom Message {!variant.templateId && <span className="text-red-500">*</span>}
+                    </label>
+                    <textarea
+                      value={variant.customMessage}
+                      onChange={(e) => updateVariant(index, 'customMessage', e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder={variant.templateId ? "Leave empty to use template content" : "Enter your message content..."}
+                    />
+                    {errors[`variant_${index}_content`] && (
+                      <p className="text-red-500 text-sm mt-1">{errors[`variant_${index}_content`]}</p>
+                    )}
+                  </div>
+
+                  {/* CSV Upload for this variant */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipients for Variant {variant.name} <span className="text-red-500">*</span>
+                    </label>
+                    <CSVUploader 
+                      onRecipientsLoaded={(recipients) => handleVariantRecipientsLoaded(index, recipients)}
+                      className="border-gray-200"
+                    />
+                    {errors[`variant_${index}_recipients`] && (
+                      <p className="text-red-500 text-sm mt-1">{errors[`variant_${index}_recipients`]}</p>
+                    )}
+                    {variant.recipients && variant.recipients.length > 0 && (
+                      <p className="text-green-600 text-sm mt-1">
+                        ✓ {variant.recipients.length} recipients loaded for Variant {variant.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
 
-            {errors.allocation && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
-                  <p className="text-red-700 text-sm">{errors.allocation}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <p className="text-blue-700 text-sm">
-                <strong>Current allocation:</strong> {formData.variants.reduce((sum, v) => sum + v.allocationPercentage, 0)}%
-              </p>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Recipients - CSV Upload */}
-        <CSVUploader 
-          onRecipientsLoaded={handleRecipientsLoaded}
-        />
-        
-        {errors.recipients && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
-            <div className="flex">
-              <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
-              <p className="text-red-700 text-sm">{errors.recipients}</p>
-            </div>
-          </div>
-        )}
-
+        {/* Summary */}
         {recipientCount > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
             <p className="text-blue-700 text-sm">
-              <strong>{recipientCount} recipients loaded</strong> - They will be automatically distributed across variants based on allocation percentages.
+              <strong>{recipientCount} total recipients loaded</strong> across all variants.
             </p>
+            <div className="mt-2 text-xs text-blue-600">
+              {formData.variants.map((variant, index) => (
+                <span key={index} className="mr-4">
+                  Variant {variant.name}: {variant.recipients?.length || 0} recipients
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

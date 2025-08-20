@@ -7,54 +7,32 @@ import prisma from "@/lib/prisma";
  */
 export class ABTestingService {
   /**
-   * Split recipients into variants based on allocation percentages
-   * Now supports recipients with { name, phoneNumber } structure
+   * Validate recipients structure for a variant
+   * Supports recipients with { name, phoneNumber } structure
    */
-  static splitRecipients(recipients, variants) {
-    // Normalize recipients to ensure consistent structure
-    const normalizedRecipients = recipients.map(recipient => {
+  static validateVariantRecipients(recipients, variantName) {
+    const errors = [];
+    
+    if (!recipients || recipients.length === 0) {
+      errors.push(`Variant ${variantName} must have at least one recipient`);
+      return errors;
+    }
+
+    recipients.forEach((recipient, index) => {
       if (typeof recipient === 'string') {
-        return { phoneNumber: recipient, name: null };
-      } else if (typeof recipient === 'object' && recipient.phoneNumber) {
-        return {
-          phoneNumber: recipient.phoneNumber,
-          name: recipient.name || null
-        };
+        if (!recipient.trim()) {
+          errors.push(`Variant ${variantName}, recipient ${index + 1}: Phone number is empty`);
+        }
+      } else if (typeof recipient === 'object') {
+        if (!recipient.phoneNumber || !recipient.phoneNumber.trim()) {
+          errors.push(`Variant ${variantName}, recipient ${index + 1}: Phone number is required`);
+        }
+      } else {
+        errors.push(`Variant ${variantName}, recipient ${index + 1}: Invalid recipient format`);
       }
-      return { phoneNumber: recipient, name: null };
     });
 
-    const shuffled = [...normalizedRecipients].sort(() => Math.random() - 0.5);
-    const assignments = [];
-    let currentIndex = 0;
-
-    // Sort variants by allocation percentage to ensure fairness
-    const sortedVariants = [...variants].sort((a, b) => b.allocationPercentage - a.allocationPercentage);
-
-    for (const variant of sortedVariants) {
-      const count = Math.floor((variant.allocationPercentage / 100) * shuffled.length);
-      
-      for (let i = 0; i < count && currentIndex < shuffled.length; i++) {
-        assignments.push({
-          recipient: shuffled[currentIndex],
-          variantId: variant.id,
-          variantName: variant.name
-        });
-        currentIndex++;
-      }
-    }
-
-    // Assign remaining recipients to the first variant
-    while (currentIndex < shuffled.length) {
-      assignments.push({
-        recipient: shuffled[currentIndex],
-        variantId: sortedVariants[0].id,
-        variantName: sortedVariants[0].name
-      });
-      currentIndex++;
-    }
-
-    return assignments;
+    return errors;
   }
 
   /**
@@ -78,30 +56,19 @@ export class ABTestingService {
     }
 
     if (experimentData.variants) {
-      // Check allocation percentages
-      const totalAllocation = experimentData.variants.reduce(
-        (sum, variant) => sum + (variant.allocationPercentage || 0), 0
-      );
-
-      if (Math.abs(totalAllocation - 100) > 0.01) {
-        errors.push("Variant allocation percentages must sum to 100%");
-      }
-
-      // Check variant content
+      // Check variant content and recipients
       experimentData.variants.forEach((variant, index) => {
         if (!variant.templateId && !variant.customMessage?.trim()) {
-          errors.push(`Variant ${index + 1} must have either a template or custom message`);
+          errors.push(`Variant ${variant.name || (index + 1)} must have either a template or custom message`);
         }
 
-        if (variant.allocationPercentage <= 0 || variant.allocationPercentage > 100) {
-          errors.push(`Variant ${index + 1} allocation must be between 1-100%`);
-        }
+        // Validate variant recipients
+        const variantErrors = this.validateVariantRecipients(
+          variant.recipients, 
+          variant.name || `${index + 1}`
+        );
+        errors.push(...variantErrors);
       });
-    }
-
-    // Recipients validation
-    if (!experimentData.recipients || experimentData.recipients.length === 0) {
-      errors.push("At least one recipient is required");
     }
 
     // Settings validation
@@ -164,7 +131,6 @@ export class ABTestingService {
       stats.variants.push({
         id: variant.id,
         name: variant.name,
-        allocationPercentage: variant.allocationPercentage,
         recipients: variantRecipients.length,
         sent,
         failed,
