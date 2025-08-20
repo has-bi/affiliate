@@ -8,9 +8,23 @@ import prisma from "@/lib/prisma";
 export class ABTestingService {
   /**
    * Split recipients into variants based on allocation percentages
+   * Now supports recipients with { name, phoneNumber } structure
    */
   static splitRecipients(recipients, variants) {
-    const shuffled = [...recipients].sort(() => Math.random() - 0.5);
+    // Normalize recipients to ensure consistent structure
+    const normalizedRecipients = recipients.map(recipient => {
+      if (typeof recipient === 'string') {
+        return { phoneNumber: recipient, name: null };
+      } else if (typeof recipient === 'object' && recipient.phoneNumber) {
+        return {
+          phoneNumber: recipient.phoneNumber,
+          name: recipient.name || null
+        };
+      }
+      return { phoneNumber: recipient, name: null };
+    });
+
+    const shuffled = [...normalizedRecipients].sort(() => Math.random() - 0.5);
     const assignments = [];
     let currentIndex = 0;
 
@@ -18,7 +32,7 @@ export class ABTestingService {
     const sortedVariants = [...variants].sort((a, b) => b.allocationPercentage - a.allocationPercentage);
 
     for (const variant of sortedVariants) {
-      const count = Math.floor((variant.allocationPercentage / 100) * recipients.length);
+      const count = Math.floor((variant.allocationPercentage / 100) * shuffled.length);
       
       for (let i = 0; i < count && currentIndex < shuffled.length; i++) {
         assignments.push({

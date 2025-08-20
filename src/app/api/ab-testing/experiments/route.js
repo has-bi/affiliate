@@ -146,6 +146,23 @@ export async function POST(request) {
       );
     }
 
+    // Validate recipients format (now supports objects with name and phoneNumber)
+    const invalidRecipients = recipients.filter(recipient => {
+      if (typeof recipient === 'string') {
+        return !recipient.trim();
+      } else if (typeof recipient === 'object') {
+        return !recipient.phoneNumber || !recipient.phoneNumber.trim();
+      }
+      return true;
+    });
+
+    if (invalidRecipients.length > 0) {
+      return NextResponse.json(
+        { error: "Invalid recipient format found" },
+        { status: 400 }
+      );
+    }
+
     // Create experiment in a transaction
     const experiment = await prisma.$transaction(async (tx) => {
       // Create the experiment
@@ -177,31 +194,48 @@ export async function POST(request) {
         })
       );
 
+      // Normalize recipients to objects with phoneNumber and name
+      const normalizedRecipients = recipients.map(recipient => {
+        if (typeof recipient === 'string') {
+          return { phoneNumber: recipient, name: null };
+        } else if (typeof recipient === 'object') {
+          return {
+            phoneNumber: recipient.phoneNumber,
+            name: recipient.name || null
+          };
+        }
+        return { phoneNumber: '', name: null };
+      });
+
       // Assign recipients to variants based on allocation
       const recipientAssignments = [];
       let recipientIndex = 0;
 
       for (const variant of createdVariants) {
         const variantRecipientCount = Math.floor(
-          (variant.allocationPercentage / 100) * recipients.length
+          (variant.allocationPercentage / 100) * normalizedRecipients.length
         );
 
-        for (let i = 0; i < variantRecipientCount && recipientIndex < recipients.length; i++) {
+        for (let i = 0; i < variantRecipientCount && recipientIndex < normalizedRecipients.length; i++) {
+          const recipient = normalizedRecipients[recipientIndex];
           recipientAssignments.push({
             experimentId: newExperiment.id,
             variantId: variant.id,
-            phoneNumber: recipients[recipientIndex],
+            phoneNumber: recipient.phoneNumber,
+            name: recipient.name,
           });
           recipientIndex++;
         }
       }
 
       // Assign any remaining recipients to the first variant
-      while (recipientIndex < recipients.length) {
+      while (recipientIndex < normalizedRecipients.length) {
+        const recipient = normalizedRecipients[recipientIndex];
         recipientAssignments.push({
           experimentId: newExperiment.id,
           variantId: createdVariants[0].id,
-          phoneNumber: recipients[recipientIndex],
+          phoneNumber: recipient.phoneNumber,
+          name: recipient.name,
         });
         recipientIndex++;
       }

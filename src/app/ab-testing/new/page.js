@@ -15,6 +15,7 @@ import {
   Save,
   Play
 } from "lucide-react";
+import CSVUploader from "@/components/molecules/CSVUploader";
 
 export default function NewABTestPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function NewABTestPage() {
       { name: "A", templateId: "", customMessage: "", allocationPercentage: 50 },
       { name: "B", templateId: "", customMessage: "", allocationPercentage: 50 }
     ],
-    recipients: ""
+    recipients: []
   });
   const [errors, setErrors] = useState({});
   const [recipientCount, setRecipientCount] = useState(0);
@@ -42,12 +43,8 @@ export default function NewABTestPage() {
   }, []);
 
   useEffect(() => {
-    // Count recipients
-    const recipients = formData.recipients
-      .split(/[\n,]+/)
-      .map(r => r.trim())
-      .filter(Boolean);
-    setRecipientCount(recipients.length);
+    // Count recipients (now an array)
+    setRecipientCount(Array.isArray(formData.recipients) ? formData.recipients.length : 0);
   }, [formData.recipients]);
 
   const fetchTemplates = async () => {
@@ -99,10 +96,8 @@ export default function NewABTestPage() {
     }
 
     // Validate recipients
-    if (!formData.recipients.trim()) {
+    if (!formData.recipients || formData.recipients.length === 0) {
       newErrors.recipients = "At least one recipient is required";
-    } else if (recipientCount === 0) {
-      newErrors.recipients = "No valid recipients found";
     }
 
     setErrors(newErrors);
@@ -146,19 +141,21 @@ export default function NewABTestPage() {
     }));
   };
 
+  const handleRecipientsLoaded = (recipients) => {
+    setFormData(prev => ({
+      ...prev,
+      recipients
+    }));
+  };
+
   const handleSubmit = async (action = 'save') => {
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      const recipients = formData.recipients
-        .split(/[\n,]+/)
-        .map(r => r.trim())
-        .filter(Boolean);
-
       const payload = {
         ...formData,
-        recipients,
+        recipients: formData.recipients, // Now already an array
         settings: {
           autoStart: action === 'start'
         }
@@ -384,35 +381,27 @@ export default function NewABTestPage() {
           </CardContent>
         </Card>
 
-        {/* Recipients */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              Recipients ({recipientCount} contacts)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Numbers <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.recipients}
-                onChange={(e) => setFormData(prev => ({ ...prev, recipients: e.target.value }))}
-                rows={8}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Enter phone numbers (one per line or comma-separated)&#10;+1234567890&#10;+0987654321&#10;..."
-              />
-              {errors.recipients && (
-                <p className="text-red-500 text-sm mt-1">{errors.recipients}</p>
-              )}
-              <p className="text-gray-500 text-sm mt-1">
-                Recipients will be automatically distributed across variants based on allocation percentages.
-              </p>
+        {/* Recipients - CSV Upload */}
+        <CSVUploader 
+          onRecipientsLoaded={handleRecipientsLoaded}
+        />
+        
+        {errors.recipients && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+              <p className="text-red-700 text-sm">{errors.recipients}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
+
+        {recipientCount > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <p className="text-blue-700 text-sm">
+              <strong>{recipientCount} recipients loaded</strong> - They will be automatically distributed across variants based on allocation percentages.
+            </p>
+          </div>
+        )}
 
         {/* Error Display */}
         {errors.submit && (

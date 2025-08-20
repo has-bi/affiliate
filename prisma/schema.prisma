@@ -143,6 +143,7 @@ model ABRecipient {
   experimentId Int       @map("experiment_id")
   variantId    Int       @map("variant_id")
   phoneNumber  String    @map("phone_number")
+  name         String?   // Name from CSV upload
   assignedAt   DateTime  @default(now()) @map("assigned_at")
   status       String    @default("assigned") // assigned, sent, failed, excluded
   
@@ -226,4 +227,11 @@ model ABRateLimit {
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("ab_rate_limits")
+}
+
+model activity_logs {
+  id         Int      @id @default(autoincrement())
+  action     String
+  details    String?
+  created_at DateTime @default(now())
 }
