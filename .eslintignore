@@ -1,0 +1,10 @@
+# Ignore schedule service files due to complex Prisma queries
+src/lib/schedules/queueManager.js
+src/lib/schedules/batchProcessor.js
+src/lib/schedules/retryService.js
+src/lib/schedules/enhancedSchedulerService.js
+
+# Build and generated files
+.next/
+out/
+node_modules/

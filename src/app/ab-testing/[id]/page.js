@@ -421,8 +421,8 @@ export default function ABTestDetailPage({ params }) {
                     title="Batch Size"
                     description="Number of messages sent together in each batch. This helps manage sending rates and prevents overwhelming WhatsApp servers."
                     examples={[
-                      "Current setting sends " + experiment.batchSize + " messages at once",
-                      "Total batches needed: ~" + Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize)
+                      `Current setting sends ${experiment.batchSize} messages at once`,
+                      `Total batches needed: ~${Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize)}`
                     ]}
                     position="top"
                   />
@@ -436,8 +436,8 @@ export default function ABTestDetailPage({ params }) {
                     title="Cooldown Period"
                     description="Waiting time between batches to prevent rate limiting. This ensures your WhatsApp account stays in good standing."
                     examples={[
-                      "Current setting waits " + experiment.cooldownMinutes + " minutes between batches",
-                      "Estimated completion: ~" + Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize * experiment.cooldownMinutes) + " minutes total"
+                      `Current setting waits ${experiment.cooldownMinutes} minutes between batches`,
+                      `Estimated completion: ~${Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize * experiment.cooldownMinutes)} minutes total`
                     ]}
                     position="top"
                   />

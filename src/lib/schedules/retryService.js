@@ -25,7 +25,7 @@ class RetryService {
         where: {
           status: 'failed',
           attempts: {
-            lt: prisma.$queryRaw`max_attempts`
+            lt: 10 // Use reasonable max attempt limit
           },
           scheduledFor: {
             lte: new Date() // Only process messages that were scheduled to be sent
@@ -239,7 +239,7 @@ class RetryService {
       where: { id: messageId },
       data: {
         status: 'failed',
-        attempts: prisma.$queryRaw`max_attempts`, // Set to max to prevent future retries
+        attempts: 999, // Set to high number to prevent future retries
         errorMessage: 'Permanent failure - will not retry',
         updatedAt: new Date()
       }
@@ -297,7 +297,7 @@ class RetryService {
     const pendingRetries = await prisma.messageQueue.count({
       where: {
         status: 'failed',
-        attempts: { lt: prisma.$queryRaw`max_attempts` },
+        attempts: { lt: 10 },
         scheduledFor: { gt: new Date() }
       }
     });
@@ -332,7 +332,7 @@ class RetryService {
     const whereClause = {
       scheduleId,
       status: 'failed',
-      attempts: { lt: prisma.$queryRaw`max_attempts` }
+      attempts: { lt: 10 }
     };
 
     // Only retry recent failures (last 24 hours) by default
@@ -382,7 +382,7 @@ class RetryService {
     const deletedCount = await prisma.messageQueue.deleteMany({
       where: {
         status: 'failed',
-        attempts: { gte: prisma.$queryRaw`max_attempts` },
+        attempts: { gte: 10 },
         updatedAt: { lt: cutoffDate }
       }
     });

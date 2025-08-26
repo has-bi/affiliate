@@ -113,9 +113,9 @@ or 6281234567890, 6289876543210"
                       title="Delay Recommendation"
                       description="For large batches, longer delays help prevent rate limiting and improve delivery rates. Short delays with many recipients can trigger WhatsApp's spam protection."
                       examples={[
-                        "Current: " + delaySeconds + " seconds between messages",
-                        "Recommended for " + parsedCount + " recipients: 5+ seconds",
-                        "Total time would be: ~" + Math.ceil(parsedCount * Math.max(delaySeconds, 5) / 60) + " minutes"
+                        `Current: ${delaySeconds} seconds between messages`,
+                        `Recommended for ${parsedCount} recipients: 5+ seconds`,
+                        `Total time would be: ~${Math.ceil(parsedCount * Math.max(delaySeconds, 5) / 60)} minutes`
                       ]}
                       position="top"
                     />

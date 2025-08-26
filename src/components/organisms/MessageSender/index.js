@@ -265,8 +265,8 @@ const MessageSender = () => {
                     title="Large Batch Warning"
                     description="Sending to many recipients at once can trigger rate limits and reduce delivery rates. Consider splitting into smaller groups of 25-50 recipients."
                     examples={[
-                      "Current batch: " + parseRecipients().length + " recipients",
-                      "Recommended: Split into " + Math.ceil(parseRecipients().length / 50) + " smaller batches"
+                      `Current batch: ${parseRecipients().length} recipients`,
+                      `Recommended: Split into ${Math.ceil(parseRecipients().length / 50)} smaller batches`
                     ]}
                     position="top"
                   />
