@@ -341,7 +341,7 @@ Tim Youvit Affiliate`;
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAffiliates.map((affiliate, index) => (
                   <tr
-                    key={affiliate.phone || index}
+                    key={`${affiliate.phone}-${index}` || index}
                     className="hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">

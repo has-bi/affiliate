@@ -143,7 +143,7 @@ Tim Youvit Affiliate`;
               <tbody className="bg-white divide-y divide-gray-200">
                 {newAffiliates.map((affiliate) => (
                   <tr
-                    key={affiliate.rowIndex || affiliate.phone}
+                    key={`${affiliate.phone}-${affiliate.rowIndex}`}
                     className="hover:bg-gray-50"
                   >
                     <td className="px-4 py-2">{affiliate.name}</td>

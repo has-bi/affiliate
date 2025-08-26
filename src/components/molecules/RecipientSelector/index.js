@@ -54,9 +54,9 @@ const Step3 = ({
           </h4>
           <div className="border border-gray-200 rounded-md p-3 bg-gray-50 max-h-40 overflow-y-auto">
             <div className="flex flex-wrap gap-2">
-              {selectedContacts.map((contact) => (
+              {selectedContacts.map((contact, index) => (
                 <div
-                  key={contact.id || contact.phone}
+                  key={`${contact.id || contact.phone}-${index}`}
                   className="inline-flex items-center bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 text-sm"
                 >
                   <span className="truncate max-w-[150px]">{contact.name}</span>
