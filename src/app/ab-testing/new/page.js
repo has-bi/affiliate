@@ -16,6 +16,7 @@ import {
   Play
 } from "lucide-react";
 import CSVUploader from "@/components/molecules/CSVUploader";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 export default function NewABTestPage() {
   const router = useRouter();
@@ -248,8 +249,18 @@ export default function NewABTestPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                   Cooldown (minutes)
+                  <InfoTooltip
+                    title="Cooldown Period"
+                    description="The waiting time between sending batches of messages. This helps prevent rate limiting and maintains good sender reputation with WhatsApp."
+                    examples={[
+                      "5 minutes: Standard for most campaigns",
+                      "10+ minutes: For large campaigns or sensitive accounts",
+                      "1-3 minutes: For small test campaigns only"
+                    ]}
+                    position="top"
+                  />
                 </label>
                 <Input
                   type="number"
@@ -258,11 +269,24 @@ export default function NewABTestPage() {
                   min={1}
                   max={60}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Time to wait between message batches
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                   Batch Size
+                  <InfoTooltip
+                    title="Batch Size"
+                    description="Number of messages sent together in each batch. Smaller batches are safer but take longer to complete. Larger batches are faster but may trigger rate limits."
+                    examples={[
+                      "50: Recommended for most campaigns",
+                      "25-30: For new or sensitive WhatsApp accounts",
+                      "100+: Only for established accounts with good reputation"
+                    ]}
+                    position="top"
+                  />
                 </label>
                 <Input
                   type="number"
@@ -271,6 +295,9 @@ export default function NewABTestPage() {
                   min={1}
                   max={200}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Messages sent per batch
+                </p>
               </div>
             </div>
           </CardContent>

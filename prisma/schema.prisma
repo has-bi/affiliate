@@ -48,6 +48,11 @@ model Schedule {
   scheduledDate DateTime? @map("scheduled_date")
   status        String    @default("active")
   sessionName   String    @map("session_name")
+  // Batch processing configuration
+  batchSize     Int       @default(50) @map("batch_size")
+  batchDelay    Int       @default(300) @map("batch_delay") // seconds between batches
+  dailyLimit    Int?      @map("daily_limit") // max messages per day
+  retryConfig   Json?     @map("retry_config") // retry settings
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
   lastRun       DateTime? @map("last_run")
@@ -55,6 +60,8 @@ model Schedule {
   parameters    ScheduleParameter[]
   recipients    ScheduleRecipient[]
   history       ScheduleHistory[]
+  batches       ScheduleBatch[]
+  messageQueue  MessageQueue[]
 
   @@map("scheduled_messages")
 }
@@ -88,6 +95,50 @@ model ScheduleHistory {
   details      Json?     // Stores detailed results of the send operation
 
   @@map("scheduled_message_history")
+}
+
+// Batch execution tracking
+model ScheduleBatch {
+  id             Int       @id @default(autoincrement())
+  scheduleId     Int       @map("schedule_id")
+  schedule       Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  batchNumber    Int       @map("batch_number")
+  recipientsCount Int      @map("recipients_count")
+  successCount   Int       @default(0) @map("success_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  status         String    @default("pending") // pending, processing, completed, failed
+  errorMessage   String?   @map("error_message")
+  nextBatchAt    DateTime? @map("next_batch_at")
+  messageQueue   MessageQueue[]
+  
+  @@unique([scheduleId, batchNumber])
+  @@map("schedule_batches")
+}
+
+// Message queue for reliable delivery
+model MessageQueue {
+  id             Int       @id @default(autoincrement())
+  scheduleId     Int?      @map("schedule_id")
+  schedule       Schedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  batchId        Int?      @map("batch_id")
+  batch          ScheduleBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  recipient      String
+  messageContent String    @map("message_content")
+  chatId         String    @map("chat_id")
+  priority       String    @default("normal") // high, normal, low
+  status         String    @default("pending") // pending, processing, sent, failed
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3) @map("max_attempts")
+  scheduledFor   DateTime  @map("scheduled_for")
+  sentAt         DateTime? @map("sent_at")
+  errorMessage   String?   @map("error_message")
+  responseData   Json?     @map("response_data")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+  
+  @@map("message_queue")
 }
 
 // A/B Testing Models

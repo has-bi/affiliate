@@ -10,6 +10,7 @@ import { useBroadcast } from "@/hooks/useBroadcast";
 import { useSession } from "@/hooks/useWhatsApp";
 import { formatPhoneNumber } from "@/lib/utils";
 import { Send, AlertCircle } from "lucide-react";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 const BroadcastForm = () => {
   const { sessions, isLoading: isLoadingSessions } = useSession();
@@ -91,7 +92,7 @@ const BroadcastForm = () => {
       }
 
       if (recipients.length > 200) {
-        setValidationError("Maximum 200 recipients allowed per broadcast. Please split into smaller batches.");
+        setValidationError("Maximum 200 recipients allowed per broadcast. Please split into smaller groups for better delivery rates and to avoid rate limits.");
         return;
       }
 

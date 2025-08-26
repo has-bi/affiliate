@@ -21,6 +21,7 @@ import {
   Send,
   AlertCircle
 } from "lucide-react";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 const statusColors = {
   draft: "bg-gray-100 text-gray-800",
@@ -414,11 +415,33 @@ export default function ABTestDetailPage({ params }) {
                 <p className="text-gray-600">{experiment.sessionName}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Batch Size</p>
+                <p className="font-medium text-gray-700 flex items-center gap-1">
+                  Batch Size
+                  <InfoTooltip
+                    title="Batch Size"
+                    description="Number of messages sent together in each batch. This helps manage sending rates and prevents overwhelming WhatsApp servers."
+                    examples={[
+                      "Current setting sends " + experiment.batchSize + " messages at once",
+                      "Total batches needed: ~" + Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize)
+                    ]}
+                    position="top"
+                  />
+                </p>
                 <p className="text-gray-600">{experiment.batchSize} messages</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Cooldown</p>
+                <p className="font-medium text-gray-700 flex items-center gap-1">
+                  Cooldown
+                  <InfoTooltip
+                    title="Cooldown Period"
+                    description="Waiting time between batches to prevent rate limiting. This ensures your WhatsApp account stays in good standing."
+                    examples={[
+                      "Current setting waits " + experiment.cooldownMinutes + " minutes between batches",
+                      "Estimated completion: ~" + Math.ceil((experiment.totalRecipients || 0) / experiment.batchSize * experiment.cooldownMinutes) + " minutes total"
+                    ]}
+                    position="top"
+                  />
+                </p>
                 <p className="text-gray-600">{experiment.cooldownMinutes} minutes</p>
               </div>
               {experiment.startedAt && (

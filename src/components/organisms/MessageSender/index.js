@@ -11,6 +11,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 import toast from "react-hot-toast";
 import { useSession } from "@/hooks/useWhatsApp";
 import { formatPhoneNumber } from "@/lib/utils";
@@ -256,9 +257,20 @@ const MessageSender = () => {
                 Recipients parsed: <span className="font-medium text-green-600">{parseRecipients().length}</span>
               </p>
               {parseRecipients().length > 50 && (
-                <p className="text-xs text-amber-600">
-                  ⚠️ Large batch detected. Consider smaller groups.
-                </p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-amber-600">
+                    ⚠️ Large batch detected. Consider smaller groups.
+                  </p>
+                  <InfoTooltip
+                    title="Large Batch Warning"
+                    description="Sending to many recipients at once can trigger rate limits and reduce delivery rates. Consider splitting into smaller groups of 25-50 recipients."
+                    examples={[
+                      "Current batch: " + parseRecipients().length + " recipients",
+                      "Recommended: Split into " + Math.ceil(parseRecipients().length / 50) + " smaller batches"
+                    ]}
+                    position="top"
+                  />
+                </div>
               )}
             </div>
 

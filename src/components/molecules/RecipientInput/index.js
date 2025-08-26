@@ -4,6 +4,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 const RecipientInput = ({
   recipients,
@@ -106,7 +107,19 @@ or 6281234567890, 6289876543210"
               />
               <span className="text-sm text-gray-500">
                 {delaySeconds < 3 && parsedCount > 10 && (
-                  <span className="text-amber-600">⚠️ Consider longer delay for large batches</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-amber-600">⚠️ Consider longer delay for large batches</span>
+                    <InfoTooltip
+                      title="Delay Recommendation"
+                      description="For large batches, longer delays help prevent rate limiting and improve delivery rates. Short delays with many recipients can trigger WhatsApp's spam protection."
+                      examples={[
+                        "Current: " + delaySeconds + " seconds between messages",
+                        "Recommended for " + parsedCount + " recipients: 5+ seconds",
+                        "Total time would be: ~" + Math.ceil(parsedCount * Math.max(delaySeconds, 5) / 60) + " minutes"
+                      ]}
+                      position="top"
+                    />
+                  </div>
                 )}
                 {delaySeconds >= 3 && parsedCount > 0 && (
                   <span className="text-green-600">✅ Good rate limiting</span>
@@ -114,7 +127,7 @@ or 6281234567890, 6289876543210"
               </span>
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Recommended: 3-5 seconds for small batches, 5+ for large batches. 
+              Recommended: 3-5 seconds for small batches (under 25 recipients), 5+ for large batches (25+ recipients). 
               {parsedCount > 0 && `Estimated time: ~${Math.ceil(parsedCount * delaySeconds / 60)} minutes`}
             </p>
           </div>

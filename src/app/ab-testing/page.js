@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Filter
 } from "lucide-react";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 const statusColors = {
   draft: "bg-gray-100 text-gray-800",
@@ -261,8 +262,14 @@ export default function ABTestingPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => executeAction(experiment.id, 'send_batch')}
+                          title={`Send next batch of ${experiment.batchSize || 50} messages`}
                         >
                           Send Batch
+                          <InfoTooltip
+                            title="Send Batch"
+                            description={`Sends the next batch of ${experiment.batchSize || 50} messages for this experiment. After sending, there will be a ${experiment.cooldownMinutes || 5} minute cooldown period.`}
+                            position="top"
+                          />
                         </Button>
                         <Button
                           size="sm"
