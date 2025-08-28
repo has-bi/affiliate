@@ -5,7 +5,7 @@ import retryService from "@/lib/schedules/retryService";
 
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { action, options = {} } = await request.json();
 
     if (!action) {
@@ -235,7 +235,7 @@ export async function POST(request, { params }) {
     });
 
   } catch (error) {
-    console.error(`Error executing action ${request.action} on schedule ${params.id}:`, error);
+    console.error(`Error executing action ${action} on schedule ${id}:`, error);
     return NextResponse.json(
       { 
         error: "Failed to execute action", 

@@ -249,8 +249,10 @@ export default function NewABTestPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                  Cooldown (minutes)
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Cooldown (minutes)
+                  </label>
                   <InfoTooltip
                     title="Cooldown Period"
                     description="The waiting time between sending batches of messages. This helps prevent rate limiting and maintains good sender reputation with WhatsApp."
@@ -261,7 +263,7 @@ export default function NewABTestPage() {
                     ]}
                     position="top"
                   />
-                </label>
+                </div>
                 <Input
                   type="number"
                   value={formData.cooldownMinutes}
@@ -275,8 +277,10 @@ export default function NewABTestPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                  Batch Size
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Batch Size
+                  </label>
                   <InfoTooltip
                     title="Batch Size"
                     description="Number of messages sent together in each batch. Smaller batches are safer but take longer to complete. Larger batches are faster but may trigger rate limits."
@@ -287,7 +291,7 @@ export default function NewABTestPage() {
                     ]}
                     position="top"
                   />
-                </label>
+                </div>
                 <Input
                   type="number"
                   value={formData.batchSize}

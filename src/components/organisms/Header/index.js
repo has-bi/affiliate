@@ -172,7 +172,7 @@ export default function Header() {
           <div
             className="hidden items-center gap-1 md:flex"
             title={`WhatsApp: ${defaultSession} (${
-              sessions[0]?.status || "Unknown"
+              sessions[0]?.isConnected ? "Connected" : sessions[0]?.status || "Unknown"
             })`}
           >
             {isLoading ? (

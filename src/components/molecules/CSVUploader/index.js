@@ -145,11 +145,9 @@ export default function CSVUploader({ onRecipientsLoaded, className = "" }) {
                 className="hidden"
                 id="csv-upload"
               />
-              <label htmlFor="csv-upload">
-                <Button type="button" variant="outline" className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Choose CSV File
-                </Button>
+              <label htmlFor="csv-upload" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer">
+                <FileText className="h-4 w-4 mr-2" />
+                Choose CSV File
               </label>
               
               <div className="text-center">

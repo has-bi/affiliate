@@ -6,7 +6,7 @@ import schedulerService from "@/lib/schedules/schedulerService";
 // GET /api/schedules/[id] - Get a specific schedule
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const scheduleId = parseInt(id, 10);
 
     if (isNaN(scheduleId)) {
@@ -73,7 +73,7 @@ export async function GET(request, { params }) {
 // PUT /api/schedules/[id] - Update a schedule
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const scheduleId = parseInt(id, 10);
     const data = await request.json();
 
@@ -181,7 +181,7 @@ export async function PUT(request, { params }) {
 // DELETE /api/schedules/[id] - Delete a schedule
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const scheduleId = parseInt(id, 10);
 
     if (isNaN(scheduleId)) {

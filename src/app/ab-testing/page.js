@@ -98,12 +98,12 @@ export default function ABTestingPage() {
           </select>
         </div>
         
-        <Link href="/ab-testing/new">
-          <Button variant="primary">
+        <Button variant="primary" asChild>
+          <Link href="/ab-testing/new">
             <Plus className="h-4 w-4 mr-2" />
             Create A/B Test
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {/* Quick Stats */}
@@ -193,12 +193,12 @@ export default function ABTestingPage() {
               <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No A/B Tests Found</h3>
               <p className="text-gray-500 mb-4">Get started by creating your first A/B testing experiment.</p>
-              <Link href="/ab-testing/new">
-                <Button variant="primary">
+              <Button variant="primary" asChild>
+                <Link href="/ab-testing/new">
                   <Plus className="h-4 w-4 mr-2" />
                   Create A/B Test
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         ) : (

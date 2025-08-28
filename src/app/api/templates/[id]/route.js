@@ -4,22 +4,25 @@ import {
   updateTemplate,
   deleteTemplate,
 } from "@/lib/templates/templateUtils";
+import prisma from "@/lib/prisma";
 
 export async function GET(_, { params }) {
-  const id = params?.id; // Access using optional chaining
+  const { id } = await params;
   const template = await getTemplate(id);
   return Response.json(template);
 }
 
 export async function PUT(req, { params }) {
   const body = await req.json();
-  const result = await updateTemplate(params.id, body);
+  const { id } = await params;
+  const result = await updateTemplate(id, body);
   return Response.json(result);
 }
 
 export async function DELETE(_, { params }) {
   try {
-    const id = parseInt(params?.id, 10);
+    const { id: rawId } = await params;
+    const id = parseInt(rawId, 10);
 
     if (isNaN(id)) {
       return Response.json({ error: "Invalid template ID" }, { status: 400 });

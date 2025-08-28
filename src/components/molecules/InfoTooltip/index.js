@@ -5,6 +5,12 @@ import { HelpCircle } from "lucide-react";
 
 const InfoTooltip = ({ title, description, examples = [], position = "top" }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Ensure component is mounted before showing any tooltips to prevent hydration mismatches
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const positionClasses = {
     top: "bottom-full left-1/2 transform -translate-x-1/2 mb-2",
@@ -25,7 +31,7 @@ const InfoTooltip = ({ title, description, examples = [], position = "top" }) =>
         <HelpCircle className="w-4 h-4" />
       </button>
       
-      {isVisible && (
+      {isMounted && isVisible && (
         <div
           className={`absolute z-50 w-80 p-3 bg-white border border-gray-200 rounded-lg shadow-lg ${positionClasses[position]}`}
         >

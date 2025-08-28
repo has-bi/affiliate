@@ -9,14 +9,23 @@ import { formatPhoneNumber } from "@/lib/utils";
  */
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const experimentId = parseInt(id);
     const body = await request.json();
     const { action } = body; // start, pause, resume, send_batch
+    
+    console.log(`[A/B Testing] Execute request for experiment ${experimentId}, action: ${action}`, body);
 
     if (!experimentId) {
       return NextResponse.json(
         { error: "Invalid experiment ID" },
+        { status: 400 }
+      );
+    }
+    
+    if (!action) {
+      return NextResponse.json(
+        { error: "Action is required. Valid actions: start, pause, resume, send_batch, stop" },
         { status: 400 }
       );
     }
@@ -52,7 +61,7 @@ export async function POST(request, { params }) {
         return await stopExperiment(experiment);
       default:
         return NextResponse.json(
-          { error: "Invalid action" },
+          { error: `Invalid action '${action}'. Valid actions: start, pause, resume, send_batch, stop` },
           { status: 400 }
         );
     }
@@ -69,7 +78,10 @@ export async function POST(request, { params }) {
  * Start an A/B testing experiment
  */
 async function startExperiment(experiment) {
+  console.log(`[A/B Testing] Starting experiment ${experiment.id}, status: ${experiment.status}, sessionName: ${experiment.sessionName}`);
+  
   if (experiment.status !== "draft") {
+    console.log(`[A/B Testing] Cannot start experiment ${experiment.id}: status is '${experiment.status}', expected 'draft'`);
     return NextResponse.json(
       { error: "Only draft experiments can be started" },
       { status: 400 }
@@ -77,8 +89,12 @@ async function startExperiment(experiment) {
   }
 
   // Check if WhatsApp session is available
+  console.log(`[A/B Testing] Checking WhatsApp session: ${experiment.sessionName}`);
   const sessionStatus = await checkWhatsAppSession(experiment.sessionName);
+  console.log(`[A/B Testing] Session status:`, sessionStatus);
+  
   if (!sessionStatus.connected) {
+    console.log(`[A/B Testing] Cannot start experiment ${experiment.id}: WhatsApp session '${experiment.sessionName}' not connected`);
     return NextResponse.json(
       { error: `WhatsApp session '${experiment.sessionName}' is not connected` },
       { status: 400 }
@@ -403,18 +419,26 @@ async function sendVariantBatch(experiment, variant) {
 async function checkWhatsAppSession(sessionName) {
   try {
     const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+    const apiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
+    
+    const headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    
+    if (apiKey) {
+      headers["X-Api-Key"] = apiKey;
+    }
+    
     const response = await fetch(`${wahaApiUrl}/api/sessions/${sessionName}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
+      headers,
     });
 
     if (response.ok) {
       const data = await response.json();
       return {
-        connected: data.status === "CONNECTED",
+        connected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(data.status),
         status: data.status
       };
     } else {
@@ -432,12 +456,20 @@ async function checkWhatsAppSession(sessionName) {
 async function sendWhatsAppMessage(sessionName, chatId, message) {
   try {
     const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+    const apiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
+    
+    const headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    
+    if (apiKey) {
+      headers["X-Api-Key"] = apiKey;
+    }
+    
     const response = await fetch(`${wahaApiUrl}/api/sendText`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         session: sessionName,
         chatId: chatId,

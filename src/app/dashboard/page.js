@@ -64,9 +64,6 @@ export default function DashboardPage() {
 
   // Derived data
   const activeSchedules = schedules.filter((s) => s.status === "active").length;
-  const activeConnections = sessions.filter(
-    (s) => s.status === "CONNECTED"
-  ).length;
 
   return (
     <PageLayout
@@ -252,73 +249,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* System Status */}
-      <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          System Status
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* WhatsApp Connections */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-700">WhatsApp Connections</h3>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  activeConnections > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {activeConnections > 0 ? `${activeConnections} Active` : 'Disconnected'}
-                </div>
-              </div>
-              <div className="space-y-2">
-                {sessions.slice(0, 3).map((session, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{session.name}</span>
-                    <div className={`flex items-center ${
-                      session.status === 'CONNECTED' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full mr-2 ${
-                        session.status === 'CONNECTED' ? 'bg-green-500' : 'bg-red-500'
-                      }`}></div>
-                      {session.status === 'CONNECTED' ? 'Connected' : 'Disconnected'}
-                    </div>
-                  </div>
-                ))}
-                {sessions.length > 3 && (
-                  <p className="text-xs text-gray-500 mt-2">+{sessions.length - 3} more sessions</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-700">Recent Activity</h3>
-                <TrendingUp className="h-4 w-4 text-gray-400" />
-              </div>
-              <div className="space-y-3">
-                {recentActivity.map((activity, idx) => (
-                  <div key={idx} className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 truncate">{activity.event}</p>
-                      <p className="text-xs text-gray-500">{activity.template} • {activity.time}</p>
-                    </div>
-                    {activity.recipients > 0 && (
-                      <span className="text-xs text-gray-400">{activity.recipients}</span>
-                    )}
-                  </div>
-                ))}
-                <Link href="/dashboard/activity" className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                  View all activity →
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </PageLayout>
   );

@@ -8,7 +8,7 @@ import prisma from "@/lib/prisma";
  */
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const experimentId = parseInt(id);
 
     if (!experimentId) {
@@ -132,7 +132,7 @@ export async function GET(request, { params }) {
  */
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const experimentId = parseInt(id);
     const body = await request.json();
 
@@ -208,7 +208,7 @@ export async function PUT(request, { params }) {
  */
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const experimentId = parseInt(id);
 
     if (!experimentId) {

@@ -8,7 +8,7 @@ import prisma from "@/lib/prisma";
  */
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const experimentId = parseInt(id);
     const { searchParams } = new URL(request.url);
     const timeframe = searchParams.get("timeframe") || "7d"; // 1d, 7d, 30d, all

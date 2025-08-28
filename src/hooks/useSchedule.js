@@ -4,6 +4,25 @@
 import { useState, useEffect, useCallback } from "react";
 
 /**
+ * Helper function to handle API response errors consistently
+ */
+async function handleApiError(response, defaultMessage) {
+  if (response.status === 401 || response.url.includes('/login')) {
+    throw new Error("Authentication required. Please log in.");
+  }
+  
+  let errorMessage = defaultMessage;
+  try {
+    const errorData = await response.json();
+    errorMessage = errorData.error || errorMessage;
+  } catch (parseError) {
+    // Response is not JSON (might be HTML from redirect)
+    errorMessage = `Server error (${response.status})`;
+  }
+  throw new Error(errorMessage);
+}
+
+/**
  * Hook for schedule management
  * Handles schedule CRUD operations and status management
  */
@@ -25,8 +44,7 @@ export function useSchedule() {
       const response = await fetch("/api/schedules");
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch schedules");
+        await handleApiError(response, "Failed to fetch schedules");
       }
 
       const data = await response.json();
@@ -60,8 +78,7 @@ export function useSchedule() {
       const response = await fetch(`/api/schedules/${scheduleId}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to fetch schedule`);
+        await handleApiError(response, `Failed to fetch schedule`);
       }
 
       const schedule = await response.json();
@@ -102,8 +119,7 @@ export function useSchedule() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create schedule");
+        await handleApiError(response, "Failed to create schedule");
       }
 
       const newSchedule = await response.json();
@@ -141,8 +157,7 @@ export function useSchedule() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update schedule");
+        await handleApiError(response, "Failed to update schedule");
       }
 
       const updatedSchedule = await response.json();
@@ -180,8 +195,7 @@ export function useSchedule() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to delete schedule`);
+          await handleApiError(response, `Failed to delete schedule`);
         }
 
         setSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
@@ -223,10 +237,7 @@ export function useSchedule() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || "Failed to toggle schedule status"
-          );
+          await handleApiError(response, "Failed to toggle schedule status");
         }
 
         const updatedSchedule = await response.json();
