@@ -302,11 +302,14 @@ async function sendVariantBatch(experiment, variant) {
     }
   });
 
-  // Prepare message content
+  // Prepare message content and determine message type
   const messageContent = variant.customMessage || variant.template?.content || "";
+  const imageUrl = variant.imageUrl || variant.template?.imageUrl || null;
+  const messageType = imageUrl ? 'image' : 'text';
+  const caption = imageUrl ? messageContent : null;
   
-  if (!messageContent) {
-    throw new Error(`No message content found for variant ${variant.name}`);
+  if (!messageContent && !imageUrl) {
+    throw new Error(`No message content or image found for variant ${variant.name}`);
   }
 
   let successCount = 0;
@@ -321,11 +324,14 @@ async function sendVariantBatch(experiment, variant) {
       // Format phone number
       const formattedPhone = formatPhoneNumber(recipient.phoneNumber);
       
-      // Send message via WhatsApp API
+      // Send message via WhatsApp API (text or image)
       const sendResult = await sendWhatsAppMessage(
         experiment.sessionName,
         formattedPhone,
-        messageContent
+        messageContent,
+        messageType,
+        imageUrl,
+        caption
       );
 
       if (sendResult.success) {
@@ -451,9 +457,9 @@ async function checkWhatsAppSession(sessionName) {
 }
 
 /**
- * Send WhatsApp message
+ * Send WhatsApp message (text or image)
  */
-async function sendWhatsAppMessage(sessionName, chatId, message) {
+async function sendWhatsAppMessage(sessionName, chatId, messageContent, messageType = 'text', imageUrl = null, caption = null) {
   try {
     const wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
     const apiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
@@ -467,14 +473,36 @@ async function sendWhatsAppMessage(sessionName, chatId, message) {
       headers["X-Api-Key"] = apiKey;
     }
     
-    const response = await fetch(`${wahaApiUrl}/api/sendText`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
+    let endpoint;
+    let payload;
+    
+    if (messageType === 'image' && imageUrl) {
+      // Send image message
+      endpoint = `${wahaApiUrl}/api/sendImage`;
+      payload = {
         session: sessionName,
         chatId: chatId,
-        text: message
-      })
+        file: {
+          mimetype: "image/jpeg",
+          url: imageUrl,
+          filename: "image.jpeg"
+        },
+        caption: caption || messageContent || ""
+      };
+    } else {
+      // Send text message (default)
+      endpoint = `${wahaApiUrl}/api/sendText`;
+      payload = {
+        session: sessionName,
+        chatId: chatId,
+        text: messageContent
+      };
+    }
+    
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
     });
 
     if (response.ok) {

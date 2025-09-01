@@ -13,6 +13,7 @@ model Template {
   name        String
   description String?
   content     String
+  imageUrl    String?   @map("image_url")
   category    String    @default("general")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -174,6 +175,7 @@ model ABVariant {
   name                 String    // 'A', 'B', 'C', etc.
   templateId           Int?      @map("template_id")
   customMessage        String?   @map("custom_message")
+  imageUrl             String?   @map("image_url")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
   

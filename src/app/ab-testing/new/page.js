@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import CSVUploader from "@/components/molecules/CSVUploader";
 import InfoTooltip from "@/components/molecules/InfoTooltip";
+import ImageUploader from "@/components/molecules/ImageUploader";
 
 export default function NewABTestPage() {
   const router = useRouter();
@@ -30,8 +31,8 @@ export default function NewABTestPage() {
     cooldownMinutes: 5,
     batchSize: 50,
     variants: [
-      { name: "A", templateId: "", customMessage: "", recipients: [] },
-      { name: "B", templateId: "", customMessage: "", recipients: [] }
+      { name: "A", templateId: "", customMessage: "", imageUrl: "", recipients: [] },
+      { name: "B", templateId: "", customMessage: "", imageUrl: "", recipients: [] }
     ]
   });
   const [errors, setErrors] = useState({});
@@ -87,8 +88,12 @@ export default function NewABTestPage() {
 
     // Validate variants
     formData.variants.forEach((variant, index) => {
-      if (!variant.templateId && !variant.customMessage.trim()) {
-        newErrors[`variant_${index}_content`] = "Either select a template or enter a custom message";
+      const hasTemplate = !!variant.templateId;
+      const hasMessage = !!variant.customMessage.trim();
+      const hasImage = !!variant.imageUrl;
+      
+      if (!hasTemplate && !hasMessage && !hasImage) {
+        newErrors[`variant_${index}_content`] = "Either select a template, enter a custom message, or add an image";
       }
       
       // Validate that each variant has recipients
@@ -112,6 +117,7 @@ export default function NewABTestPage() {
           name: newVariantName,
           templateId: "",
           customMessage: "",
+          imageUrl: "",
           recipients: []
         }
       ]
@@ -142,6 +148,17 @@ export default function NewABTestPage() {
       variants: prev.variants.map((variant, index) =>
         index === variantIndex 
           ? { ...variant, recipients }
+          : variant
+      )
+    }));
+  };
+
+  const handleVariantImageSelected = (variantIndex, imageData) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.map((variant, index) =>
+        index === variantIndex 
+          ? { ...variant, imageUrl: imageData?.url || "" }
           : variant
       )
     }));
@@ -364,17 +381,34 @@ export default function NewABTestPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Custom Message {!variant.templateId && <span className="text-red-500">*</span>}
+                      Custom Message {!variant.templateId && !variant.imageUrl && <span className="text-red-500">*</span>}
                     </label>
                     <textarea
                       value={variant.customMessage}
                       onChange={(e) => updateVariant(index, 'customMessage', e.target.value)}
                       rows={4}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder={variant.templateId ? "Leave empty to use template content" : "Enter your message content..."}
+                      placeholder={variant.templateId ? "Leave empty to use template content" : variant.imageUrl ? "Optional caption for the image" : "Enter your message content..."}
                     />
                     {errors[`variant_${index}_content`] && (
                       <p className="text-red-500 text-sm mt-1">{errors[`variant_${index}_content`]}</p>
+                    )}
+                  </div>
+
+                  {/* Image Upload for this variant */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image Attachment (Optional)
+                    </label>
+                    <ImageUploader 
+                      onImageSelected={(imageData) => handleVariantImageSelected(index, imageData)}
+                      selectedImage={variant.imageUrl ? { url: variant.imageUrl } : null}
+                      className="border border-gray-200 rounded-lg"
+                    />
+                    {variant.imageUrl && (
+                      <p className="text-green-600 text-sm mt-1">
+                        ✓ Image selected for Variant {variant.name}
+                      </p>
                     )}
                   </div>
 

@@ -223,17 +223,19 @@ class WAHAClient {
         );
       }
 
-      // Send image using WAHA API
+      // Send image using WAHA API - Updated to match official documentation
       const response = await fetch(`${this.baseUrl}/api/sendImage`, {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({
+          session: session || this.defaultSession,
           chatId: `${recipient}@c.us`,
           file: {
-            url: imageUrl
+            mimetype: "image/jpeg",
+            url: imageUrl,
+            filename: "image.jpeg"
           },
           caption: whatsappFormattedCaption,
-          session: session || this.defaultSession,
         }),
       });
 
