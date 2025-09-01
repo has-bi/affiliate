@@ -187,6 +187,80 @@ class WAHAClient {
   }
 
   /**
+   * Send an image message with optional caption
+   * @param {string} session - Session name
+   * @param {string} to - Recipient's phone number
+   * @param {string} imageUrl - Image URL or base64 data
+   * @param {string} caption - Optional caption text
+   * @returns {Promise<Object>} Message info
+   */
+  async sendImage(session, to, imageUrl, caption = "") {
+    if (!to) {
+      throw new Error("Recipient is required");
+    }
+
+    if (!imageUrl) {
+      throw new Error("Image URL or data is required");
+    }
+
+    // Format recipient if needed
+    let recipient = to.replace("@c.us", "");
+
+    // Apply WhatsApp formatting to caption (bold/italic)
+    const whatsappFormattedCaption = caption
+      .replace(/<strong>(.*?)<\/strong>/g, "*$1*")
+      .replace(/<em>(.*?)<\/em>/g, "_$1_")
+      .replace(/<[^>]*>/g, "");
+
+    try {
+      // Check if the session is connected
+      const sessionStatus = await this.checkSession();
+      if (!sessionStatus.isConnected) {
+        throw new Error(
+          `WhatsApp session '${
+            session || this.defaultSession
+          }' is not connected (${sessionStatus.status})`
+        );
+      }
+
+      // Send image using WAHA API
+      const response = await fetch(`${this.baseUrl}/api/sendImage`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          chatId: `${recipient}@c.us`,
+          file: {
+            url: imageUrl
+          },
+          caption: whatsappFormattedCaption,
+          session: session || this.defaultSession,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Failed to send image";
+
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || errorMessage;
+        } catch (e) {
+          if (errorText) errorMessage = errorText;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      logger.info(`Image sent to ${recipient}`);
+      return result;
+    } catch (error) {
+      logger.error(`Error sending image to ${to}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Send a text message
    * @param {string} to - Recipient's phone number
    * @param {string} text - Message text

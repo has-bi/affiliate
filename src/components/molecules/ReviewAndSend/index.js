@@ -1,7 +1,7 @@
 // Updated src/components/molecules/ReviewAndSend/index.js
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Send, Calendar, Loader2, AlertCircle } from "lucide-react";
+import { Send, Calendar, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
 import RepeatScheduler from "@/components/molecules/RepeatScheduler";
 
 const Step4 = ({
@@ -17,6 +17,7 @@ const Step4 = ({
   handleSchedule,
   isSubmitting,
   handlePrevStep,
+  selectedImage,
 }) => {
   // Get recipients and preview HTML
   let recipients = [];
@@ -86,7 +87,7 @@ const Step4 = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-50 p-4 rounded-md">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Template</h5>
           <p>{selectedTemplate?.name || "No template selected"}</p>
@@ -99,7 +100,42 @@ const Step4 = ({
           <h5 className="text-sm font-medium text-gray-700 mb-2">Recipients</h5>
           <p>{recipients.length} penerima</p>
         </div>
+        <div className="bg-gray-50 p-4 rounded-md">
+          <h5 className="text-sm font-medium text-gray-700 mb-2">Image</h5>
+          <div className="flex items-center">
+            {selectedImage ? (
+              <div className="flex items-center text-green-600">
+                <ImageIcon className="h-4 w-4 mr-1" />
+                <span className="text-sm">Attached</span>
+              </div>
+            ) : (
+              <span className="text-gray-500 text-sm">Text only</span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Image Preview */}
+      {selectedImage && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <h5 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+            <ImageIcon className="h-4 w-4 mr-1" />
+            Image Preview
+          </h5>
+          <div className="flex items-start space-x-3">
+            <img 
+              src={selectedImage.url} 
+              alt="Message attachment" 
+              className="w-20 h-20 object-cover rounded border"
+            />
+            <div className="text-sm text-blue-700">
+              <p><strong>Filename:</strong> {selectedImage.filename}</p>
+              <p><strong>Size:</strong> {(selectedImage.size / 1024).toFixed(1)} KB</p>
+              <p className="mt-1 text-blue-600">This image will be sent with the message text as caption.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Scheduling Options */}
       <div className="mt-6">

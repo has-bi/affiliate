@@ -19,6 +19,7 @@ import Step1 from "@/components/molecules/TemplateSelector";
 import Step2 from "@/components/molecules/TemplateParameterForm";
 import Step3 from "@/components/molecules/RecipientSelector";
 import Step4 from "@/components/molecules/ReviewAndSend";
+import ImageUploader from "@/components/molecules/ImageUploader";
 
 export default function TemplateMessageSender() {
   
@@ -64,6 +65,9 @@ export default function TemplateMessageSender() {
   // Sending state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendResult, setSendResult] = useState(null);
+
+  // Image state
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Scheduling state
   const [isScheduling, setIsScheduling] = useState(false);
@@ -247,6 +251,7 @@ export default function TemplateMessageSender() {
           processedMessages: processedMessages,
           templateId: selectedTemplate.id,
           templateName: selectedTemplate.name,
+          image: selectedImage, // Add image data
         }),
       });
 
@@ -590,17 +595,25 @@ export default function TemplateMessageSender() {
             )}
 
             {step === 2 && (
-              <Step2
-                selectedTemplate={selectedTemplate}
-                paramValues={paramValues}
-                handleParamChange={handleParamChange}
-                isSubmitting={isSubmitting}
-                previewMode={previewMode}
-                togglePreview={togglePreview}
-                getPreviewHTML={getPreviewHTML}
-                handlePrevStep={handlePrevStep}
-                handleNextStep={handleNextStep}
-              />
+              <div className="space-y-6">
+                <Step2
+                  selectedTemplate={selectedTemplate}
+                  paramValues={paramValues}
+                  handleParamChange={handleParamChange}
+                  isSubmitting={isSubmitting}
+                  previewMode={previewMode}
+                  togglePreview={togglePreview}
+                  getPreviewHTML={getPreviewHTML}
+                  handlePrevStep={handlePrevStep}
+                  handleNextStep={handleNextStep}
+                />
+                
+                {/* Image Upload Component */}
+                <ImageUploader
+                  onImageSelected={setSelectedImage}
+                  selectedImage={selectedImage}
+                />
+              </div>
             )}
 
             {step === 3 && (
@@ -634,6 +647,7 @@ export default function TemplateMessageSender() {
                 handleSchedule={handleSchedule}
                 isSubmitting={isSubmitting}
                 handlePrevStep={handlePrevStep}
+                selectedImage={selectedImage}
               />
             )}
           </CardContent>

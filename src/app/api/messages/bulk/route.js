@@ -34,12 +34,24 @@ export async function POST(req) {
             item.message.substring(0, 50) + "..."
           );
 
-          // Send message via WAHA client
-          const sendResult = await wahaClient.sendText(
-            body.session,
-            item.recipient,
-            item.message
-          );
+          let sendResult;
+
+          // Send image first if provided
+          if (body.image && body.image.url) {
+            sendResult = await wahaClient.sendImage(
+              body.session,
+              item.recipient,
+              body.image.url,
+              item.message // Use message as caption
+            );
+          } else {
+            // Send text message only
+            sendResult = await wahaClient.sendText(
+              body.session,
+              item.recipient,
+              item.message
+            );
+          }
 
           // Update results
           results.totalSent++;
