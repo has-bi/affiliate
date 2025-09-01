@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
+import InfoTooltip from "@/components/molecules/InfoTooltip";
 
 export default function CSVUploader({ onRecipientsLoaded, className = "" }) {
   const [file, setFile] = useState(null);
@@ -116,9 +117,35 @@ export default function CSVUploader({ onRecipientsLoaded, className = "" }) {
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Users className="h-5 w-5 mr-2" />
-          CSV Upload - Recipients
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Users className="h-5 w-5 mr-2" />
+            CSV Upload - Recipients
+          </div>
+          <InfoTooltip
+            title="CSV Format Guidelines"
+            description="Upload a CSV file with phone numbers for this variant. The system automatically converts Indonesian phone numbers to international format."
+            examples={[
+              "Required columns: Name, Phone Number",
+              "Accepted phone formats (all auto-converted):",
+              "• 081234567890 (common Indonesian format)",
+              "• 8123456789 (without leading 0)",
+              "• +6281234567890 (international format)",
+              "• 6281234567890 (with country code)",
+              "",
+              "CSV example:",
+              "Name,Phone Number",
+              "John Doe,081234567890",
+              "Jane Smith,8987654321",
+              "Budi,+6281122334455",
+              "",
+              "File requirements:",
+              "• UTF-8 encoding recommended",
+              "• Max file size: 5MB",
+              "• Max 10,000 recipients per variant"
+            ]}
+            position="left"
+          />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -166,6 +193,7 @@ export default function CSVUploader({ onRecipientsLoaded, className = "" }) {
             <div className="mt-4 text-xs text-gray-500">
               <p>Required columns: <strong>Name</strong> and <strong>Phone Number</strong></p>
               <p>Supported formats: CSV only, max 5MB</p>
+              <p className="mt-1 text-blue-600">💡 Hover the help icon above for detailed CSV format guidelines</p>
             </div>
           </div>
         ) : (
