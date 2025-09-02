@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import RecipientInput from "@/components/molecules/RecipientInput";
 import BroadcastProgress from "@/components/molecules/BroadcastProgress";
+import ImageUploader from "@/components/molecules/ImageUploader";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useSession } from "@/hooks/useWhatsApp";
 import { formatPhoneNumber } from "@/lib/utils";
@@ -24,6 +25,7 @@ const BroadcastForm = () => {
     delaySeconds: 3,
   });
 
+  const [selectedImage, setSelectedImage] = useState(null);
   const [validationError, setValidationError] = useState("");
   const [recipientCount, setRecipientCount] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
@@ -96,8 +98,8 @@ const BroadcastForm = () => {
         return;
       }
 
-      // Send broadcast
-      await broadcastMessage(formData.sessionName, recipients, formData.message);
+      // Send broadcast with optional image
+      await broadcastMessage(formData.sessionName, recipients, formData.message, selectedImage);
     } finally {
       setIsValidating(false);
     }
@@ -111,6 +113,7 @@ const BroadcastForm = () => {
       message: "",
       delaySeconds: 5,
     });
+    setSelectedImage(null);
     setRecipientCount(0);
     setValidationError("");
     clearResult();
@@ -186,6 +189,12 @@ const BroadcastForm = () => {
                   disabled={isSending}
                 />
               </div>
+
+              {/* Image Upload */}
+              <ImageUploader
+                onImageSelected={setSelectedImage}
+                selectedImage={selectedImage}
+              />
 
               {/* Error Display */}
               {(validationError || error) && (

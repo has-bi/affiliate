@@ -304,9 +304,41 @@ async function sendVariantBatch(experiment, variant) {
 
   // Prepare message content and determine message type
   const messageContent = variant.customMessage || variant.template?.content || "";
-  const imageUrl = variant.imageUrl || variant.template?.imageUrl || null;
+  let imageUrl = variant.imageUrl || variant.template?.imageUrl || null;
+  
+  // Handle URL conversion for different storage types
+  if (imageUrl) {
+    if (imageUrl.startsWith('/')) {
+      // Legacy local storage URLs - convert to absolute URLs
+      let baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+      
+      if (!baseUrl) {
+        // Fallback: construct from request headers if available
+        try {
+          const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+          const host = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${protocol}://localhost:3000`;
+          baseUrl = host;
+        } catch (e) {
+          baseUrl = 'http://localhost:3000';
+        }
+      }
+      
+      imageUrl = `${baseUrl}${imageUrl}`;
+      console.log(`[A/B Testing] Converted legacy URL to absolute: ${imageUrl}`);
+    } else if (imageUrl.includes('storage.googleapis.com')) {
+      // GCP Storage URLs are already absolute
+      console.log(`[A/B Testing] Using GCP Storage URL: ${imageUrl}`);
+    } else {
+      // External URLs (already absolute)
+      console.log(`[A/B Testing] Using external URL: ${imageUrl}`);
+    }
+  }
+  
   const messageType = imageUrl ? 'image' : 'text';
   const caption = imageUrl ? messageContent : null;
+  
+  // Debug logging
+  console.log(`[A/B Testing] Variant ${variant.name} - imageUrl: ${imageUrl}, messageType: ${messageType}, messageContent: ${messageContent}`);
   
   if (!messageContent && !imageUrl) {
     throw new Error(`No message content or image found for variant ${variant.name}`);
@@ -489,6 +521,7 @@ async function sendWhatsAppMessage(sessionName, chatId, messageContent, messageT
         },
         caption: caption || messageContent || ""
       };
+      console.log(`[WAHA] Sending image to ${chatId}:`, JSON.stringify(payload, null, 2));
     } else {
       // Send text message (default)
       endpoint = `${wahaApiUrl}/api/sendText`;
@@ -497,6 +530,7 @@ async function sendWhatsAppMessage(sessionName, chatId, messageContent, messageT
         chatId: chatId,
         text: messageContent
       };
+      console.log(`[WAHA] Sending text to ${chatId}:`, JSON.stringify(payload, null, 2));
     }
     
     const response = await fetch(endpoint, {
@@ -507,6 +541,7 @@ async function sendWhatsAppMessage(sessionName, chatId, messageContent, messageT
 
     if (response.ok) {
       const data = await response.json();
+      console.log(`[WAHA] Success response:`, data);
       return {
         success: true,
         messageId: data.id,
@@ -514,6 +549,7 @@ async function sendWhatsAppMessage(sessionName, chatId, messageContent, messageT
       };
     } else {
       const errorData = await response.json();
+      console.log(`[WAHA] Error response (${response.status}):`, errorData);
       return {
         success: false,
         error: errorData.message || errorData.error || "Failed to send message"

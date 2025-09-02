@@ -42,7 +42,9 @@ export async function POST(req) {
               body.session,
               item.recipient,
               body.image.url,
-              item.message // Use message as caption
+              item.message, // Use message as caption
+              body.image.mimetype || body.image.type, // MIME type from uploaded image
+              body.image.filename // Filename from uploaded image
             );
           } else {
             // Send text message only

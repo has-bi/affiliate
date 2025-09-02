@@ -18,6 +18,7 @@ import {
 import CSVUploader from "@/components/molecules/CSVUploader";
 import InfoTooltip from "@/components/molecules/InfoTooltip";
 import ImageUploader from "@/components/molecules/ImageUploader";
+import ABRecipientInput from "@/components/molecules/ABRecipientInput";
 
 export default function NewABTestPage() {
   const router = useRouter();
@@ -412,14 +413,14 @@ export default function NewABTestPage() {
                     )}
                   </div>
 
-                  {/* CSV Upload for this variant */}
+                  {/* Recipients Input for this variant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Recipients for Variant {variant.name} <span className="text-red-500">*</span>
                     </label>
-                    <CSVUploader 
+                    <ABRecipientInput 
                       onRecipientsLoaded={(recipients) => handleVariantRecipientsLoaded(index, recipients)}
-                      className="border-gray-200"
+                      className="border border-gray-200 rounded-lg p-4"
                     />
                     {errors[`variant_${index}_recipients`] && (
                       <p className="text-red-500 text-sm mt-1">{errors[`variant_${index}_recipients`]}</p>

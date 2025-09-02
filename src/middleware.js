@@ -6,7 +6,10 @@ export function middleware(request) {
   if (
     request.nextUrl.pathname === "/login" ||
     request.nextUrl.pathname === "/api/auth/login" ||
+    request.nextUrl.pathname === "/api/messages/bulk" ||
+    request.nextUrl.pathname === "/api/messages/upload-image" ||
     request.nextUrl.pathname.startsWith("/_next/") ||
+    request.nextUrl.pathname.startsWith("/uploads/") ||
     request.nextUrl.pathname.includes("/favicon.ico")
   ) {
     return NextResponse.next();

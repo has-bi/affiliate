@@ -192,9 +192,11 @@ class WAHAClient {
    * @param {string} to - Recipient's phone number
    * @param {string} imageUrl - Image URL or base64 data
    * @param {string} caption - Optional caption text
+   * @param {string} mimetype - Optional MIME type (auto-detected from URL if not provided)
+   * @param {string} filename - Optional filename (auto-generated if not provided)
    * @returns {Promise<Object>} Message info
    */
-  async sendImage(session, to, imageUrl, caption = "") {
+  async sendImage(session, to, imageUrl, caption = "", mimetype = null, filename = null) {
     if (!to) {
       throw new Error("Recipient is required");
     }
@@ -212,6 +214,40 @@ class WAHAClient {
       .replace(/<em>(.*?)<\/em>/g, "_$1_")
       .replace(/<[^>]*>/g, "");
 
+    // Auto-detect MIME type and filename if not provided
+    let detectedMimetype = mimetype;
+    let detectedFilename = filename;
+    
+    if (!detectedMimetype || !detectedFilename) {
+      // Extract file extension from URL
+      const urlParts = imageUrl.split('.');
+      const extension = urlParts.length > 1 ? urlParts.pop().toLowerCase().split('?')[0] : '';
+      
+      if (!detectedMimetype) {
+        switch (extension) {
+          case 'jpg':
+          case 'jpeg':
+            detectedMimetype = 'image/jpeg';
+            break;
+          case 'png':
+            detectedMimetype = 'image/png';
+            break;
+          case 'gif':
+            detectedMimetype = 'image/gif';
+            break;
+          case 'webp':
+            detectedMimetype = 'image/webp';
+            break;
+          default:
+            detectedMimetype = 'image/jpeg';
+        }
+      }
+      
+      if (!detectedFilename) {
+        detectedFilename = `image.${extension || 'jpg'}`;
+      }
+    }
+
     try {
       // Check if the session is connected
       const sessionStatus = await this.checkSession();
@@ -228,14 +264,15 @@ class WAHAClient {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({
-          session: session || this.defaultSession,
           chatId: `${recipient}@c.us`,
           file: {
-            mimetype: "image/jpeg",
-            url: imageUrl,
-            filename: "image.jpeg"
+            mimetype: detectedMimetype,
+            filename: detectedFilename,
+            url: imageUrl
           },
+          reply_to: null,
           caption: whatsappFormattedCaption,
+          session: session || this.defaultSession
         }),
       });
 

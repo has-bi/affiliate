@@ -187,6 +187,7 @@ export async function POST(request) {
               name: variant.name || String.fromCharCode(65 + index), // A, B, C, etc.
               templateId: variant.templateId || null,
               customMessage: variant.customMessage || null,
+              imageUrl: variant.imageUrl || null,
             },
           });
         })

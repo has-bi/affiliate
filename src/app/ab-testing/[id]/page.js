@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,7 @@ const statusColors = {
 
 export default function ABTestDetailPage({ params }) {
   const router = useRouter();
-  const { id } = params;
+  const { id } = use(params);
   const [experiment, setExperiment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -288,9 +288,9 @@ export default function ABTestDetailPage({ params }) {
                         <h3 className="text-lg font-medium text-gray-900">
                           Variant {variant.name}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500">
                           {variant.allocationPercentage}% allocation • {variant._count?.recipients || 0} recipients
-                        </p>
+                        </div>
                         {variant.template && (
                           <p className="text-sm text-gray-500">
                             Using template: {variant.template.name}
@@ -415,7 +415,7 @@ export default function ABTestDetailPage({ params }) {
                 <p className="text-gray-600">{experiment.sessionName}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700 flex items-center gap-1">
+                <div className="font-medium text-gray-700 flex items-center gap-1">
                   Batch Size
                   <InfoTooltip
                     title="Batch Size"
@@ -426,11 +426,11 @@ export default function ABTestDetailPage({ params }) {
                     ]}
                     position="top"
                   />
-                </p>
+                </div>
                 <p className="text-gray-600">{experiment.batchSize} messages</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700 flex items-center gap-1">
+                <div className="font-medium text-gray-700 flex items-center gap-1">
                   Cooldown
                   <InfoTooltip
                     title="Cooldown Period"
@@ -441,7 +441,7 @@ export default function ABTestDetailPage({ params }) {
                     ]}
                     position="top"
                   />
-                </p>
+                </div>
                 <p className="text-gray-600">{experiment.cooldownMinutes} minutes</p>
               </div>
               {experiment.startedAt && (

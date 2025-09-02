@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+import gcpStorage from "@/lib/gcp-storage";
 
 export async function POST(request) {
   try {
@@ -23,45 +21,37 @@ export async function POST(request) {
       );
     }
 
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (10MB limit - increased for cloud storage)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { error: "File size must be less than 5MB" },
+        { error: "File size must be less than 10MB" },
         { status: 400 }
       );
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filepath = join(uploadDir, filename);
-
-    // Convert file to buffer and write to filesystem
+    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    await writeFile(filepath, buffer);
-
-    // Return the public URL
-    const url = `/uploads/${filename}`;
+    // Upload to GCP Storage
+    console.log(`[Upload] Uploading ${file.name} (${file.size} bytes) to GCP Storage`);
+    const publicUrl = await gcpStorage.uploadFile(buffer, file.name, file.type);
     
+    console.log(`[Upload] Successfully uploaded to: ${publicUrl}`);
+
+    // Return the GCP public URL
     return NextResponse.json({
-      url: url,
+      url: publicUrl,
       filename: file.name,
       size: file.size,
-      type: file.type
+      type: file.type,
+      storage: 'gcp'
     });
 
   } catch (error) {
-    console.error("Error uploading image:", error);
+    console.error("Error uploading image to GCP:", error);
     return NextResponse.json(
-      { error: "Failed to upload image" },
+      { error: `Failed to upload image: ${error.message}` },
       { status: 500 }
     );
   }
