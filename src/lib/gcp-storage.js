@@ -4,12 +4,28 @@ import { Storage } from '@google-cloud/storage';
 class GCPStorageService {
   constructor() {
     // Initialize storage client
-    this.storage = new Storage({
+    const storageConfig = {
       projectId: process.env.GCP_PROJECT_ID,
-      keyFilename: process.env.GCP_KEY_FILE_PATH, // Path to service account JSON
-      // Alternative: use credentials directly from environment
-      // credentials: JSON.parse(process.env.GCP_SERVICE_ACCOUNT_KEY)
-    });
+    };
+    
+    // Use credentials from environment variable if available (for production)
+    if (process.env.GCP_SERVICE_ACCOUNT_KEY) {
+      try {
+        storageConfig.credentials = JSON.parse(process.env.GCP_SERVICE_ACCOUNT_KEY);
+        console.log('[GCP Storage] Using credentials from GCP_SERVICE_ACCOUNT_KEY');
+      } catch (error) {
+        console.error('[GCP Storage] Failed to parse GCP_SERVICE_ACCOUNT_KEY:', error.message);
+        throw new Error('Invalid GCP_SERVICE_ACCOUNT_KEY format');
+      }
+    } else if (process.env.GCP_KEY_FILE_PATH) {
+      // Fallback to key file path (for development)
+      storageConfig.keyFilename = process.env.GCP_KEY_FILE_PATH;
+      console.log('[GCP Storage] Using key file from GCP_KEY_FILE_PATH');
+    } else {
+      console.error('[GCP Storage] No GCP credentials found. Set either GCP_SERVICE_ACCOUNT_KEY or GCP_KEY_FILE_PATH');
+    }
+    
+    this.storage = new Storage(storageConfig);
     
     this.bucketName = process.env.GCP_STORAGE_BUCKET_NAME;
     this.bucket = this.storage.bucket(this.bucketName);
