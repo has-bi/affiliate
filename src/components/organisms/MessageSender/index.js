@@ -14,7 +14,7 @@ import {
 import InfoTooltip from "@/components/molecules/InfoTooltip";
 import toast from "react-hot-toast";
 import { useSession } from "@/hooks/useWhatsApp";
-import { formatPhoneNumber } from "@/lib/utils";
+import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 
 const MessageSender = () => {
   // Session handling
@@ -48,7 +48,13 @@ const MessageSender = () => {
       .split(/[\n,]/)
       .map((num) => num.trim())
       .filter((num) => num.length > 0)
-      .map(formatPhoneNumber);
+      .map(num => {
+        const result = validateAndFormatPhone(num);
+        if (!result.isValid) {
+          throw new Error(`Invalid phone number: ${num} - ${result.error}`);
+        }
+        return result.formatted;
+      });
   };
 
   // Handle sending a single message
@@ -65,7 +71,11 @@ const MessageSender = () => {
     setResults(null);
 
     try {
-      const formattedRecipient = formatPhoneNumber(recipient);
+      const phoneResult = validateAndFormatPhone(recipient);
+      if (!phoneResult.isValid) {
+        throw new Error(`Invalid phone number: ${phoneResult.error}`);
+      }
+      const formattedRecipient = phoneResult.formatted;
 
       const response = await fetch("/api/messages", {
         method: "POST",
@@ -313,7 +323,10 @@ const MessageSender = () => {
             </div>
             {recipient && (
               <p className="mt-1 text-xs text-gray-500">
-                Will be formatted as: <code className="bg-gray-100 px-1 rounded">{formatPhoneNumber(recipient)}</code>
+                Will be formatted as: <code className="bg-gray-100 px-1 rounded">{(() => {
+                  const result = validateAndFormatPhone(recipient);
+                  return result.isValid ? result.formatted : 'Invalid format';
+                })()}</code>
               </p>
             )}
             {recipient && !/^[0-9+\-\s()]+$/.test(recipient) && (

@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
-import { formatPhoneNumber, phoneKey } from "@/lib/utils";
+import { phoneKey } from "@/lib/utils";
+import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 import { getActiveAffiliates } from "@/lib/sheets/spreadsheetService";
 import { getTemplate, processAllParameters } from "@/lib/templates/templateUtils";
 
@@ -133,9 +134,17 @@ class BatchProcessor {
 
       for (const recipient of recipients) {
         try {
-          const formattedChatId = recipient.includes("@c.us")
-            ? recipient
-            : `${formatPhoneNumber(recipient)}@c.us`;
+          let formattedChatId;
+          if (recipient.includes("@c.us")) {
+            formattedChatId = recipient;
+          } else {
+            const phoneResult = validateAndFormatPhone(recipient);
+            if (!phoneResult.isValid) {
+              console.error(`Invalid phone number ${recipient}: ${phoneResult.error}`);
+              continue; // Skip this recipient
+            }
+            formattedChatId = phoneResult.formatted;
+          }
 
           const contactPhone = formattedChatId.split("@")[0];
           const normalizedPhone = phoneKey(contactPhone);

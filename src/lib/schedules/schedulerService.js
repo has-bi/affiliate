@@ -10,7 +10,8 @@ import {
   getTemplate,
   processAllParameters,
 } from "@/lib/templates/templateUtils";
-import { formatPhoneNumber, phoneKey } from "@/lib/utils";
+import { phoneKey } from "@/lib/utils";
+import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 import { getActiveAffiliates } from "@/lib/sheets/spreadsheetService";
 
 class SchedulerService {
@@ -18,6 +19,7 @@ class SchedulerService {
     this.jobs = new Map();
     this.executionLocks = new Map();
     this.wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
+    this.wahaApiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
 
     // Log time zone information for debugging
     console.log(
@@ -474,9 +476,17 @@ class SchedulerService {
               console.log(`\nProcessing recipient: ${recipient}`);
 
               // Format phone number if needed
-              const formattedChatId = recipient.includes("@c.us")
-                ? recipient
-                : `${formatPhoneNumber(recipient)}@c.us`;
+              let formattedChatId;
+              if (recipient.includes("@c.us")) {
+                formattedChatId = recipient;
+              } else {
+                const phoneResult = validateAndFormatPhone(recipient);
+                if (!phoneResult.isValid) {
+                  console.error(`Invalid phone number ${recipient}: ${phoneResult.error}`);
+                  throw new Error(`Invalid phone number: ${phoneResult.error}`);
+                }
+                formattedChatId = phoneResult.formatted;
+              }
 
               console.log(`Formatted chat ID: ${formattedChatId}`);
 
@@ -514,30 +524,69 @@ class SchedulerService {
                 `Message preview: ${processedMessage.substring(0, 50)}...`
               );
 
-              // Send message via WAHA API
-              const requestBody = {
-                chatId: formattedChatId,
-                text: processedMessage,
-                session: scheduleData.sessionName,
-              };
+              // Check if schedule or template includes image (prioritize schedule-specific image)
+              let response;
+              const imageUrl = scheduleData.imageUrl || template.imageUrl;
+              if (imageUrl) {
+                // Send message with image
+                const imageRequestBody = {
+                  chatId: formattedChatId,
+                  file: {
+                    mimetype: "image/jpeg",
+                    filename: "image.jpg",
+                    url: imageUrl
+                  },
+                  caption: processedMessage,
+                  session: scheduleData.sessionName,
+                };
 
-              console.log(
-                `Making API request to ${this.wahaApiUrl}/api/sendText`
-              );
-              console.log(
-                `Request body:`,
-                JSON.stringify(requestBody, null, 2)
-              );
-              console.log(`Session name: ${scheduleData.sessionName}`);
+                console.log(
+                  `Making API request to ${this.wahaApiUrl}/api/sendImage`
+                );
+                console.log(
+                  `Image request body:`,
+                  JSON.stringify(imageRequestBody, null, 2)
+                );
 
-              const response = await fetch(`${this.wahaApiUrl}/api/sendText`, {
-                method: "POST",
-                headers: {
+                const imageHeaders = {
                   "Content-Type": "application/json",
                   Accept: "application/json",
-                },
-                body: JSON.stringify(requestBody),
-              });
+                  "X-Api-Key": this.wahaApiKey,
+                };
+
+                response = await fetch(`${this.wahaApiUrl}/api/sendImage`, {
+                  method: "POST",
+                  headers: imageHeaders,
+                  body: JSON.stringify(imageRequestBody),
+                });
+              } else {
+                // Send text message only
+                const requestBody = {
+                  chatId: formattedChatId,
+                  text: processedMessage,
+                  session: scheduleData.sessionName,
+                };
+
+                console.log(
+                  `Making API request to ${this.wahaApiUrl}/api/sendText`
+                );
+                console.log(
+                  `Request body:`,
+                  JSON.stringify(requestBody, null, 2)
+                );
+
+                response = await fetch(`${this.wahaApiUrl}/api/sendText`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-Api-Key": this.wahaApiKey,
+                  },
+                  body: JSON.stringify(requestBody),
+                });
+              }
+
+              console.log(`Session name: ${scheduleData.sessionName}`);
 
               console.log(`Response status: ${response.status}`);
 

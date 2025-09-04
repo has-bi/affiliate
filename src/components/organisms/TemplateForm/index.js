@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { formatMessageContent } from "@/lib/templates/templateUtils";
+import ImageUploader from "@/components/molecules/ImageUploader";
 
 /**
  * TemplateForm - Form for creating and editing templates
@@ -36,12 +37,16 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     description: "",
     content: "",
     category: "general",
+    imageUrl: "",
     parameters: [],
   });
 
   // Preview state to show formatted template with parameters
   const [preview, setPreview] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
+
+  // Image state
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Category options
   const categories = [
@@ -70,6 +75,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
         description: initialTemplate.description || "",
         content: initialTemplate.content,
         category: initialTemplate.category || "general",
+        imageUrl: initialTemplate.imageUrl || "",
         parameters: initialTemplate.parameters.map((p) => ({
           id: p.id,
           name: p.name,
@@ -83,6 +89,16 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
 
       // Set initial preview
       setPreview(formatMessageContent(initialTemplate.content));
+
+      // Set initial image if exists
+      if (initialTemplate.imageUrl) {
+        setSelectedImage({
+          url: initialTemplate.imageUrl,
+          filename: 'Existing Image',
+          size: 0,
+          type: 'image/existing'
+        });
+      }
     }
   }, [initialTemplate]);
 
@@ -106,6 +122,7 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
             description: templateData.description || "",
             content: templateData.content,
             category: templateData.category || "general",
+            imageUrl: templateData.imageUrl || "",
             parameters: templateData.parameters.map((p) => ({
               id: p.id,
               name: p.name,
@@ -119,6 +136,16 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
 
           // Set initial preview
           setPreview(formatMessageContent(templateData.content));
+
+          // Set initial image if exists
+          if (templateData.imageUrl) {
+            setSelectedImage({
+              url: templateData.imageUrl,
+              filename: 'Existing Image',
+              size: 0,
+              type: 'image/existing'
+            });
+          }
         } catch (error) {
           console.error("Error fetching template:", error);
           setFormError(`Failed to load template: ${error.message}`);
@@ -151,6 +178,15 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
     setFormData((prev) => ({
       ...prev,
       content: newContent,
+    }));
+  };
+
+  // Handle image selection
+  const handleImageSelected = (imageData) => {
+    setSelectedImage(imageData);
+    setFormData((prev) => ({
+      ...prev,
+      imageUrl: imageData ? imageData.url : "",
     }));
   };
 
@@ -311,7 +347,8 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
         })),
       };
 
-      // Log data yang akan dikirim
+      // DEBUG: Log template image data
+      console.log('DEBUG TemplateForm - Submitting template with imageUrl:', dataToSend.imageUrl);
       
       // Jika membuat template baru, hapus id
       if (!isEditing) {
@@ -591,6 +628,14 @@ const TemplateForm = ({ initialTemplate = null, templateId = null }) => {
             <p className="mt-1 text-xs text-gray-500 ml-5">
               Use <strong>**bold text**</strong> for emphasis.
             </p>
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="mb-6">
+            <ImageUploader 
+              onImageSelected={handleImageSelected}
+              selectedImage={selectedImage}
+            />
           </div>
 
           {/* Dynamic Parameters Section */}

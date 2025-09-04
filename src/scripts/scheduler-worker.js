@@ -1,6 +1,6 @@
 // src/scripts/scheduler-worker.js
-import { initializeSchedules } from "../lib/schedules/schedulerService";
-import { createLogger } from "../lib/utils";
+import { initializeSchedules } from "../lib/schedules/schedulerService.js";
+import { createLogger } from "../lib/utils.js";
 
 const logger = createLogger("[Worker]");
 

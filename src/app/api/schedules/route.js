@@ -35,6 +35,7 @@ export async function GET() {
         },
         sessionName: schedule.sessionName,
         status: schedule.status,
+        imageUrl: schedule.imageUrl,
         paramValues: Object.fromEntries(
           schedule.parameters.map((p) => [p.paramId, p.paramValue])
         ),
@@ -62,6 +63,13 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
+    
+    // DEBUG: Log received data
+    console.log('DEBUG API - Received schedule data:', {
+      ...data,
+      recipients: data.recipients ? `[${data.recipients.length} recipients]` : 'none'
+    });
+    console.log('DEBUG API - data.imageUrl:', data.imageUrl);
 
     // Validate required fields
     if (
@@ -90,25 +98,32 @@ export async function POST(request) {
 
     // Handle schedule creation with transaction
     const schedule = await prisma.$transaction(async (tx) => {
+      // DEBUG: Log what we're about to save to database
+      const scheduleCreateData = {
+        name: data.name,
+        templateId: data.templateId,
+        scheduleType: data.scheduleType,
+        // For one-time schedules
+        scheduledDate:
+          data.scheduleType === "once" && data.scheduleConfig?.date
+            ? new Date(data.scheduleConfig.date)
+            : null,
+        // For recurring schedules
+        cronExpression:
+          data.scheduleType === "recurring"
+            ? data.scheduleConfig.cronExpression
+            : null,
+        status: "active",
+        sessionName: data.sessionName,
+        // Add schedule-specific image URL
+        imageUrl: data.imageUrl || null,
+      };
+      console.log('DEBUG API - About to save to database:', scheduleCreateData);
+      console.log('DEBUG API - imageUrl value type:', typeof scheduleCreateData.imageUrl, scheduleCreateData.imageUrl);
+      
       // Create the base schedule
       const newSchedule = await tx.schedule.create({
-        data: {
-          name: data.name,
-          templateId: data.templateId,
-          scheduleType: data.scheduleType,
-          // For one-time schedules
-          scheduledDate:
-            data.scheduleType === "once" && data.scheduleConfig?.date
-              ? new Date(data.scheduleConfig.date)
-              : null,
-          // For recurring schedules
-          cronExpression:
-            data.scheduleType === "recurring"
-              ? data.scheduleConfig.cronExpression
-              : null,
-          status: "active",
-          sessionName: data.sessionName,
-        },
+        data: scheduleCreateData,
       });
 
       // Create parameters
@@ -154,6 +169,7 @@ export async function POST(request) {
       sessionName: schedule.sessionName,
       paramValues: data.paramValues || {},
       recipients: data.recipients,
+      imageUrl: data.imageUrl || null, // Use imageUrl instead of image
     };
 
     // This will schedule the job and update the nextRun field

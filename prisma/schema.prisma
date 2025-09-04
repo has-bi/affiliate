@@ -49,6 +49,7 @@ model Schedule {
   scheduledDate DateTime? @map("scheduled_date")
   status        String    @default("active")
   sessionName   String    @map("session_name")
+  imageUrl      String?   @map("image_url") // Schedule-specific image override
   // Batch processing configuration
   batchSize     Int       @default(50) @map("batch_size")
   batchDelay    Int       @default(300) @map("batch_delay") // seconds between batches

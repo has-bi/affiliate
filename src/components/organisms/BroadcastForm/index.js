@@ -9,7 +9,7 @@ import BroadcastProgress from "@/components/molecules/BroadcastProgress";
 import ImageUploader from "@/components/molecules/ImageUploader";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useSession } from "@/hooks/useWhatsApp";
-import { formatPhoneNumber } from "@/lib/utils";
+import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 import { Send, AlertCircle } from "lucide-react";
 import InfoTooltip from "@/components/molecules/InfoTooltip";
 
@@ -80,12 +80,8 @@ const BroadcastForm = () => {
 
       // Validate recipients format
       const invalidRecipients = recipients.filter(r => {
-        try {
-          formatPhoneNumber(r);
-          return false;
-        } catch {
-          return true;
-        }
+        const result = validateAndFormatPhone(r);
+        return !result.isValid;
       });
 
       if (invalidRecipients.length > 0) {

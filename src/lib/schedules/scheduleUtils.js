@@ -28,6 +28,7 @@ export async function getAllSchedules() {
       },
       sessionName: schedule.sessionName,
       status: schedule.status,
+      imageUrl: schedule.imageUrl,
       paramValues: Object.fromEntries(
         schedule.parameters.map((p) => [p.paramId, p.paramValue])
       ),
@@ -72,6 +73,7 @@ export async function getScheduleById(id) {
       },
       sessionName: schedule.sessionName,
       status: schedule.status,
+      imageUrl: schedule.imageUrl,
       paramValues: Object.fromEntries(
         schedule.parameters.map((p) => [p.paramId, p.paramValue])
       ),

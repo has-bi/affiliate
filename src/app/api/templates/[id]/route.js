@@ -15,6 +15,15 @@ export async function GET(_, { params }) {
 export async function PUT(req, { params }) {
   const body = await req.json();
   const { id } = await params;
+  
+  // DEBUG: Log template update data
+  console.log('DEBUG Template PUT API - Updating template ID:', id);
+  console.log('DEBUG Template PUT API - Update data:', {
+    ...body,
+    parameters: body.parameters ? `[${body.parameters.length} parameters]` : 'none'
+  });
+  console.log('DEBUG Template PUT API - body.imageUrl:', body.imageUrl);
+  
   const result = await updateTemplate(id, body);
   return Response.json(result);
 }

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { formatMessageContent } from "@/lib/templates/templateUtils";
-import { formatPhoneNumber } from "@/lib/utils";
+import { batchValidatePhones, validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 
 /**
  * Hook for managing the message broadcast wizard workflow
@@ -91,19 +91,25 @@ export function useMessageWizard(templates = [], initialTemplateId = null) {
   const parseManualRecipients = useCallback(() => {
     if (!manualRecipients.trim()) return [];
 
-    return manualRecipients
-      .split(/[\n,]+/)
-      .map((r) => r.trim())
-      .filter(Boolean)
-      .map(formatPhoneNumber);
+    // Use the new phone validator instead of the old formatPhoneNumber
+    const validationResult = batchValidatePhones(manualRecipients);
+    
+    // Log any validation issues for debugging
+    if (validationResult.invalid.length > 0) {
+      console.warn('Invalid phone numbers found:', validationResult.invalid);
+    }
+    
+    // Return only valid phone numbers
+    return validationResult.valid;
   }, [manualRecipients]);
 
   // Get all recipients (selected contacts + manual)
   const getAllRecipients = useCallback(() => {
     // Get phone numbers from contacts
-    const contactPhones = selectedContacts.map((c) =>
-      formatPhoneNumber(c.phone)
-    );
+    const contactPhones = selectedContacts.map((c) => {
+      const phoneResult = validateAndFormatPhone(c.phone);
+      return phoneResult.isValid ? phoneResult.formatted : null;
+    }).filter(Boolean);
 
     // Get manual recipients
     const manualPhones = parseManualRecipients();

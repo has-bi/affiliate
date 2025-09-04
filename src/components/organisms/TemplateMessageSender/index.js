@@ -17,9 +17,9 @@ import { processAllParameters } from "@/lib/templates/templateUtils";
 // Import step components
 import Step1 from "@/components/molecules/TemplateSelector";
 import Step2 from "@/components/molecules/TemplateParameterForm";
-import Step3 from "@/components/molecules/RecipientSelector";
 import Step4 from "@/components/molecules/ReviewAndSend";
 import ImageUploader from "@/components/molecules/ImageUploader";
+import BroadcastRecipientInput from "@/components/molecules/BroadcastRecipientInput/simple";
 
 export default function TemplateMessageSender() {
   
@@ -80,20 +80,23 @@ export default function TemplateMessageSender() {
     endDate: "",
   });
 
-  // Debug logging
+  // Handle template image display
   useEffect(() => {
-    
-  }, [
-    step,
-    selectedTemplateId,
-    selectedTemplate,
-    sessionName,
-    paramValues,
-    selectedContacts,
-    manualRecipients,
-    scheduleConfig,
-    isScheduling,
-  ]);
+    if (selectedTemplate?.imageUrl && !selectedImage) {
+      // Show template image if template has one and user hasn't selected their own image
+      console.log('DEBUG TemplateMessageSender - Template has imageUrl:', selectedTemplate.imageUrl);
+      setSelectedImage({
+        url: selectedTemplate.imageUrl,
+        filename: 'Template Image',
+        size: 0,
+        type: 'image/template'
+      });
+    } else if (!selectedTemplate?.imageUrl && selectedImage?.type === 'image/template') {
+      // Clear template image if switching to template without image
+      console.log('DEBUG TemplateMessageSender - Template has no imageUrl, clearing template image');
+      setSelectedImage(null);
+    }
+  }, [selectedTemplate, selectedImage]);
 
   // Handle template change (wrapper for the hook function)
   const handleTemplateChangeWrapper = (e) => {
@@ -617,19 +620,17 @@ export default function TemplateMessageSender() {
             )}
 
             {step === 3 && (
-              <Step3
-                showContactSelector={showContactSelector}
-                setShowContactSelector={setShowContactSelector}
+              <BroadcastRecipientInput
                 selectedContacts={selectedContacts}
                 setSelectedContacts={setSelectedContacts}
-                handleContactsSelected={handleContactsSelected}
                 manualRecipients={manualRecipients}
                 setManualRecipients={setManualRecipients}
+                handleContactsSelected={handleContactsSelected}
                 parseManualRecipients={parseManualRecipients}
+                getAllRecipients={getAllRecipients}
                 isSubmitting={isSubmitting}
                 handlePrevStep={handlePrevStep}
                 handleNextStep={handleNextStep}
-                getAllRecipients={getAllRecipients}
               />
             )}
 

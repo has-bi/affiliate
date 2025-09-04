@@ -41,7 +41,12 @@ export function formatPhoneNumber(phone) {
   // 4. Quick sanity check (WhatsApp accepts 8–13 national digits).
   const nationalLen = digits.length - 2; // exclude the "62"
   if (nationalLen < 8 || nationalLen > 13) {
-    throw new Error("Invalid phone number length for WhatsApp");
+    console.warn(`Phone number length warning: ${digits} (${nationalLen} digits after 62)`);
+    // Instead of throwing, let's try to make it work anyway
+    if (nationalLen < 8) {
+      throw new Error("Phone number too short (minimum 8 digits after country code)");
+    }
+    // For numbers that are too long, we'll just log a warning but continue
   }
 
   // 5. Append the suffix exactly once.

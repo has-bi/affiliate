@@ -1,13 +1,16 @@
 // src/components/molecules/ScheduleForm/index.js
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTemplate } from "../../../hooks/useTemplate";
 import RepeatScheduler from "@/components/molecules/RepeatScheduler";
+import EnhancedRecipientInput from "@/components/molecules/EnhancedRecipientInput";
+import ImageUploader from "@/components/molecules/ImageUploader";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { batchValidatePhones } from "@/lib/utils/phoneValidator";
 import {
   Calendar,
   Clock,
@@ -50,11 +53,32 @@ const ScheduleForm = ({
       endDate: "",
     },
     sessionName: "",
+    imageUrl: "",
+    batchSize: 50,
+    batchDelay: 300, // 5 minutes in seconds
+    dailyLimit: 1000,
   });
 
   const [errors, setErrors] = useState({});
   const [activeStep, setActiveStep] = useState("template");
   const [previewMode, setPreviewMode] = useState(false);
+  
+  // Image state
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Only calculate basic count for display, not full validation during typing
+  const recipientCount = useMemo(() => {
+    if (!formData.recipients || formData.recipients.trim() === '') {
+      return 0;
+    }
+    // Just count lines that look like they might be phone numbers
+    const lines = formData.recipients.split(/[\n,;]+/).map(line => line.trim()).filter(line => line.length > 0);
+    const potentialNumbers = lines.filter(line => {
+      const digitsOnly = line.replace(/\D/g, '');
+      return digitsOnly.length >= 8; // Only count lines with at least 8 digits
+    });
+    return potentialNumbers.length;
+  }, [formData.recipients]);
 
   // Load initial data if editing
   useEffect(() => {
@@ -89,6 +113,10 @@ const ScheduleForm = ({
             : "",
         },
         sessionName: initialData.sessionName || "",
+        imageUrl: initialData.imageUrl || "",
+        batchSize: initialData.batchSize || 50,
+        batchDelay: initialData.batchDelay || 300,
+        dailyLimit: initialData.dailyLimit || 1000,
       });
 
       if (initialData.templateId) {
@@ -100,8 +128,44 @@ const ScheduleForm = ({
           updateParamValue(key, value);
         });
       }
+
+      // Set initial image if exists
+      if (initialData.imageUrl) {
+        setSelectedImage({
+          url: initialData.imageUrl,
+          filename: 'Existing Image',
+          size: 0,
+          type: 'image/existing'
+        });
+      }
     }
   }, [initialData, selectTemplate, updateParamValue]);
+
+  // Handle template selection - show template image if it exists
+  useEffect(() => {
+    if (selectedTemplate?.imageUrl && !selectedImage) {
+      // Only set template image if user hasn't selected their own image
+      console.log('DEBUG ScheduleForm - Template has imageUrl:', selectedTemplate.imageUrl);
+      setSelectedImage({
+        url: selectedTemplate.imageUrl,
+        filename: 'Template Image',
+        size: 0,
+        type: 'image/template'
+      });
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: selectedTemplate.imageUrl,
+      }));
+    } else if (!selectedTemplate?.imageUrl && selectedImage?.type === 'image/template') {
+      // Clear template image if switching to template without image
+      console.log('DEBUG ScheduleForm - Template has no imageUrl, clearing template image');
+      setSelectedImage(null);
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: "",
+      }));
+    }
+  }, [selectedTemplate, selectedImage]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -113,6 +177,18 @@ const ScheduleForm = ({
     setFormData((prev) => ({
       ...prev,
       scheduleConfig: { ...prev.scheduleConfig, [name]: value },
+    }));
+  };
+
+  // Handle image selection
+  const handleImageSelected = (imageData) => {
+    console.log('DEBUG ScheduleForm - handleImageSelected called with:', imageData);
+    setSelectedImage(imageData);
+    const newImageUrl = imageData ? imageData.url : "";
+    console.log('DEBUG ScheduleForm - Setting imageUrl to:', newImageUrl);
+    setFormData((prev) => ({
+      ...prev,
+      imageUrl: newImageUrl,
     }));
   };
 
@@ -238,22 +314,30 @@ const ScheduleForm = ({
       return;
     }
 
-    // Parse recipients
-    const recipientList = formData.recipients
-      .split(/[\n,]+/)
-      .map((r) => r.trim())
-      .filter(Boolean)
-      .map((r) => {
-        // Add @c.us suffix if not present
-        if (!r.includes("@")) {
-          // Handle Indonesian format (convert 08xx to 628xx)
-          if (r.startsWith("0")) {
-            return `62${r.substring(1)}@c.us`;
-          }
-          return `${r}@c.us`;
-        }
-        return r;
-      });
+    // Validate phone numbers only when submitting
+    const phoneValidationResult = batchValidatePhones(formData.recipients);
+    
+    if (phoneValidationResult.invalid.length > 0) {
+      // Show validation errors
+      const errorMessages = phoneValidationResult.invalid
+        .slice(0, 5) // Show first 5 errors
+        .map(err => `Line ${err.lineNumber}: ${err.input} - ${err.error}`)
+        .join('\n');
+      
+      const moreErrors = phoneValidationResult.invalid.length > 5 
+        ? `\n... and ${phoneValidationResult.invalid.length - 5} more errors`
+        : '';
+      
+      alert(`Phone number validation failed:\n\n${errorMessages}${moreErrors}\n\nPlease fix these numbers and try again.`);
+      return;
+    }
+    
+    if (phoneValidationResult.valid.length === 0) {
+      alert('No valid phone numbers found. Please enter at least one valid phone number.');
+      return;
+    }
+    
+    const recipientList = phoneValidationResult.valid;
 
     // Prepare schedule data
     let scheduleConfig = {};
@@ -290,7 +374,14 @@ const ScheduleForm = ({
       scheduleType: formData.scheduleType,
       scheduleConfig,
       sessionName: formData.sessionName,
+      imageUrl: formData.imageUrl, // Include imageUrl in the submitted data
+      batchSize: formData.batchSize,
+      batchDelay: formData.batchDelay,
+      dailyLimit: formData.dailyLimit,
     };
+
+    // DEBUG: Log image data for troubleshooting
+    console.log('DEBUG ScheduleForm - Submitting with imageUrl:', formData.imageUrl);
 
     onSubmit(scheduleData);
   };
@@ -388,6 +479,14 @@ const ScheduleForm = ({
             {errors.sessionName && (
               <p className="mt-1 text-sm text-red-600">{errors.sessionName}</p>
             )}
+          </div>
+
+          {/* Image Upload Section */}
+          <div>
+            <ImageUploader 
+              onImageSelected={handleImageSelected}
+              selectedImage={selectedImage}
+            />
           </div>
 
           <div className="flex justify-end">
@@ -504,42 +603,31 @@ const ScheduleForm = ({
 
     // Step 3: Recipients
     else if (activeStep === "recipients") {
+      
       return (
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Enter Recipients</h3>
+          <h3 className="text-lg font-medium">Configure Recipients & Batching</h3>
 
-          <div>
-            <label
-              htmlFor="recipients"
-              className={`block text-sm font-medium ${
-                errors.recipients ? "text-red-700" : "text-gray-700"
-              } mb-1`}
-            >
-              Recipients (one per line or comma-separated){" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="recipients"
-              name="recipients"
-              value={formData.recipients}
-              onChange={handleInputChange}
-              rows={6}
-              className={`w-full px-3 py-2 border ${
-                errors.recipients ? "border-red-500" : "border-gray-300"
-              } rounded-md`}
-              placeholder="6281234567890 
-6289876543210
-or 6281234567890, 6289876543210"
-              required
-            />
-            {errors.recipients && (
-              <p className="mt-1 text-sm text-red-600">{errors.recipients}</p>
-            )}
-            <p className="mt-1 text-xs text-gray-500">
-              Phone numbers will be formatted automatically (e.g.,
-              628123456789@c.us)
-            </p>
-          </div>
+          <EnhancedRecipientInput
+            recipients={formData.recipients}
+            onUpdateRecipients={(recipients) => 
+              setFormData(prev => ({ ...prev, recipients }))
+            }
+            batchSize={formData.batchSize}
+            onUpdateBatchSize={(batchSize) => 
+              setFormData(prev => ({ ...prev, batchSize }))
+            }
+            batchDelay={formData.batchDelay}
+            onUpdateBatchDelay={(batchDelay) => 
+              setFormData(prev => ({ ...prev, batchDelay }))
+            }
+            dailyLimit={formData.dailyLimit}
+            onUpdateDailyLimit={(dailyLimit) => 
+              setFormData(prev => ({ ...prev, dailyLimit }))
+            }
+            parsedCount={recipientCount}
+            error={errors.recipients}
+          />
 
           <div className="flex justify-between">
             <Button type="button" variant="secondary" onClick={handlePrevStep}>
