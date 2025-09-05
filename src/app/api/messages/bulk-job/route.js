@@ -2,7 +2,7 @@
 import jobQueue from "@/lib/services/jobQueue";
 import { createLogger } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils";
-import { formatPhoneNumbers } from "@/lib/utils/phoneValidator";
+import { formatPhoneNumbers, validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 
 const logger = createLogger("[API][BulkJob]");
 
@@ -30,9 +30,43 @@ export async function POST(req) {
     }
 
     // Format and validate phone numbers
-    let formattedRecipients;
+    let formattedRecipients = { valid: [], invalid: [] };
+    
     try {
-      formattedRecipients = formatPhoneNumbers(body.recipients);
+      if (Array.isArray(body.recipients)) {
+        const seenNumbers = new Set();
+        
+        body.recipients.forEach((phone) => {
+          if (!phone || typeof phone !== 'string') {
+            formattedRecipients.invalid.push({
+              input: phone || '',
+              error: 'Invalid phone number input'
+            });
+            return;
+          }
+
+          const result = validateAndFormatPhone(phone);
+          
+          if (result.isValid) {
+            // Check for duplicates
+            if (seenNumbers.has(result.cleanNumber)) {
+              formattedRecipients.invalid.push({
+                input: phone,
+                error: 'Duplicate number'
+              });
+            } else {
+              seenNumbers.add(result.cleanNumber);
+              formattedRecipients.valid.push(result.formatted);
+            }
+          } else {
+            formattedRecipients.invalid.push({
+              input: phone,
+              error: result.error
+            });
+          }
+        });
+      }
+      
       logger.info(`Formatted ${formattedRecipients.valid.length} valid phone numbers`);
       
       if (formattedRecipients.invalid.length > 0) {
