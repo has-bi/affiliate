@@ -117,6 +117,15 @@ class JobQueue {
     job.startedAt = new Date();
 
     try {
+      // First, validate the WhatsApp session before processing any messages
+      logger.info(`Checking WhatsApp session '${job.session}' before processing job ${job.id}`);
+      const sessionCheck = await wahaClient.checkSession();
+      
+      if (!sessionCheck.isConnected) {
+        throw new Error(`WhatsApp session '${job.session}' is not connected (${sessionCheck.status}). Please check your WAHA server and WhatsApp connection.`);
+      }
+      
+      logger.info(`Session '${job.session}' is connected (${sessionCheck.status}), proceeding with job ${job.id}`);
       // Split recipients into batches
       const batches = this.createBatches(job.recipients);
       

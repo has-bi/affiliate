@@ -98,6 +98,33 @@ export async function POST(req) {
       templateName: body.templateName || 'Manual broadcast'
     };
 
+    // Validate WhatsApp session before creating job
+    try {
+      // Import WAHA client for session check
+      const wahaClient = (await import("@/lib/whatsapp/wahaClient")).default;
+      const sessionCheck = await wahaClient.checkSession();
+      
+      if (!sessionCheck.isConnected) {
+        return Response.json(
+          { 
+            error: `WhatsApp session '${jobOptions.session}' is not connected (${sessionCheck.status}). Please check your WAHA server and WhatsApp connection.`,
+            sessionStatus: sessionCheck
+          },
+          { status: 400 }
+        );
+      }
+      
+      logger.info(`Session '${jobOptions.session}' validated successfully (${sessionCheck.status})`);
+    } catch (sessionError) {
+      logger.error("Session validation failed:", sessionError);
+      return Response.json(
+        { 
+          error: `Failed to validate WhatsApp session: ${sessionError.message}. Please check your WAHA server.`,
+        },
+        { status: 500 }
+      );
+    }
+
     // Create the job
     const jobId = jobQueue.createJob(
       formattedRecipients.valid,

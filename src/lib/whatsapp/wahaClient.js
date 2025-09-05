@@ -31,7 +31,7 @@ class WAHAClient {
   }
 
   // Wrapper for fetch with timeout
-  async fetchWithTimeout(url, options = {}, timeout = 5000) {
+  async fetchWithTimeout(url, options = {}, timeout = 10000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
