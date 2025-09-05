@@ -85,14 +85,16 @@ export default function ReportsSummary() {
     : 0;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" />
+    <Card className="card-modern">
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+          </div>
           Message Reports
         </CardTitle>
         <Link href="/reports">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="btn-secondary flex items-center gap-2 text-sm">
             View All
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -101,20 +103,20 @@ export default function ReportsSummary() {
       <CardContent className="space-y-4">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <MessageSquare className="w-4 h-4 text-blue-600" />
-              <span className="text-lg font-bold text-blue-600">{stats.totalMessages}</span>
+          <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200/50">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <span className="text-xl font-bold text-blue-700">{stats.totalMessages}</span>
             </div>
-            <p className="text-xs text-gray-600">Total Messages</p>
+            <p className="text-sm font-medium text-gray-700">Total Messages</p>
           </div>
           
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-green-600" />
-              <span className="text-lg font-bold text-green-600">{successRate}%</span>
+          <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200/50">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+              <span className="text-xl font-bold text-green-700">{successRate}%</span>
             </div>
-            <p className="text-xs text-gray-600">Success Rate</p>
+            <p className="text-sm font-medium text-gray-700">Success Rate</p>
           </div>
         </div>
 

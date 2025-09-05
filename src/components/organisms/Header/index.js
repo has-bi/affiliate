@@ -22,6 +22,8 @@ import {
   UserPlus,
   TrendingUp,
   BarChart3,
+  Menu,
+  X,
 } from "lucide-react";
 
 // Navigation schema --------------------------------------------------
@@ -70,37 +72,40 @@ const DesktopNavItem = ({ item, isActive, pathname }) => {
     return (
       <div className="relative group">
         <button
-          className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
+          className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:shadow-sm
           ${
             isActive
-              ? "bg-indigo-50 text-indigo-700"
+              ? "bg-primary-50 text-primary-700 shadow-sm"
               : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
           }`}
         >
           <item.icon className="h-5 w-5" />
           {item.name}
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
         </button>
 
         {/* Sub‑menu */}
-        <div className="absolute left-0 mt-2 hidden w-56 rounded-md bg-white shadow-lg group-hover:block">
-          {item.children.map((sub) => {
-            const isSubActive = pathname === sub.href;
-            return (
-              <Link
-                key={sub.name}
-                href={sub.href}
-                className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors
-                ${
-                  isSubActive
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {sub.icon && <sub.icon className="h-4 w-4" />} {sub.name}
-              </Link>
-            );
-          })}
+        <div className="absolute left-0 mt-2 hidden w-56 glass-effect rounded-lg shadow-xl border group-hover:block animate-scaleIn">
+          <div className="p-1">
+            {item.children.map((sub) => {
+              const isSubActive = pathname === sub.href;
+              return (
+                <Link
+                  key={sub.name}
+                  href={sub.href}
+                  className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-all duration-200
+                  ${
+                    isSubActive
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-700 hover:bg-gray-50 hover:shadow-sm"
+                  }`}
+                >
+                  {sub.icon && <sub.icon className="h-4 w-4" />}
+                  {sub.name}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -109,14 +114,15 @@ const DesktopNavItem = ({ item, isActive, pathname }) => {
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
+      className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5
       ${
         isActive
-          ? "bg-indigo-50 text-indigo-700"
+          ? "bg-primary-50 text-primary-700 shadow-sm"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       }`}
     >
-      <item.icon className="h-5 w-5" /> {item.name}
+      <item.icon className="h-5 w-5" />
+      {item.name}
     </Link>
   );
 };
@@ -151,16 +157,19 @@ export default function Header() {
   // Render
   // ------------------------------------------------------------------
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-30 w-full glass-effect border-b border-gray-200/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left ▾ Logo + Desktop nav */}
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
+          <Link 
+            href="/dashboard" 
+            className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent hover:from-primary-700 hover:to-primary-800 transition-all duration-200"
+          >
             Youvit Affiliates
           </Link>
 
           {/* Desktop navigation */}
-          <nav className="hidden md:flex md:gap-1">
+          <nav className="hidden md:flex md:gap-2">
             {NAVIGATION.map((item) => (
               <DesktopNavItem
                 key={item.name}
@@ -176,25 +185,30 @@ export default function Header() {
         <div className="flex items-center gap-4">
           {/* Connection status indicator */}
           <div
-            className="hidden items-center gap-1 md:flex"
+            className="hidden items-center gap-2 md:flex px-3 py-1.5 rounded-full text-sm transition-all duration-200"
+            style={{
+              background: isDefaultSessionActive 
+                ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' 
+                : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
+            }}
             title={`WhatsApp: ${defaultSession} (${
               sessions[0]?.isConnected ? "Connected" : sessions[0]?.status || "Unknown"
             })`}
           >
             {isLoading ? (
-              <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse mr-2"></div>
+              <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></div>
             ) : isDefaultSessionActive ? (
               <>
-                <Wifi className="h-5 w-5 text-green-500" />
-                <span className="truncate text-sm text-gray-700 max-w-[12rem]">
-                  WhatsApp Connected
+                <Wifi className="h-4 w-4 text-green-600" />
+                <span className="font-medium text-green-700">
+                  Connected
                 </span>
               </>
             ) : (
               <>
-                <WifiOff className="h-5 w-5 text-red-500" />
-                <span className="text-sm text-red-600">
-                  WhatsApp Disconnected
+                <WifiOff className="h-4 w-4 text-red-600" />
+                <span className="font-medium text-red-700">
+                  Disconnected
                 </span>
               </>
             )}
@@ -202,60 +216,59 @@ export default function Header() {
 
           {/* User menu */}
           {user && (
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 rounded-full p-1 text-gray-500 transition-colors hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <span className="hidden text-sm md:block">
+            <div className="flex items-center gap-3">
+              <span className="hidden text-sm font-medium text-gray-700 md:block">
                 {user.name || user.username}
               </span>
-              <LogOut className="h-5 w-5" title="Sign out" />
-            </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 rounded-lg p-2 text-gray-500 transition-all duration-200 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                title="Sign out"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
           )}
 
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen((o) => !o)}
-            className="md:hidden"
+            className="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
             aria-label="Toggle navigation"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-6 w-6"
-            >
-              {mobileOpen ? (
-                <path d="M18 6 6 18M6 6l12 12" />
-              ) : (
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            {mobileOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <nav className="md:hidden">
-          <div className="space-y-1 border-t bg-white px-4 pb-4 pt-2">
+        <nav className="md:hidden animate-slideInUp">
+          <div className="space-y-2 glass-effect border-t border-gray-200/60 px-4 pb-4 pt-4">
             {/* Connection status (mobile) */}
-            <div className="flex items-center gap-2 border-b pb-2">
+            <div 
+              className="flex items-center gap-3 border-b border-gray-200/60 pb-3 px-3 py-2 rounded-lg"
+              style={{
+                background: isDefaultSessionActive 
+                  ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' 
+                  : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
+              }}
+            >
               {isLoading ? (
                 <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></div>
               ) : isDefaultSessionActive ? (
                 <>
-                  <Wifi className="h-5 w-5 text-green-500" />
-                  <span className="text-sm">Connected: {defaultSession}</span>
+                  <Wifi className="h-5 w-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Connected: {defaultSession}</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-5 w-5 text-red-500" />
-                  <span className="text-sm text-red-500">Disconnected</span>
+                  <WifiOff className="h-5 w-5 text-red-600" />
+                  <span className="text-sm font-medium text-red-700">Disconnected</span>
                 </>
               )}
             </div>
@@ -277,9 +290,10 @@ export default function Header() {
                   logout();
                   setMobileOpen(false);
                 }}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium text-red-600 transition-colors hover:bg-red-50"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-red-600 transition-all duration-200 hover:bg-red-50 hover:shadow-sm mt-4 border-t border-gray-200/60 pt-4"
               >
-                <LogOut className="h-5 w-5" /> Sign out
+                <LogOut className="h-5 w-5" />
+                Sign out
               </button>
             )}
           </div>
@@ -300,35 +314,37 @@ function MobileNavItem({ item, pathname, onNavigate }) {
       <div>
         <button
           onClick={() => setOpen((o) => !o)}
-          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+          className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200
           ${
             active
-              ? "bg-indigo-50 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-50"
+              ? "bg-primary-50 text-primary-700 shadow-sm"
+              : "text-gray-600 hover:bg-gray-50 hover:shadow-sm"
           }`}
         >
-          <item.icon className="h-5 w-5" /> {item.name}
+          <item.icon className="h-5 w-5" />
+          {item.name}
           <ChevronDown
-            className={`ml-auto h-5 w-5 transition-transform ${
+            className={`ml-auto h-5 w-5 transition-transform duration-200 ${
               open ? "rotate-180" : ""
             }`}
           />
         </button>
         {open && (
-          <div className="ml-6 space-y-1">
+          <div className="ml-6 space-y-1 animate-slideInUp">
             {item.children.map((sub) => (
               <Link
                 key={sub.name}
                 href={sub.href}
                 onClick={onNavigate}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors
+                className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200
                 ${
                   pathname === sub.href
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:shadow-sm"
                 }`}
               >
-                {sub.icon && <sub.icon className="h-4 w-4" />} {sub.name}
+                {sub.icon && <sub.icon className="h-4 w-4" />}
+                {sub.name}
               </Link>
             ))}
           </div>
@@ -341,14 +357,15 @@ function MobileNavItem({ item, pathname, onNavigate }) {
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors
+      className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 hover:shadow-sm
       ${
         active
-          ? "bg-indigo-50 text-indigo-700"
+          ? "bg-primary-50 text-primary-700 shadow-sm"
           : "text-gray-600 hover:bg-gray-50"
       }`}
     >
-      <item.icon className="h-5 w-5" /> {item.name}
+      <item.icon className="h-5 w-5" />
+      {item.name}
     </Link>
   );
 }
