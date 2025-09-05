@@ -9,6 +9,7 @@ export function middleware(request) {
     request.nextUrl.pathname === "/api/messages/bulk" ||
     request.nextUrl.pathname === "/api/messages/bulk-job" ||
     request.nextUrl.pathname === "/api/messages/upload-image" ||
+    request.nextUrl.pathname.startsWith("/api/reports/") ||
     request.nextUrl.pathname.startsWith("/_next/") ||
     request.nextUrl.pathname.startsWith("/uploads/") ||
     request.nextUrl.pathname.includes("/favicon.ico")

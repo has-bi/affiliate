@@ -2,6 +2,7 @@
 import { createLogger } from "@/lib/utils";
 import wahaClient from "@/lib/whatsapp/wahaClient";
 import { logBroadcast } from "@/lib/sheets/spreadsheetService";
+import messageHistory from "./messageHistory.js";
 
 const logger = createLogger("[JobQueue]");
 
@@ -50,6 +51,22 @@ class JobQueue {
       },
       error: null
     };
+
+    // Create campaign record in message history
+    const campaignId = messageHistory.createCampaign({
+      name: options.templateName || 'Bulk Job Campaign',
+      type: 'bulk-job',
+      session: job.session,
+      message: job.message,
+      imageUrl: job.imageUrl,
+      templateId: options.templateId || null,
+      templateName: job.templateName,
+      jobId: jobId,
+      totalRecipients: recipients.length,
+      metadata: { jobOptions: options }
+    });
+
+    job.campaignId = campaignId;
 
     this.jobs.set(jobId, job);
     logger.info(`Created job ${jobId} with ${recipients.length} recipients`);
@@ -116,6 +133,12 @@ class JobQueue {
     job.status = 'running';
     job.startedAt = new Date();
 
+    // Update campaign status
+    messageHistory.updateCampaign(job.campaignId, {
+      status: 'running',
+      startedAt: job.startedAt
+    });
+
     try {
       // First, validate the WhatsApp session before processing any messages
       logger.info(`Checking WhatsApp session '${job.session}' before processing job ${job.id}`);
@@ -160,6 +183,15 @@ class JobQueue {
 
       job.status = 'completed';
       job.completedAt = new Date();
+      
+      // Update campaign status
+      messageHistory.updateCampaign(job.campaignId, {
+        status: 'completed',
+        completedAt: job.completedAt,
+        successfulSends: job.progress.successful,
+        failedSends: job.progress.failed,
+        processedRecipients: job.progress.processed
+      });
       
       logger.info(`Completed job ${job.id}: ${job.progress.successful}/${job.progress.total} sent successfully`);
 
@@ -209,6 +241,17 @@ class JobQueue {
           batchNumber: job.progress.currentBatch
         });
 
+        // Record message in history
+        messageHistory.recordMessage(job.campaignId, {
+          recipient: recipient,
+          message: job.message,
+          imageUrl: job.imageUrl,
+          status: 'success',
+          sentAt: new Date(),
+          whatsappMessageId: sendResult.id || null,
+          batchNumber: job.progress.currentBatch
+        });
+
         logger.info(`✅ Sent to ${recipient} (${job.progress.processed}/${job.progress.total})`);
 
         // Add delay between messages (except for the last one in batch)
@@ -224,6 +267,17 @@ class JobQueue {
         job.results.failures.push({
           recipient,
           success: false,
+          error: error.message || "Failed to send message",
+          batchNumber: job.progress.currentBatch
+        });
+
+        // Record failure in history
+        messageHistory.recordMessage(job.campaignId, {
+          recipient: recipient,
+          message: job.message,
+          imageUrl: job.imageUrl,
+          status: 'failed',
+          sentAt: new Date(),
           error: error.message || "Failed to send message",
           batchNumber: job.progress.currentBatch
         });
