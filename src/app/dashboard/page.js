@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/templates/PageLayout";
+import ReportsSummary from "@/components/molecules/ReportsSummary";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
@@ -137,7 +138,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {/* New Affiliates */}
         <Card className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -249,6 +250,9 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Reports Summary */}
+        <ReportsSummary />
       </div>
     </PageLayout>
   );

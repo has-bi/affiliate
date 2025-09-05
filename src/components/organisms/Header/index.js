@@ -21,6 +21,7 @@ import {
   History,
   UserPlus,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
 
 // Navigation schema --------------------------------------------------
@@ -53,6 +54,11 @@ const NAVIGATION = [
     name: "A/B Testing",
     href: "/ab-testing",
     icon: TrendingUp,
+  },
+  {
+    name: "Reports",
+    href: "/reports",
+    icon: BarChart3,
   },
 ];
 
