@@ -284,7 +284,20 @@ class WAHAClient {
           const errorJson = JSON.parse(errorText);
           errorMessage = errorJson.message || errorJson.error || errorMessage;
         } catch (e) {
-          if (errorText) errorMessage = errorText;
+          // If HTML error page (like Cloudflare 502), provide cleaner message
+          if (errorText.includes('502: Bad gateway') || errorText.includes('Bad gateway')) {
+            errorMessage = "WAHA server is unavailable (502 Bad Gateway)";
+          } else if (errorText.includes('504: Gateway timeout') || errorText.includes('Gateway timeout')) {
+            errorMessage = "WAHA server timeout (504 Gateway Timeout)";
+          } else if (errorText.includes('500: Internal server error')) {
+            errorMessage = "WAHA server internal error (500)";
+          } else if (errorText.includes('<!DOCTYPE html>')) {
+            errorMessage = `WAHA server error (HTTP ${response.status})`;
+          } else if (errorText && errorText.length < 200) {
+            errorMessage = errorText;
+          } else {
+            errorMessage = `WAHA server error (HTTP ${response.status})`;
+          }
         }
 
         throw new Error(errorMessage);
@@ -357,8 +370,20 @@ class WAHAClient {
           const errorJson = JSON.parse(errorText);
           errorMessage = errorJson.message || errorJson.error || errorMessage;
         } catch (e) {
-          // If can't parse as JSON, use the text as is
-          if (errorText) errorMessage = errorText;
+          // If HTML error page (like Cloudflare 502), provide cleaner message
+          if (errorText.includes('502: Bad gateway') || errorText.includes('Bad gateway')) {
+            errorMessage = "WAHA server is unavailable (502 Bad Gateway)";
+          } else if (errorText.includes('504: Gateway timeout') || errorText.includes('Gateway timeout')) {
+            errorMessage = "WAHA server timeout (504 Gateway Timeout)";
+          } else if (errorText.includes('500: Internal server error')) {
+            errorMessage = "WAHA server internal error (500)";
+          } else if (errorText.includes('<!DOCTYPE html>')) {
+            errorMessage = `WAHA server error (HTTP ${response.status})`;
+          } else if (errorText && errorText.length < 200) {
+            errorMessage = errorText;
+          } else {
+            errorMessage = `WAHA server error (HTTP ${response.status})`;
+          }
         }
 
         throw new Error(errorMessage);

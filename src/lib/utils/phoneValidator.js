@@ -31,18 +31,18 @@ export function validateAndFormatPhone(phone) {
 
   // Handle Indonesian phone numbers
   if (cleaned.startsWith('0')) {
-    // Convert 08xx to 628xx
-    if (cleaned.length >= 10) {
+    // Convert 08xx to 628xx - allow 9-13 digits (08xxxxxxxxx)
+    if (cleaned.length >= 9 && cleaned.length <= 13) {
       formatted = `62${cleaned.substring(1)}`;
     } else {
-      return { isValid: false, formatted: '', error: 'Indonesian number format incomplete (need at least 10 digits for 08xx format)' };
+      return { isValid: false, formatted: '', error: `Indonesian number format incomplete (got ${cleaned.length} digits, expected 9-13 for 08xx format)` };
     }
-  } else if (cleaned.startsWith('8') && cleaned.length >= 9) {
-    // Convert 8xx to 628xx (missing leading 0)
+  } else if (cleaned.startsWith('8') && cleaned.length >= 8 && cleaned.length <= 12) {
+    // Convert 8xx to 628xx (missing leading 0) - allow 8-12 digits
     formatted = `62${cleaned}`;
   } else if (!cleaned.startsWith('62')) {
     // If it doesn't start with 62 and isn't Indonesian format, assume it needs 62 prefix
-    if (cleaned.length >= 8) {
+    if (cleaned.length >= 8 && cleaned.length <= 13) {
       formatted = `62${cleaned}`;
     }
   }
@@ -50,6 +50,7 @@ export function validateAndFormatPhone(phone) {
   // Final validation for Indonesian numbers
   if (formatted.startsWith('62')) {
     // Indonesian numbers should be 62 + 8-13 digits (total 10-15)
+    // More flexible: allow 10-15 total digits
     if (formatted.length < 10 || formatted.length > 15) {
       return { 
         isValid: false, 
