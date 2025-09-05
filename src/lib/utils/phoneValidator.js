@@ -173,3 +173,50 @@ export function getPhoneFormatExamples() {
     '62812-3456-7890 (mixed format)'
   ];
 }
+
+/**
+ * Format multiple phone numbers (alias for batchValidatePhones)
+ * @param {Array<string>} recipients - Array of phone numbers
+ * @returns {Object} - { valid: string[], invalid: Array<{input: string, error: string}> }
+ */
+export function formatPhoneNumbers(recipients) {
+  if (!Array.isArray(recipients)) {
+    return { valid: [], invalid: [] };
+  }
+  
+  const valid = [];
+  const invalid = [];
+  const seenNumbers = new Set();
+
+  recipients.forEach((phone, index) => {
+    if (!phone || typeof phone !== 'string') {
+      invalid.push({
+        input: phone || '',
+        error: 'Invalid phone number input'
+      });
+      return;
+    }
+
+    const result = validateAndFormatPhone(phone);
+    
+    if (result.isValid) {
+      // Check for duplicates
+      if (seenNumbers.has(result.cleanNumber)) {
+        invalid.push({
+          input: phone,
+          error: 'Duplicate number'
+        });
+      } else {
+        seenNumbers.add(result.cleanNumber);
+        valid.push(result.formatted);
+      }
+    } else {
+      invalid.push({
+        input: phone,
+        error: result.error
+      });
+    }
+  });
+
+  return { valid, invalid };
+}
