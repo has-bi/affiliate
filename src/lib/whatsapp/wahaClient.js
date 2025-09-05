@@ -57,14 +57,16 @@ class WAHAClient {
    */
   async checkSession() {
     try {
-      // First try with /api/sessions/SESSION_NAME
-      // Define the 'now' variable here
       const now = Date.now();
+      
+      // Simplified approach: directly try to list all sessions first
       let response;
       try {
+        logger.info(`Checking session '${this.defaultSession}' via /api/sessions`);
         response = await this.fetchWithTimeout(
-          `${this.baseUrl}/api/sessions/${this.defaultSession}`,
-          { headers: this.getHeaders() }
+          `${this.baseUrl}/api/sessions`,
+          { headers: this.getHeaders() },
+          15000 // 15 second timeout for session checks
         );
       } catch (fetchError) {
         logger.warn(`Session check timed out: ${fetchError.message}`);
@@ -76,94 +78,72 @@ class WAHAClient {
         };
       }
 
-      // Rest of the code remains similar, just update cache references
       if (!response.ok) {
-        logger.info(
-          "Failed to get specific session, trying to list all sessions"
-        );
+        logger.error(`WAHA server responded with ${response.status}: ${response.statusText}`);
+        const result = {
+          name: this.defaultSession,
+          isConnected: false,
+          status: `HTTP_${response.status}`,
+          error: `WAHA server error: ${response.status} ${response.statusText}`
+        };
+        
+        this.sessionCache = result;
+        this.lastCheckTime = now;
+        return result;
+      }
 
-        try {
-          response = await this.fetchWithTimeout(
-            `${this.baseUrl}/api/sessions`,
-            { headers: this.getHeaders() }
-          );
-        } catch (listError) {
-          logger.warn(`List sessions request timed out: ${listError.message}`);
-          const result = {
-            name: this.defaultSession,
-            isConnected: false,
-            status: "TIMEOUT_ERROR",
-            error: listError.message,
-          };
+      // Parse sessions list and find our session
+      const sessions = await response.json();
+      logger.info(`Found ${sessions.length} sessions on WAHA server`);
+      
+      if (!Array.isArray(sessions)) {
+        logger.error("WAHA server returned invalid sessions format:", sessions);
+        const result = {
+          name: this.defaultSession,
+          isConnected: false,
+          status: "INVALID_RESPONSE",
+          error: "Server returned invalid sessions format"
+        };
+        
+        this.sessionCache = result;
+        this.lastCheckTime = now;
+        return result;
+      }
 
-          this.sessionCache = result;
-          this.lastCheckTime = now;
-          return result;
-        }
-
-        if (response.ok) {
-          const sessions = await response.json();
-          const mySession = sessions.find(
-            (s) => s.name === this.defaultSession
-          );
-          if (mySession) {
-            const result = {
-              name: this.defaultSession,
-              isConnected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
-                mySession.status
-              ),
-              status: mySession.status,
-            };
-
-            this.sessionCache = result;
-            this.lastCheckTime = now;
-            return result;
-          }
-        }
-
+      // Find our session
+      const mySession = sessions.find(s => s.name === this.defaultSession);
+      
+      if (!mySession) {
+        logger.warn(`Session '${this.defaultSession}' not found. Available sessions:`, sessions.map(s => s.name));
         const result = {
           name: this.defaultSession,
           isConnected: false,
           status: "NOT_FOUND",
+          error: `Session '${this.defaultSession}' not found on server`,
+          availableSessions: sessions.map(s => s.name)
         };
-
+        
         this.sessionCache = result;
         this.lastCheckTime = now;
         return result;
       }
 
-      // Process the session-specific response
-      const sessionData = await response.json();
+      // Check session status
+      const sessionStatus = mySession.status || "UNKNOWN";
+      const isConnected = ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(sessionStatus);
+      
+      logger.info(`Session '${this.defaultSession}' found with status: ${sessionStatus}, connected: ${isConnected}`);
+      
+      const result = {
+        name: this.defaultSession,
+        isConnected: isConnected,
+        status: sessionStatus,
+        sessionData: mySession
+      };
 
-      if (sessionData && typeof sessionData === "object") {
-        const status =
-          sessionData.status ||
-          sessionData.engine?.state ||
-          (sessionData.engine?.connected ? "CONNECTED" : "DISCONNECTED");
-
-        const result = {
-          name: this.defaultSession,
-          isConnected: ["CONNECTED", "AUTHENTICATED", "WORKING"].includes(
-            status
-          ),
-          status: status,
-        };
-
-        this.sessionCache = result;
-        this.lastCheckTime = now;
-        return result;
-      } else {
-        logger.warn("Unexpected session response format:", sessionData);
-        const result = {
-          name: this.defaultSession,
-          isConnected: false,
-          status: "UNKNOWN",
-        };
-
-        this.sessionCache = result;
-        this.lastCheckTime = now;
-        return result;
-      }
+      this.sessionCache = result;
+      this.lastCheckTime = now;
+      return result;
     } catch (error) {
       logger.error(`Error checking session ${this.defaultSession}:`, error);
 
