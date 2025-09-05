@@ -16,7 +16,7 @@ export async function POST(req) {
     if (body.processedMessages && Array.isArray(body.processedMessages)) {
       
       // Get delay or use default
-      const delay = body.delay || 3000;
+      const delay = body.delay || 8000;
 
       // Initialize results
       const results = {

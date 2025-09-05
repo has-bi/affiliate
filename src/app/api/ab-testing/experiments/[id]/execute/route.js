@@ -428,7 +428,7 @@ async function sendVariantBatch(experiment, variant) {
 
     // Add delay between messages (except for the last one)
     if (i < recipients.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+      await new Promise(resolve => setTimeout(resolve, 8000)); // 8 second delay
     }
   }
 

@@ -77,7 +77,7 @@ export function useWhatsApp() {
    * @returns {Promise<Object>} Send results
    */
   const sendBulkMessages = useCallback(
-    async (recipients, message, delay = 3000) => {
+    async (recipients, message, delay = 8000) => {
       try {
         const response = await fetch("/api/messages/bulk", {
           method: "POST",

@@ -64,20 +64,25 @@
   - Image preview and management in template forms
   - Integration with existing GCP storage system
 
-### 8. Scheduled Message Image Support
-- **Status**: ✅ Complete system overhaul
-- **Root Cause Identified**: Scheduled messages couldn't send images due to missing database schema and API support
+### 8. Complete Image Functionality Implementation
+- **Status**: ✅ Comprehensive image system completed and tested
+- **Root Cause Resolution**: Fixed core issue where imageUrl wasn't being saved to database during schedule creation
 - **Files Modified**:
   - `prisma/schema.prisma` (added `imageUrl` field to Schedule model)
-  - `/src/app/api/schedules/route.js` (API now handles image data)
-  - `/src/lib/schedules/schedulerService.js` (prioritizes schedule images over template images)
-  - `/src/lib/schedules/scheduleUtils.js` (includes imageUrl in schedule data)
-  - `/src/components/molecules/ScheduleForm/index.js` (added image upload to schedule forms)
+  - `/src/app/api/schedules/route.js` (fixed data mapping: `imageUrl: data.imageUrl || null`)  
+  - `/src/app/api/templates/route.js` (added imageUrl support to template creation)
+  - `/src/app/api/templates/[id]/route.js` (added debug logging for template updates)
+  - `/src/components/molecules/ScheduleForm/index.js` (CRITICAL FIX: added `imageUrl: formData.imageUrl` to scheduleData)
+  - `/src/components/organisms/TemplateForm/index.js` (added complete image upload functionality)
+  - `/src/components/organisms/TemplateMessageSender/index.js` (added template image inheritance)
+  - `/src/lib/templates/templateUtils.js` (read to verify parameter processing logic)
 - **Technical Implementation**:
-  - **Database Schema**: Added `imageUrl` field to Schedule table
-  - **Priority Logic**: `scheduleData.imageUrl || template.imageUrl` (schedule-specific images override template images)
-  - **Full UI Support**: ImageUploader component integrated into schedule creation/editing
-  - **Data Flow**: Consistent image handling across "Send Now" and scheduled message flows
+  - **Critical Fix**: ScheduleForm was missing `imageUrl: formData.imageUrl` in submitted data object
+  - **Database Schema**: `imageUrl` field properly stored for both templates and schedules
+  - **Template Inheritance**: When selecting template with image, it displays as placeholder in forms
+  - **Priority Logic**: `scheduleData.imageUrl || template.imageUrl` works correctly now that imageUrl is saved
+  - **Comprehensive Testing**: Created debug scripts to isolate database vs API layer issues
+  - **Phone Validation**: Updated to use new `phoneValidator` utility across all components
 
 ## Current System Status 🟢
 
@@ -182,5 +187,14 @@
   - ✅ Consistent behavior across "Send Now" and scheduled messages
 - **Ready for production use with full feature parity between immediate and scheduled messaging**
 
-## 🎉 **Latest Achievement: Image Scheduling Parity**
-Successfully resolved the core issue where "Kirim Sekarang" (Send Now) worked with images but scheduled messages didn't. Now both approaches support identical image functionality with proper database schema, API integration, and UI components.
+## 🎉 **Latest Achievement: Complete Image Functionality**
+Successfully resolved the critical issue where scheduled messages ("Jadwalkan Pengiriman" with "Sekali" type) couldn't send images. Root cause was identified as missing `imageUrl: formData.imageUrl` in ScheduleForm submission data. Now both "Send Now" and scheduled messages have identical image functionality:
+
+### Final Working Solution:
+- **✅ Database Storage**: Images properly saved to database during schedule/template creation
+- **✅ Template Image Inheritance**: Templates with images show placeholder in schedule forms  
+- **✅ Schedule Image Override**: Schedule-specific images take priority over template images
+- **✅ Consistent UI/UX**: Same image upload experience across all forms
+- **✅ Full Testing**: Confirmed working with comprehensive debug logging and database verification
+
+**Result**: Complete feature parity between immediate and scheduled messaging with images.

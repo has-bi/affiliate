@@ -22,7 +22,7 @@ export const useBroadcast = () => {
       const payload = {
         processedMessages,
         session: sessionName,
-        delay: 3000, // 3 second delay between messages
+        delay: 8000, // 8 second delay between messages
         templateName: "Manual broadcast"
       };
 
