@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useTemplate } from "@/hooks/useTemplate";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useBulkJob } from "@/hooks/useBulkJob";
 import { useMessageWizard } from "@/hooks/useMessageWizard";
 import {
   formatMessageContent,
@@ -68,6 +69,16 @@ export default function TemplateMessageSender() {
 
   // Image state
   const [selectedImage, setSelectedImage] = useState(null);
+
+  // Bulk job state
+  const { 
+    isCreating: isCreatingJob, 
+    error: jobError, 
+    activeJob, 
+    createBulkJob, 
+    cancelJob, 
+    clearActiveJob 
+  } = useBulkJob();
 
   // Scheduling state
   const [isScheduling, setIsScheduling] = useState(false);
@@ -245,27 +256,47 @@ export default function TemplateMessageSender() {
         });
       }
 
-      // 6️⃣ Send the processed messages
-      const response = await fetch("/api/messages/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session: sessionName,
-          processedMessages: processedMessages,
-          templateId: selectedTemplate.id,
-          templateName: selectedTemplate.name,
-          image: selectedImage, // Add image data
-        }),
-      });
+      // 6️⃣ Extract recipient phone numbers for bulk job
+      const recipients = processedMessages.map(msg => msg.recipient);
+      
+      // 7️⃣ Use job system for ALL batches to avoid 504 timeouts
+      if (recipients.length > 0) {
+        // Use new bulk job system for large batches
+        const imageData = selectedImage ? { url: selectedImage.url } : null;
+        
+        // Create bulk job with the first processed message as template
+        await createBulkJob(
+          sessionName, 
+          recipients, 
+          processedMessages[0]?.message || selectedTemplate.content,
+          imageData
+        );
+        
+        // Clear old send result since we're using job tracking now
+        setSendResult(null);
+      } else {
+        // Use original bulk API for smaller batches
+        const response = await fetch("/api/messages/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session: sessionName,
+            processedMessages: processedMessages,
+            templateId: selectedTemplate.id,
+            templateName: selectedTemplate.name,
+            image: selectedImage, // Add image data
+          }),
+        });
 
-      // Handle response
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API error: ${response.status}`);
+        // Handle response
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setSendResult(result);
       }
-
-      const result = await response.json();
-      setSendResult(result);
       
     } catch (err) {
       console.error("❌ Kirim Sekarang failed:", err);
@@ -647,6 +678,11 @@ export default function TemplateMessageSender() {
                 handleSend={handleSend}
                 handleSchedule={handleSchedule}
                 isSubmitting={isSubmitting}
+                isCreatingJob={isCreatingJob}
+                activeJob={activeJob}
+                jobError={jobError}
+                cancelJob={cancelJob}
+                clearActiveJob={clearActiveJob}
                 handlePrevStep={handlePrevStep}
                 selectedImage={selectedImage}
               />

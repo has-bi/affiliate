@@ -104,8 +104,8 @@ const BroadcastForm = () => {
         return;
       }
 
-      // For large batches (>50), use job system; for smaller batches, use direct broadcast
-      if (recipients.length > 50) {
+      // Use job system for ALL batches to avoid 504 timeouts  
+      if (recipients.length > 0) {
         await createBulkJob(formData.sessionName, recipients, formData.message, selectedImage);
       } else {
         await broadcastMessage(formData.sessionName, recipients, formData.message, selectedImage);
@@ -251,7 +251,7 @@ const BroadcastForm = () => {
                     ? "Validating..."
                     : `Send to ${recipientCount} Recipient${
                         recipientCount !== 1 ? "s" : ""
-                      }${recipientCount > 50 ? " (Background Job)" : ""}`}
+                      }${recipientCount > 0 ? " (Background Job)" : ""}`}
                 </Button>
               </div>
             </form>

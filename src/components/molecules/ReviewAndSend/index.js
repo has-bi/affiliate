@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Calendar, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
 import RepeatScheduler from "@/components/molecules/RepeatScheduler";
+import BulkJobProgress from "@/components/molecules/BulkJobProgress";
 
 const Step4 = ({
   selectedTemplate,
@@ -16,6 +17,11 @@ const Step4 = ({
   handleSend,
   handleSchedule,
   isSubmitting,
+  isCreatingJob,
+  activeJob,
+  jobError,
+  cancelJob,
+  clearActiveJob,
   handlePrevStep,
   selectedImage,
 }) => {
@@ -299,7 +305,7 @@ const Step4 = ({
             type="button"
             variant="secondary"
             onClick={handlePrevStep}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCreatingJob}
           >
             Kembali
           </Button>
@@ -308,12 +314,12 @@ const Step4 = ({
             type="button"
             variant={isScheduling ? "primary" : "success"}
             onClick={isScheduling ? handleSchedule : handleSend}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCreatingJob}
           >
-            {isSubmitting ? (
+            {isSubmitting || isCreatingJob ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {isScheduling ? "Menjadwalkan..." : "Mengirim..."}
+                {isCreatingJob ? "Creating Job..." : isScheduling ? "Menjadwalkan..." : "Mengirim..."}
               </>
             ) : (
               <>
@@ -325,7 +331,7 @@ const Step4 = ({
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Kirim Sekarang
+                    Kirim Sekarang{recipients.length > 0 ? " (Background Job)" : ""}
                   </>
                 )}
               </>
@@ -333,6 +339,30 @@ const Step4 = ({
           </Button>
         </div>
       </div>
+
+      {/* Bulk Job Progress Display */}
+      {activeJob && (
+        <div className="mt-6">
+          <BulkJobProgress
+            activeJob={activeJob}
+            onCancel={cancelJob}
+            onClose={clearActiveJob}
+          />
+        </div>
+      )}
+
+      {/* Job Error Display */}
+      {jobError && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center gap-2 text-red-800">
+            <AlertCircle className="w-4 h-4" />
+            <span className="font-medium">Job Error</span>
+          </div>
+          <div className="text-sm text-red-600 mt-1">
+            {jobError}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
