@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import RecipientInput from "@/components/molecules/RecipientInput";
 import BroadcastProgress from "@/components/molecules/BroadcastProgress";
+import BulkJobProgress from "@/components/molecules/BulkJobProgress";
 import ImageUploader from "@/components/molecules/ImageUploader";
 import { useBroadcast } from "@/hooks/useBroadcast";
+import { useBulkJob } from "@/hooks/useBulkJob";
 import { useSession } from "@/hooks/useWhatsApp";
 import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 import { Send, AlertCircle } from "lucide-react";
@@ -17,6 +19,14 @@ const BroadcastForm = () => {
   const { sessions, isLoading: isLoadingSessions } = useSession();
   const { isSending, error, result, broadcastMessage, clearResult } =
     useBroadcast();
+  const { 
+    isCreating: isCreatingJob, 
+    error: jobError, 
+    activeJob, 
+    createBulkJob, 
+    cancelJob, 
+    clearActiveJob 
+  } = useBulkJob();
 
   const [formData, setFormData] = useState({
     sessionName: "",
@@ -94,8 +104,12 @@ const BroadcastForm = () => {
         return;
       }
 
-      // Send broadcast with optional image
-      await broadcastMessage(formData.sessionName, recipients, formData.message, selectedImage);
+      // For large batches (>50), use job system; for smaller batches, use direct broadcast
+      if (recipients.length > 50) {
+        await createBulkJob(formData.sessionName, recipients, formData.message, selectedImage);
+      } else {
+        await broadcastMessage(formData.sessionName, recipients, formData.message, selectedImage);
+      }
     } finally {
       setIsValidating(false);
     }
@@ -113,6 +127,7 @@ const BroadcastForm = () => {
     setRecipientCount(0);
     setValidationError("");
     clearResult();
+    clearActiveJob();
   };
 
   return (
@@ -224,17 +239,19 @@ const BroadcastForm = () => {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={isSending || isValidating || recipientCount === 0 || !formData.sessionName || !formData.message.trim()}
-                  isLoading={isSending || isValidating}
+                  disabled={isSending || isCreatingJob || isValidating || recipientCount === 0 || !formData.sessionName || !formData.message.trim()}
+                  isLoading={isSending || isCreatingJob || isValidating}
                   leftIcon={!(isSending || isValidating) && <Send className="h-4 w-4" />}
                 >
                   {isSending
                     ? `Sending... (${Math.round((result?.successCount || 0) / recipientCount * 100) || 0}%)`
+                    : isCreatingJob
+                    ? "Creating Job..."
                     : isValidating
                     ? "Validating..."
                     : `Send to ${recipientCount} Recipient${
                         recipientCount !== 1 ? "s" : ""
-                      }`}
+                      }${recipientCount > 50 ? " (Background Job)" : ""}`}
                 </Button>
               </div>
             </form>
@@ -244,16 +261,25 @@ const BroadcastForm = () => {
 
       {/* Progress Panel */}
       <div className="lg:col-span-1">
-        <BroadcastProgress
-          isBroadcasting={isSending}
-          progress={{
-            current: result?.successCount || 0,
-            total: result?.total || 0,
-          }}
-          results={result?.details || []}
-          error={error}
-          onReset={handleReset}
-        />
+        {/* Show job progress for large batches, regular progress for small batches */}
+        {activeJob ? (
+          <BulkJobProgress
+            activeJob={activeJob}
+            onCancel={cancelJob}
+            onClose={clearActiveJob}
+          />
+        ) : (
+          <BroadcastProgress
+            isBroadcasting={isSending}
+            progress={{
+              current: result?.successCount || 0,
+              total: result?.total || 0,
+            }}
+            results={result?.details || []}
+            error={error || jobError}
+            onReset={handleReset}
+          />
+        )}
       </div>
     </div>
   );
