@@ -151,6 +151,10 @@ class JobQueue {
       }
       
       logger.info(`Session '${job.session}' is connected (${sessionCheck.status}), proceeding with job ${job.id}`);
+      
+      // Track consecutive failures to implement smart retries
+      let consecutiveFailures = 0;
+      const MAX_CONSECUTIVE_FAILURES = 5;
       // Split recipients into batches
       const batches = this.createBatches(job.recipients);
       
@@ -217,7 +221,8 @@ class JobQueue {
       try {
         let sendResult;
 
-        // Send message (with or without image)
+        // Send message (with or without image) - skip individual session checks
+        // since we already validated the session at job start
         if (job.imageUrl) {
           sendResult = await wahaClient.sendImage(
             job.session,
@@ -255,6 +260,7 @@ class JobQueue {
         });
 
         logger.info(`✅ Sent to ${recipient} (${job.progress.processed}/${job.progress.total})`);
+        consecutiveFailures = 0; // Reset failure counter on success
 
         // Add intelligent delay between messages (except for the last one in batch)
         if (i < batch.length - 1) {
@@ -265,6 +271,7 @@ class JobQueue {
       } catch (error) {
         logger.error(`❌ Failed to send to ${recipient}:`, error);
         
+        consecutiveFailures++;
         job.progress.failed++;
         job.progress.processed++;
         job.results.failures.push({
@@ -287,6 +294,23 @@ class JobQueue {
 
         // Track failure for adaptive rate limiting
         this.trackFailure(error);
+        
+        // If too many consecutive failures, pause and check session
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          logger.warn(`Too many consecutive failures (${consecutiveFailures}), checking session and adding pause`);
+          
+          // Check session status (force refresh)
+          const sessionRecheck = await wahaClient.checkSession(true);
+          if (!sessionRecheck.isConnected) {
+            logger.error(`Session lost during job processing: ${sessionRecheck.status}`);
+            throw new Error(`Session disconnected: ${sessionRecheck.status}`);
+          }
+          
+          // Add longer pause after consecutive failures
+          logger.info(`Adding 10 second pause after consecutive failures`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
+          consecutiveFailures = 0; // Reset counter
+        }
       }
     }
   }

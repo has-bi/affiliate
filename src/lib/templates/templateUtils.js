@@ -174,9 +174,14 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
 
   // Process dynamic parameters from contact
   if (contact) {
-    // Replace {name} parameter
+    // Replace {name} parameter - only if name is available (from CSV)
     if (contact.name && processedContent.includes("{name}")) {
       processedContent = processedContent.replace(/\{name\}/g, contact.name);
+    } else if (processedContent.includes("{name}")) {
+      // If no name available, replace with empty string and clean up spacing
+      processedContent = processedContent.replace(/\{name\}\s*,?\s*/g, "");
+      // Also handle cases like "Hi {name}, " -> "Hi there, "
+      processedContent = processedContent.replace(/Hi\s*,/g, "Hi there,");
     }
 
     // Replace {phone} parameter if available
@@ -204,6 +209,15 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
         processedContent = processedContent.replace(regex, value);
       }
     });
+    
+    // Clean up any remaining dynamic parameters that weren't found in contact
+    // This handles cases where templates have {name} but no name was provided
+    const dynamicParamRegex = /\{(name|phone|platform)\}\s*,?\s*/g;
+    processedContent = processedContent.replace(dynamicParamRegex, "");
+    
+    // Fix common spacing issues after parameter removal
+    processedContent = processedContent.replace(/Hi\s*,/g, "Hi there,");
+    processedContent = processedContent.replace(/\s{2,}/g, " "); // Remove extra spaces
   }
 
   // Process static parameters (same as before)

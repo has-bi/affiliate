@@ -14,7 +14,9 @@ class WAHAClient {
     // Add these cache properties to the class
     this.sessionCache = null;
     this.lastCheckTime = 0;
-    this.CACHE_TTL = 30000; // 30 seconds cache
+    this.CACHE_TTL = 60000; // 60 seconds cache (increased from 30)
+    this.failureCount = 0;
+    this.lastFailureTime = 0;
   }
 
   // Get headers with API key if needed
@@ -55,9 +57,23 @@ class WAHAClient {
    * Check if the default session is active
    * @returns {Promise<Object>} Session status info
    */
-  async checkSession() {
+  async checkSession(forceRefresh = false) {
     try {
       const now = Date.now();
+      
+      // Use cache if available and not expired (unless forced refresh)
+      if (!forceRefresh && this.sessionCache && (now - this.lastCheckTime < this.CACHE_TTL)) {
+        logger.info(`Using cached session status for '${this.defaultSession}': ${this.sessionCache.status}`);
+        return this.sessionCache;
+      }
+      
+      // If we had recent failures, extend cache time
+      if (this.failureCount > 0 && (now - this.lastFailureTime < 120000)) { // 2 minutes
+        if (this.sessionCache) {
+          logger.info(`Recent failures detected, extending cache for session '${this.defaultSession}'`);
+          return this.sessionCache;
+        }
+      }
       
       // Simplified approach: directly try to list all sessions first
       let response;
@@ -70,12 +86,19 @@ class WAHAClient {
         );
       } catch (fetchError) {
         logger.warn(`Session check timed out: ${fetchError.message}`);
-        return {
+        this.failureCount++;
+        this.lastFailureTime = now;
+        
+        const result = {
           name: this.defaultSession,
           isConnected: false,
           status: "TIMEOUT_ERROR",
           error: fetchError.message,
         };
+        
+        this.sessionCache = result;
+        this.lastCheckTime = now;
+        return result;
       }
 
       if (!response.ok) {
@@ -141,11 +164,15 @@ class WAHAClient {
         sessionData: mySession
       };
 
+      // Reset failure count on success
+      this.failureCount = 0;
       this.sessionCache = result;
       this.lastCheckTime = now;
       return result;
     } catch (error) {
       logger.error(`Error checking session ${this.defaultSession}:`, error);
+      this.failureCount++;
+      this.lastFailureTime = now;
 
       const result = {
         name: this.defaultSession,
@@ -164,6 +191,57 @@ class WAHAClient {
       this.lastCheckTime = now;
       return result;
     }
+  }
+
+  /**
+   * Send a text message with session validation
+   * @param {string} session - Session name
+   * @param {string} to - Recipient's phone number
+   * @param {string} text - Message text
+   * @param {boolean} skipSessionCheck - Skip session validation (for bulk operations)
+   * @returns {Promise<Object>} Message info
+   */
+  async sendTextWithValidation(session, to, text, skipSessionCheck = false) {
+    if (!skipSessionCheck) {
+      // Check if the session is connected
+      const sessionStatus = await this.checkSession();
+      if (!sessionStatus.isConnected) {
+        throw new Error(
+          `WhatsApp session '${
+            session || this.defaultSession
+          }' is not connected (${sessionStatus.status})`
+        );
+      }
+    }
+    
+    return this.sendText(session, to, text);
+  }
+
+  /**
+   * Send an image message with session validation
+   * @param {string} session - Session name
+   * @param {string} to - Recipient's phone number
+   * @param {string} imageUrl - Image URL or base64 data
+   * @param {string} caption - Optional caption text
+   * @param {string} mimetype - Optional MIME type
+   * @param {string} filename - Optional filename
+   * @param {boolean} skipSessionCheck - Skip session validation (for bulk operations)
+   * @returns {Promise<Object>} Message info
+   */
+  async sendImageWithValidation(session, to, imageUrl, caption = "", mimetype = null, filename = null, skipSessionCheck = false) {
+    if (!skipSessionCheck) {
+      // Check if the session is connected
+      const sessionStatus = await this.checkSession();
+      if (!sessionStatus.isConnected) {
+        throw new Error(
+          `WhatsApp session '${
+            session || this.defaultSession
+          }' is not connected (${sessionStatus.status})`
+        );
+      }
+    }
+    
+    return this.sendImage(session, to, imageUrl, caption, mimetype, filename);
   }
 
   /**
@@ -229,15 +307,8 @@ class WAHAClient {
     }
 
     try {
-      // Check if the session is connected
-      const sessionStatus = await this.checkSession();
-      if (!sessionStatus.isConnected) {
-        throw new Error(
-          `WhatsApp session '${
-            session || this.defaultSession
-          }' is not connected (${sessionStatus.status})`
-        );
-      }
+      // Skip session check during bulk operations - let the caller handle it
+      // This reduces redundant checks during batch processing
 
       // Send image using WAHA API - Updated to match official documentation
       const response = await fetch(`${this.baseUrl}/api/sendImage`, {
@@ -321,15 +392,8 @@ class WAHAClient {
       .replace(/<[^>]*>/g, "");
 
     try {
-      // Check if the session is connected
-      const sessionStatus = await this.checkSession();
-      if (!sessionStatus.isConnected) {
-        throw new Error(
-          `WhatsApp session '${
-            session || this.defaultSession
-          }' is not connected (${sessionStatus.status})`
-        );
-      }
+      // Skip session check during bulk operations - let the caller handle it
+      // This reduces redundant checks during batch processing
 
       // Send message using WAHA API
       const response = await fetch(`${this.baseUrl}/api/sendText`, {

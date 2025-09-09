@@ -206,32 +206,7 @@ const BroadcastForm = () => {
       let processedMessages = [];
       
       if (formData.useTemplate && selectedTemplate) {
-        // Fetch affiliate data for dynamic parameters (only if not using CSV)
-        let affiliateData = [];
-        const affiliateMap = new Map();
-        
-        if (inputMethod !== "csv" || contactsData.size === 0) {
-          try {
-            const response = await fetch("/api/affiliates?status=active");
-            if (response.ok) {
-              affiliateData = await response.json();
-            }
-          } catch (error) {
-            console.error("Error fetching affiliate data:", error);
-          }
-
-          // Create affiliate lookup map
-          if (Array.isArray(affiliateData)) {
-            affiliateData.forEach((affiliate) => {
-              if (affiliate.phone) {
-                const key = affiliate.phone.replace(/\D/g, "");
-                if (key) {
-                  affiliateMap.set(key, affiliate);
-                }
-              }
-            });
-          }
-        }
+        // No database lookup - only use CSV data when available
 
         // Process each recipient with template
         for (const recipient of recipients) {
@@ -240,32 +215,24 @@ const BroadcastForm = () => {
             ? recipient
             : `${phoneNumber}@c.us`;
 
-          // Get contact info - prioritize CSV data, then affiliate database
+          // Get contact info - only use CSV data, no database lookup
           let contactData;
           const csvContact = contactsData.get(phoneNumber);
           
           if (csvContact) {
-            // Use CSV data (highest priority)
+            // Use CSV data when available
             contactData = {
               name: csvContact.name,
               phone: phoneNumber,
               source: "csv",
             };
           } else {
-            // Fallback to affiliate database
-            const affiliateInfo = affiliateMap.get(phoneNumber);
-            contactData = affiliateInfo
-              ? {
-                  name: affiliateInfo.name || "Affiliate",
-                  phone: phoneNumber,
-                  platform: affiliateInfo.platform || "",
-                  source: "database",
-                }
-              : {
-                  name: "Affiliate",
-                  phone: phoneNumber,
-                  source: "fallback",
-                };
+            // For manual entries, don't provide name (let template handle empty {name})
+            contactData = {
+              phone: phoneNumber,
+              source: "manual",
+              // Deliberately no 'name' property - let templates handle missing dynamic parameters
+            };
           }
 
           // Process template with dynamic and static parameters
@@ -492,20 +459,22 @@ const BroadcastForm = () => {
                           __html: formatMessageContent(
                             processAllParameters(
                               selectedTemplate.content,
-                              { 
-                                name: inputMethod === "csv" && csvContacts.length > 0 
-                                  ? csvContacts[0].name + " (from CSV)" 
-                                  : "[Name will be filled automatically]" 
-                              },
+                              inputMethod === "csv" && csvContacts.length > 0 
+                                ? { name: csvContacts[0].name + " (from CSV)" }
+                                : {}, // Empty object for manual - no name provided
                               paramValues
                             )
                           )
                         }} 
                       />
                     </div>
-                    {inputMethod === "csv" && csvContacts.length > 0 && (
+                    {inputMethod === "csv" && csvContacts.length > 0 ? (
                       <p className="text-xs text-blue-600 mt-2">
                         📄 Names will be filled from your CSV data (showing example with "{csvContacts[0].name}")
+                      </p>
+                    ) : (
+                      <p className="text-xs text-amber-600 mt-2">
+                        ⚠️ Manual input: {'{name}'} parameters will be empty (no database lookup)
                       </p>
                     )}
                   </div>

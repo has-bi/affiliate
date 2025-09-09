@@ -15,6 +15,15 @@ export async function POST(req) {
     // New approach: accept pre-processed messages
     if (body.processedMessages && Array.isArray(body.processedMessages)) {
       
+      // Check session once at the start of bulk operation
+      const sessionStatus = await wahaClient.checkSession();
+      if (!sessionStatus.isConnected) {
+        return Response.json(
+          { error: `WhatsApp session '${body.session || 'youvit'}' is not connected (${sessionStatus.status})` },
+          { status: 400 }
+        );
+      }
+      
       // Get delay or use optimized default (2 seconds instead of 8)
       const delay = body.delay || 2000;
 
