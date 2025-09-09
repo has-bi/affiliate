@@ -29,8 +29,8 @@ export async function POST(req) {
     // Only send to first recipient for single message endpoint
     const recipient = body.recipients[0];
 
-    // Send message
-    const result = await wahaClient.sendText(recipient, body.message);
+    // Send message with session validation (for single messages)
+    const result = await wahaClient.sendTextWithValidation(body.session || 'youvit', recipient, body.message);
 
     return Response.json({
       success: true,

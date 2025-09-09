@@ -91,13 +91,20 @@ const BroadcastForm = () => {
 
   // Handle CSV contacts loaded
   const handleCsvContactsLoaded = (contacts) => {
-    setCsvContacts(contacts);
-    setRecipientCount(contacts.length);
-    setValidationError("");
-    
-    // Real-time validation feedback
-    if (contacts.length > 100) {
-      setValidationError("Warning: Large recipient lists may take longer to process and could hit rate limits.");
+    if (Array.isArray(contacts) && contacts.length > 0) {
+      setCsvContacts(contacts);
+      setRecipientCount(contacts.length);
+      setValidationError("");
+      
+      // Real-time validation feedback
+      if (contacts.length > 100) {
+        setValidationError("Warning: Large recipient lists may take longer to process and could hit rate limits.");
+      }
+    } else {
+      // Handle empty or invalid CSV data
+      setCsvContacts([]);
+      setRecipientCount(0);
+      setValidationError("No valid contacts found in CSV file.");
     }
   };
 
@@ -164,19 +171,23 @@ const BroadcastForm = () => {
       let recipients = [];
       let contactsData = new Map(); // Map phone -> contact info
       
-      if (inputMethod === "csv" && csvContacts.length > 0) {
+      if (inputMethod === "csv" && Array.isArray(csvContacts) && csvContacts.length > 0) {
         // Use CSV data
-        recipients = csvContacts.map(contact => contact.phoneNumber);
+        recipients = csvContacts.map(contact => contact?.phoneNumber).filter(Boolean);
         
         // Create lookup map for CSV contacts
-        csvContacts.forEach(contact => {
-          const phoneKey = contact.phoneNumber.replace(/\D/g, "");
-          contactsData.set(phoneKey, {
-            name: contact.name,
-            phone: contact.phoneNumber,
-            source: "csv"
+        if (Array.isArray(csvContacts) && csvContacts.length > 0) {
+          csvContacts.forEach(contact => {
+            if (contact && contact.phoneNumber && contact.name) {
+              const phoneKey = contact.phoneNumber.replace(/\D/g, "");
+              contactsData.set(phoneKey, {
+                name: contact.name,
+                phone: contact.phoneNumber,
+                source: "csv"
+              });
+            }
           });
-        });
+        }
       } else {
         // Use manual input
         recipients = formData.recipients
@@ -459,7 +470,7 @@ const BroadcastForm = () => {
                           __html: formatMessageContent(
                             processAllParameters(
                               selectedTemplate.content,
-                              inputMethod === "csv" && csvContacts.length > 0 
+                              inputMethod === "csv" && Array.isArray(csvContacts) && csvContacts.length > 0 && csvContacts[0]?.name
                                 ? { name: csvContacts[0].name + " (from CSV)" }
                                 : {}, // Empty object for manual - no name provided
                               paramValues
@@ -468,7 +479,7 @@ const BroadcastForm = () => {
                         }} 
                       />
                     </div>
-                    {inputMethod === "csv" && csvContacts.length > 0 ? (
+                    {inputMethod === "csv" && Array.isArray(csvContacts) && csvContacts.length > 0 && csvContacts[0]?.name ? (
                       <p className="text-xs text-blue-600 mt-2">
                         📄 Names will be filled from your CSV data (showing example with "{csvContacts[0].name}")
                       </p>
@@ -495,7 +506,8 @@ const BroadcastForm = () => {
                       onChange={() => {
                         setInputMethod("manual");
                         setCsvContacts([]);
-                        setRecipientCount(formData.recipients.split(/[\n,]+/).map(r => r.trim()).filter(Boolean).length);
+                        const recipientsText = formData.recipients || "";
+                        setRecipientCount(recipientsText.split(/[\n,]+/).map(r => r.trim()).filter(Boolean).length);
                       }}
                       className="mr-2"
                       disabled={isSending}

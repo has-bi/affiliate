@@ -152,9 +152,6 @@ class JobQueue {
       
       logger.info(`Session '${job.session}' is connected (${sessionCheck.status}), proceeding with job ${job.id}`);
       
-      // Track consecutive failures to implement smart retries
-      let consecutiveFailures = 0;
-      const MAX_CONSECUTIVE_FAILURES = 5;
       // Split recipients into batches
       const batches = this.createBatches(job.recipients);
       
@@ -215,6 +212,10 @@ class JobQueue {
    * @param {Array} batch - Batch of recipients
    */
   async processBatch(job, batch) {
+    // Track consecutive failures to implement smart retries
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 5;
+    
     for (let i = 0; i < batch.length; i++) {
       const recipient = batch[i];
 
