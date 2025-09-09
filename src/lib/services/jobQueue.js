@@ -11,8 +11,10 @@ class JobQueue {
   constructor() {
     this.jobs = new Map();
     this.isProcessing = false;
-    this.batchSize = 25; // Process 25 contacts per batch
-    this.batchDelay = 2000; // 2 seconds between batches
+    this.batchSize = 50; // Process 50 contacts per batch (increased from 25)
+    this.batchDelay = 1000; // 1 second between batches (reduced from 2 seconds)
+    this.adaptiveDelayEnabled = true; // Enable adaptive delays based on success rate
+    this.recentFailures = []; // Track recent failures for rate limiting
   }
 
   /**
@@ -31,7 +33,7 @@ class JobQueue {
       recipients: recipients,
       message: message,
       session: options.session || 'youvit',
-      delay: options.delay || 8000,
+      delay: options.delay || 1500, // Reduced from 8000ms to 1.5 seconds
       imageUrl: options.imageUrl || null,
       templateName: options.templateName || 'Manual broadcast',
       createdAt: new Date(),
@@ -254,9 +256,10 @@ class JobQueue {
 
         logger.info(`✅ Sent to ${recipient} (${job.progress.processed}/${job.progress.total})`);
 
-        // Add delay between messages (except for the last one in batch)
+        // Add intelligent delay between messages (except for the last one in batch)
         if (i < batch.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, job.delay));
+          const adaptiveDelay = this.calculateAdaptiveDelay(job, job.progress);
+          await new Promise(resolve => setTimeout(resolve, adaptiveDelay));
         }
 
       } catch (error) {
@@ -281,6 +284,9 @@ class JobQueue {
           error: error.message || "Failed to send message",
           batchNumber: job.progress.currentBatch
         });
+
+        // Track failure for adaptive rate limiting
+        this.trackFailure(error);
       }
     }
   }
@@ -321,6 +327,77 @@ class JobQueue {
   }
 
   /**
+   * Calculate adaptive delay based on success rate and batch size
+   * @param {Object} job - Current job
+   * @param {Object} progress - Job progress
+   * @returns {number} Adaptive delay in milliseconds
+   */
+  calculateAdaptiveDelay(job, progress) {
+    if (!this.adaptiveDelayEnabled) {
+      return job.delay;
+    }
+
+    const baseDelay = job.delay;
+    const successRate = progress.processed > 0 ? progress.successful / progress.processed : 1;
+    const totalRecipients = progress.total;
+    const recentFailureCount = this.getRecentFailureCount();
+
+    // Start with base delay
+    let adaptiveDelay = baseDelay;
+
+    // Reduce delay for smaller batches (under 20 recipients)
+    if (totalRecipients <= 20) {
+      adaptiveDelay = Math.min(adaptiveDelay, 1000); // Max 1 second for small batches
+    }
+
+    // Reduce delay if success rate is high
+    if (successRate >= 0.95 && recentFailureCount === 0) {
+      adaptiveDelay = Math.max(adaptiveDelay * 0.6, 800); // Reduce by 40%, min 0.8 seconds
+    } else if (successRate >= 0.85) {
+      adaptiveDelay = Math.max(adaptiveDelay * 0.8, 1000); // Reduce by 20%, min 1 second
+    }
+
+    // Increase delay if there are recent failures (rate limiting)
+    if (recentFailureCount >= 3) {
+      adaptiveDelay = Math.min(adaptiveDelay * 2, 10000); // Double delay, max 10 seconds
+    } else if (recentFailureCount >= 1) {
+      adaptiveDelay = Math.min(adaptiveDelay * 1.5, 5000); // Increase by 50%, max 5 seconds
+    }
+
+    return Math.round(adaptiveDelay);
+  }
+
+  /**
+   * Track a failure for adaptive rate limiting
+   * @param {Error} error - The error that occurred
+   */
+  trackFailure(error) {
+    const now = Date.now();
+    const failure = {
+      timestamp: now,
+      error: error.message || 'Unknown error'
+    };
+    
+    this.recentFailures.push(failure);
+    
+    // Keep only failures from the last 5 minutes
+    this.recentFailures = this.recentFailures.filter(
+      f => now - f.timestamp < 5 * 60 * 1000
+    );
+  }
+
+  /**
+   * Get count of recent failures (last 5 minutes)
+   * @returns {number} Number of recent failures
+   */
+  getRecentFailureCount() {
+    const now = Date.now();
+    return this.recentFailures.filter(
+      f => now - f.timestamp < 5 * 60 * 1000
+    ).length;
+  }
+
+  /**
    * Clean up old jobs (keep last 100)
    */
   cleanup() {
@@ -336,6 +413,12 @@ class JobQueue {
       });
       logger.info(`Cleaned up ${toRemove.length} old jobs`);
     }
+    
+    // Also clean up old failures
+    const now = Date.now();
+    this.recentFailures = this.recentFailures.filter(
+      f => now - f.timestamp < 5 * 60 * 1000
+    );
   }
 }
 

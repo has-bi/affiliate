@@ -15,8 +15,8 @@ export async function POST(req) {
     // New approach: accept pre-processed messages
     if (body.processedMessages && Array.isArray(body.processedMessages)) {
       
-      // Get delay or use default
-      const delay = body.delay || 8000;
+      // Get delay or use optimized default (2 seconds instead of 8)
+      const delay = body.delay || 2000;
 
       // Initialize results
       const results = {
@@ -63,12 +63,14 @@ export async function POST(req) {
             messageId: sendResult.id || "unknown",
           });
 
-          // Add delay between messages
+          // Add intelligent delay between messages
           if (
             body.processedMessages.length > 1 &&
             results.totalSent < body.processedMessages.length
           ) {
-            await new Promise((resolve) => setTimeout(resolve, delay));
+            // Use shorter delay for small batches, longer for large ones
+            const intelligentDelay = body.processedMessages.length <= 20 ? Math.min(delay, 1500) : delay;
+            await new Promise((resolve) => setTimeout(resolve, intelligentDelay));
           }
         } catch (error) {
           console.error(`❌ Failed to send to ${item.recipient}:`, error);

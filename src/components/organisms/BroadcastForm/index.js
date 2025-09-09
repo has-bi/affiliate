@@ -8,6 +8,7 @@ import RecipientInput from "@/components/molecules/RecipientInput";
 import BroadcastProgress from "@/components/molecules/BroadcastProgress";
 import BulkJobProgress from "@/components/molecules/BulkJobProgress";
 import ImageUploader from "@/components/molecules/ImageUploader";
+import CSVUploader from "@/components/molecules/CSVUploader";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useBulkJob } from "@/hooks/useBulkJob";
 import { useSession } from "@/hooks/useWhatsApp";
@@ -40,7 +41,7 @@ const BroadcastForm = () => {
     sessionName: "",
     recipients: "",
     message: "",
-    delaySeconds: 3,
+    delaySeconds: 1.5,
     templateId: "",
     useTemplate: false,
   });
@@ -52,6 +53,8 @@ const BroadcastForm = () => {
   const [validationError, setValidationError] = useState("");
   const [recipientCount, setRecipientCount] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
+  const [csvContacts, setCsvContacts] = useState([]);
+  const [inputMethod, setInputMethod] = useState("manual"); // manual or csv
 
   // Handle template selection
   const handleTemplateChange = (e) => {
@@ -84,6 +87,18 @@ const BroadcastForm = () => {
   // Handle parameter value changes
   const handleParamChange = (paramId, value) => {
     setParamValues(prev => ({ ...prev, [paramId]: value }));
+  };
+
+  // Handle CSV contacts loaded
+  const handleCsvContactsLoaded = (contacts) => {
+    setCsvContacts(contacts);
+    setRecipientCount(contacts.length);
+    setValidationError("");
+    
+    // Real-time validation feedback
+    if (contacts.length > 100) {
+      setValidationError("Warning: Large recipient lists may take longer to process and could hit rate limits.");
+    }
   };
 
   // Update recipient count when recipients change
@@ -145,11 +160,30 @@ const BroadcastForm = () => {
         }
       }
 
-      // Parse recipients
-      const recipients = formData.recipients
-        .split(/[\n,]+/)
-        .map((r) => r.trim())
-        .filter(Boolean);
+      // Parse recipients based on input method
+      let recipients = [];
+      let contactsData = new Map(); // Map phone -> contact info
+      
+      if (inputMethod === "csv" && csvContacts.length > 0) {
+        // Use CSV data
+        recipients = csvContacts.map(contact => contact.phoneNumber);
+        
+        // Create lookup map for CSV contacts
+        csvContacts.forEach(contact => {
+          const phoneKey = contact.phoneNumber.replace(/\D/g, "");
+          contactsData.set(phoneKey, {
+            name: contact.name,
+            phone: contact.phoneNumber,
+            source: "csv"
+          });
+        });
+      } else {
+        // Use manual input
+        recipients = formData.recipients
+          .split(/[\n,]+/)
+          .map((r) => r.trim())
+          .filter(Boolean);
+      }
 
       // Validate recipients format
       const invalidRecipients = recipients.filter(r => {
@@ -172,28 +206,31 @@ const BroadcastForm = () => {
       let processedMessages = [];
       
       if (formData.useTemplate && selectedTemplate) {
-        // Fetch affiliate data for dynamic parameters
+        // Fetch affiliate data for dynamic parameters (only if not using CSV)
         let affiliateData = [];
-        try {
-          const response = await fetch("/api/affiliates?status=active");
-          if (response.ok) {
-            affiliateData = await response.json();
-          }
-        } catch (error) {
-          console.error("Error fetching affiliate data:", error);
-        }
-
-        // Create affiliate lookup map
         const affiliateMap = new Map();
-        if (Array.isArray(affiliateData)) {
-          affiliateData.forEach((affiliate) => {
-            if (affiliate.phone) {
-              const key = affiliate.phone.replace(/\D/g, "");
-              if (key) {
-                affiliateMap.set(key, affiliate);
-              }
+        
+        if (inputMethod !== "csv" || contactsData.size === 0) {
+          try {
+            const response = await fetch("/api/affiliates?status=active");
+            if (response.ok) {
+              affiliateData = await response.json();
             }
-          });
+          } catch (error) {
+            console.error("Error fetching affiliate data:", error);
+          }
+
+          // Create affiliate lookup map
+          if (Array.isArray(affiliateData)) {
+            affiliateData.forEach((affiliate) => {
+              if (affiliate.phone) {
+                const key = affiliate.phone.replace(/\D/g, "");
+                if (key) {
+                  affiliateMap.set(key, affiliate);
+                }
+              }
+            });
+          }
         }
 
         // Process each recipient with template
@@ -203,18 +240,33 @@ const BroadcastForm = () => {
             ? recipient
             : `${phoneNumber}@c.us`;
 
-          // Get affiliate info
-          const affiliateInfo = affiliateMap.get(phoneNumber);
-          const contactData = affiliateInfo
-            ? {
-                name: affiliateInfo.name || "Affiliate",
-                phone: phoneNumber,
-                platform: affiliateInfo.platform || "",
-              }
-            : {
-                name: "Affiliate",
-                phone: phoneNumber,
-              };
+          // Get contact info - prioritize CSV data, then affiliate database
+          let contactData;
+          const csvContact = contactsData.get(phoneNumber);
+          
+          if (csvContact) {
+            // Use CSV data (highest priority)
+            contactData = {
+              name: csvContact.name,
+              phone: phoneNumber,
+              source: "csv",
+            };
+          } else {
+            // Fallback to affiliate database
+            const affiliateInfo = affiliateMap.get(phoneNumber);
+            contactData = affiliateInfo
+              ? {
+                  name: affiliateInfo.name || "Affiliate",
+                  phone: phoneNumber,
+                  platform: affiliateInfo.platform || "",
+                  source: "database",
+                }
+              : {
+                  name: "Affiliate",
+                  phone: phoneNumber,
+                  source: "fallback",
+                };
+          }
 
           // Process template with dynamic and static parameters
           const processedMessage = processAllParameters(
@@ -274,7 +326,7 @@ const BroadcastForm = () => {
       sessionName: "",
       recipients: "",
       message: "",
-      delaySeconds: 5,
+      delaySeconds: 1.5,
       templateId: "",
       useTemplate: false,
     });
@@ -283,6 +335,8 @@ const BroadcastForm = () => {
     setSelectedImage(null);
     setRecipientCount(0);
     setValidationError("");
+    setCsvContacts([]);
+    setInputMethod("manual");
     clearResult();
     clearActiveJob();
   };
@@ -438,30 +492,133 @@ const BroadcastForm = () => {
                           __html: formatMessageContent(
                             processAllParameters(
                               selectedTemplate.content,
-                              { name: "[Name will be filled automatically]" },
+                              { 
+                                name: inputMethod === "csv" && csvContacts.length > 0 
+                                  ? csvContacts[0].name + " (from CSV)" 
+                                  : "[Name will be filled automatically]" 
+                              },
                               paramValues
                             )
                           )
                         }} 
                       />
                     </div>
+                    {inputMethod === "csv" && csvContacts.length > 0 && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        📄 Names will be filled from your CSV data (showing example with "{csvContacts[0].name}")
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Recipients Input */}
-              <RecipientInput
-                recipients={formData.recipients}
-                onUpdateRecipients={handleRecipientsChange}
-                delaySeconds={formData.delaySeconds}
-                onUpdateDelay={(value) =>
-                  setFormData((prev) => ({ ...prev, delaySeconds: value }))
-                }
-                parsedCount={recipientCount}
-                error={
-                  validationError.includes("recipient") ? validationError : ""
-                }
-              />
+              {/* Input Method Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recipients Input Method
+                </label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="inputMethod"
+                      checked={inputMethod === "manual"}
+                      onChange={() => {
+                        setInputMethod("manual");
+                        setCsvContacts([]);
+                        setRecipientCount(formData.recipients.split(/[\n,]+/).map(r => r.trim()).filter(Boolean).length);
+                      }}
+                      className="mr-2"
+                      disabled={isSending}
+                    />
+                    Manual Input
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="inputMethod"
+                      checked={inputMethod === "csv"}
+                      onChange={() => {
+                        setInputMethod("csv");
+                        setFormData(prev => ({ ...prev, recipients: "" }));
+                        setRecipientCount(csvContacts.length);
+                      }}
+                      className="mr-2"
+                      disabled={isSending}
+                    />
+                    CSV Upload (with Names)
+                  </label>
+                </div>
+              </div>
+
+              {/* Recipients Input - Manual */}
+              {inputMethod === "manual" && (
+                <RecipientInput
+                  recipients={formData.recipients}
+                  onUpdateRecipients={handleRecipientsChange}
+                  delaySeconds={formData.delaySeconds}
+                  onUpdateDelay={(value) =>
+                    setFormData((prev) => ({ ...prev, delaySeconds: value }))
+                  }
+                  parsedCount={recipientCount}
+                  error={
+                    validationError.includes("recipient") ? validationError : ""
+                  }
+                />
+              )}
+
+              {/* Recipients Input - CSV */}
+              {inputMethod === "csv" && (
+                <div className="space-y-4">
+                  <CSVUploader 
+                    onRecipientsLoaded={handleCsvContactsLoaded}
+                    className=""
+                  />
+                  
+                  {csvContacts.length > 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                      <h4 className="text-sm font-medium text-green-900 mb-2">
+                        CSV Contacts Loaded ({csvContacts.length} contacts)
+                      </h4>
+                      <div className="text-sm text-green-700">
+                        <p>✅ Names available for dynamic parameters</p>
+                        <p>📱 Phone numbers ready for broadcast</p>
+                      </div>
+                      
+                      {/* Show preview of first few contacts */}
+                      <div className="mt-2 text-xs">
+                        <p className="font-medium mb-1">Preview:</p>
+                        {csvContacts.slice(0, 3).map((contact, index) => (
+                          <p key={index} className="text-gray-600">
+                            {contact.name} - {contact.phoneNumber}
+                          </p>
+                        ))}
+                        {csvContacts.length > 3 && (
+                          <p className="text-gray-500">... and {csvContacts.length - 3} more</p>
+                        )}
+                      </div>
+                      
+                      {/* Delay Settings for CSV */}
+                      <div className="mt-3 flex items-center gap-2">
+                        <label className="text-xs font-medium text-gray-700">
+                          Delay between messages:
+                        </label>
+                        <input
+                          type="number"
+                          min="0.5"
+                          max="30"
+                          step="0.5"
+                          className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-md"
+                          value={formData.delaySeconds}
+                          onChange={(e) => setFormData(prev => ({ ...prev, delaySeconds: parseFloat(e.target.value) || 1.5 }))}
+                          disabled={isSending}
+                        />
+                        <span className="text-xs text-gray-500">seconds</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Message Input - Only show when not using template */}
               {!formData.useTemplate && (
@@ -523,7 +680,7 @@ const BroadcastForm = () => {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={isSending || isCreatingJob || isValidating || recipientCount === 0 || !formData.sessionName || (!formData.useTemplate && !formData.message.trim()) || (formData.useTemplate && !selectedTemplate)}
+                  disabled={isSending || isCreatingJob || isValidating || recipientCount === 0 || !formData.sessionName || (!formData.useTemplate && !formData.message.trim()) || (formData.useTemplate && !selectedTemplate) || (inputMethod === "csv" && csvContacts.length === 0)}
                   isLoading={isSending || isCreatingJob || isValidating}
                   leftIcon={!(isSending || isValidating) && <Send className="h-4 w-4" />}
                 >

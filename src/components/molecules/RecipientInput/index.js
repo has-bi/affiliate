@@ -99,14 +99,15 @@ or 6281234567890, 6289876543210"
               <input
                 id="delay"
                 type="number"
-                min="1"
+                min="0.5"
                 max="30"
+                step="0.5"
                 className="w-20 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={delaySeconds}
-                onChange={(e) => onUpdateDelay(parseInt(e.target.value) || 3)}
+                onChange={(e) => onUpdateDelay(parseFloat(e.target.value) || 1.5)}
               />
               <span className="text-sm text-gray-500">
-                {delaySeconds < 3 && parsedCount > 10 && (
+                {delaySeconds < 2 && parsedCount > 20 && (
                   <div className="flex items-center gap-1">
                     <span className="text-amber-600">⚠️ Consider longer delay for large batches</span>
                     <InfoTooltip
@@ -114,14 +115,14 @@ or 6281234567890, 6289876543210"
                       description="For large batches, longer delays help prevent rate limiting and improve delivery rates. Short delays with many recipients can trigger WhatsApp's spam protection."
                       examples={[
                         `Current: ${delaySeconds} seconds between messages`,
-                        `Recommended for ${parsedCount} recipients: 5+ seconds`,
+                        `Recommended for ${parsedCount} recipients: 2+ seconds`,
                         `Total time would be: ~${Math.ceil(parsedCount * Math.max(delaySeconds, 5) / 60)} minutes`
                       ]}
                       position="top"
                     />
                   </div>
                 )}
-                {delaySeconds >= 3 && parsedCount > 0 && (
+                {delaySeconds >= 1.5 && parsedCount > 0 && (
                   <span className="text-green-600">✅ Good rate limiting</span>
                 )}
               </span>
