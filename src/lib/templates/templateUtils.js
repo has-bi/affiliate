@@ -230,6 +230,9 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
     });
   }
 
+  // Apply text formatting after all parameter processing
+  processedContent = formatMessageContent(processedContent);
+
   return processedContent;
 }
 
