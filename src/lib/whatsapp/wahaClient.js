@@ -384,12 +384,17 @@ class WAHAClient {
     // Make sure text is a string
     const textContent = String(text);
 
-    // Apply WhatsApp formatting (bold/italic)
-    const whatsappFormattedText = textContent
-      .replace(/<strong>(.*?)<\/strong>/g, "*$1*")
-      .replace(/<em>(.*?)<\/em>/g, "_$1_")
-      // Also remove any HTML tags that might remain
-      .replace(/<[^>]*>/g, "");
+    // Apply WhatsApp formatting (bold/italic) only if text contains HTML tags
+    // If text already has WhatsApp formatting (from processAllParameters), don't convert again
+    let whatsappFormattedText = textContent;
+
+    if (textContent.includes('<strong>') || textContent.includes('<em>')) {
+      whatsappFormattedText = textContent
+        .replace(/<strong>(.*?)<\/strong>/g, "*$1*")
+        .replace(/<em>(.*?)<\/em>/g, "_$1_")
+        // Also remove any HTML tags that might remain
+        .replace(/<[^>]*>/g, "");
+    }
 
     try {
       // Skip session check during bulk operations - let the caller handle it

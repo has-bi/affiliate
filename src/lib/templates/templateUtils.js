@@ -230,8 +230,11 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
     });
   }
 
-  // Apply text formatting after all parameter processing
-  processedContent = formatMessageContent(processedContent);
+  // Apply WhatsApp formatting directly (not HTML formatting)
+  // Convert **bold** to *bold* and *italic* to _italic_
+  processedContent = processedContent
+    .replace(/\*\*(.*?)\*\*/g, "*$1*")  // **bold** -> *bold*
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_"); // *italic* -> _italic_
 
   return processedContent;
 }
