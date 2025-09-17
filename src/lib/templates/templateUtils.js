@@ -157,6 +157,9 @@ export function formatMessageContent(content) {
     '<a href="$1" class="text-blue-600 underline" target="_blank" rel="noopener noreferrer">$1</a>'
   );
 
+  // Convert newlines to HTML breaks for display
+  formatted = formatted.replace(/\n/g, "<br>");
+
   return formatted;
 }
 
@@ -235,6 +238,11 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
   processedContent = processedContent
     .replace(/\*\*(.*?)\*\*/g, "*$1*")  // **bold** -> *bold*
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_"); // *italic* -> _italic_
+
+  // DEBUG: Log the processed content
+  console.log('DEBUG processAllParameters - Input content (JSON):', JSON.stringify(content));
+  console.log('DEBUG processAllParameters - Output content (JSON):', JSON.stringify(processedContent));
+  console.log('DEBUG processAllParameters - Output content (raw):', processedContent);
 
   return processedContent;
 }

@@ -400,6 +400,12 @@ class WAHAClient {
       // Skip session check during bulk operations - let the caller handle it
       // This reduces redundant checks during batch processing
 
+      // DEBUG: Log what we're about to send
+      console.log('DEBUG WAHA - Sending text message:');
+      console.log('Recipient:', `${recipient}@c.us`);
+      console.log('Text content (JSON):', JSON.stringify(whatsappFormattedText));
+      console.log('Text content (raw):', whatsappFormattedText);
+
       // Send message using WAHA API
       const response = await fetch(`${this.baseUrl}/api/sendText`, {
         method: "POST",

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { formatMessageContent } from "@/lib/templates/templateUtils";
+import { formatMessageContent, processAllParameters } from "@/lib/templates/templateUtils";
 import { batchValidatePhones, validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 
 /**
@@ -238,25 +238,12 @@ export function useMessageWizard(templates = [], initialTemplateId = null) {
     (contact) => {
       if (!selectedTemplate || !selectedTemplate.content) return "";
 
-      let finalContent = selectedTemplate.content;
-
-      // First fill dynamic parameters from contact
-      if (contact) {
-        // Handle name parameter
-        if (contact.name && finalContent.includes("{name}")) {
-          finalContent = finalContent.replace(/\{name\}/g, contact.name);
-        }
-
-        // Add other contact field replacements as needed
-      }
-
-      // Then fill static parameters
-      Object.entries(paramValues).forEach(([key, value]) => {
-        const regex = new RegExp(`\\{${key}\\}`, "g");
-        finalContent = finalContent.replace(regex, value || `{${key}}`);
-      });
-
-      return formatMessageContent(finalContent);
+      // Use processAllParameters for consistent parameter processing and WhatsApp formatting
+      return processAllParameters(
+        selectedTemplate.content,
+        contact || {},
+        paramValues
+      );
     },
     [selectedTemplate, paramValues]
   );
