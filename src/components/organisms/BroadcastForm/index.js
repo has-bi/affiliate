@@ -41,7 +41,7 @@ const BroadcastForm = () => {
     sessionName: "",
     recipients: "",
     message: "",
-    delaySeconds: 1.5,
+    delaySeconds: 1.0,
     templateId: "",
     useTemplate: false,
   });
@@ -304,7 +304,7 @@ const BroadcastForm = () => {
       sessionName: "",
       recipients: "",
       message: "",
-      delaySeconds: 1.5,
+      delaySeconds: 1.0,
       templateId: "",
       useTemplate: false,
     });

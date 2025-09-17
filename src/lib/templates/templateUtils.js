@@ -244,10 +244,22 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
   console.log('DEBUG processAllParameters - Output content (JSON):', JSON.stringify(processedContent));
   console.log('DEBUG processAllParameters - Output content (raw):', processedContent);
 
-  // EXPERIMENTAL: Try converting single newlines to double newlines for WhatsApp
-  // Some WhatsApp APIs require double newlines to show line breaks
-  processedContent = processedContent.replace(/\n/g, '\n\n');
-  console.log('DEBUG processAllParameters - After double newlines (JSON):', JSON.stringify(processedContent));
+  // SMART NEWLINE HANDLING for WhatsApp
+  // 1. First, normalize all line endings to \n
+  processedContent = processedContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // 2. Handle different newline patterns:
+  // - Single newlines become double newlines (paragraph breaks)
+  // - Already double newlines stay as double newlines
+  // - Triple+ newlines become double newlines (no excessive spacing)
+
+  // Replace any sequence of 3+ newlines with exactly 2 newlines
+  processedContent = processedContent.replace(/\n{3,}/g, '\n\n');
+
+  // Replace exactly 1 newline with 2 newlines (only if it's truly single)
+  processedContent = processedContent.replace(/(?<!\n)\n(?!\n)/g, '\n\n');
+
+  console.log('DEBUG processAllParameters - After smart newline handling (JSON):', JSON.stringify(processedContent));
 
   return processedContent;
 }

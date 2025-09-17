@@ -24,8 +24,8 @@ export async function POST(req) {
         );
       }
       
-      // Get delay or use optimized default (2 seconds instead of 8)
-      const delay = body.delay || 2000;
+      // Get delay or use optimized default (1 second instead of 2)
+      const delay = body.delay || 1000;
 
       // Initialize results
       const results = {
@@ -78,7 +78,7 @@ export async function POST(req) {
             results.totalSent < body.processedMessages.length
           ) {
             // Use shorter delay for small batches, longer for large ones
-            const intelligentDelay = body.processedMessages.length <= 20 ? Math.min(delay, 1500) : delay;
+            const intelligentDelay = body.processedMessages.length <= 20 ? Math.min(delay, 800) : delay;
             await new Promise((resolve) => setTimeout(resolve, intelligentDelay));
           }
         } catch (error) {
@@ -89,6 +89,9 @@ export async function POST(req) {
             success: false,
             error: error.message || "Failed to send message",
           });
+
+          // Continue with next message after logging the error
+          // No need to throw - just continue the loop
         }
       }
 

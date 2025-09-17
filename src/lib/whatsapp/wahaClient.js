@@ -460,7 +460,7 @@ class WAHAClient {
    * @param {number} delayMs - Delay between messages in milliseconds
    * @returns {Promise<Object>} Results of send operation
    */
-  async sendBulk(recipients, text, delayMs = 8000) {
+  async sendBulk(recipients, text, delayMs = 1500) {
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       throw new Error("Recipients array is required and cannot be empty");
     }
