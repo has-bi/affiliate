@@ -244,6 +244,11 @@ export function processAllParameters(content, contact = {}, staticParams = {}) {
   console.log('DEBUG processAllParameters - Output content (JSON):', JSON.stringify(processedContent));
   console.log('DEBUG processAllParameters - Output content (raw):', processedContent);
 
+  // EXPERIMENTAL: Try converting single newlines to double newlines for WhatsApp
+  // Some WhatsApp APIs require double newlines to show line breaks
+  processedContent = processedContent.replace(/\n/g, '\n\n');
+  console.log('DEBUG processAllParameters - After double newlines (JSON):', JSON.stringify(processedContent));
+
   return processedContent;
 }
 
