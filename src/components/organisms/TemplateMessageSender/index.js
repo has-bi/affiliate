@@ -266,9 +266,10 @@ export default function TemplateMessageSender() {
         
         // Create bulk job with the first processed message as template
         await createBulkJob(
-          sessionName, 
-          recipients, 
+          sessionName,
+          recipients,
           processedMessages[0]?.message || selectedTemplate.content,
+          processedMessages,
           imageData
         );
         

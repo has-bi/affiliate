@@ -17,32 +17,41 @@ export const useBulkJob = () => {
    * @param {Object} image - Optional image object
    * @returns {Promise<Object>} Job creation result
    */
-  const createBulkJob = useCallback(async (sessionName, recipients, message, image = null) => {
-    setIsCreating(true);
-    setError(null);
+  const createBulkJob = useCallback(
+    async (
+      sessionName,
+      recipients,
+      message,
+      processedMessages = [],
+      image = null
+    ) => {
+      setIsCreating(true);
+      setError(null);
 
-    try {
-      const defaultDelay = Number.parseInt(
-        process.env.NEXT_PUBLIC_BULK_SEND_DELAY_MS || "350",
-        10
-      );
+      try {
+        const defaultDelay = Number.parseInt(
+          process.env.NEXT_PUBLIC_BULK_SEND_DELAY_MS || "350",
+          10
+        );
 
-      const payload = {
-        recipients,
-        message,
-        session: sessionName,
-        delay: Number.isFinite(defaultDelay) && defaultDelay > 0 ? defaultDelay : 350,
-        templateName: "Manual broadcast",
-        perRecipientMessages: processedMessages.map((item) => ({
-          recipient: item.recipient,
-          message: item.message,
-          contactData: item.contactData || null,
-        })),
-      };
+        const payload = {
+          recipients,
+          message,
+          session: sessionName,
+          delay: Number.isFinite(defaultDelay) && defaultDelay > 0 ? defaultDelay : 350,
+          templateName: "Manual broadcast",
+          perRecipientMessages: Array.isArray(processedMessages)
+            ? processedMessages.map((item) => ({
+                recipient: item.recipient,
+                message: item.message,
+                contactData: item.contactData || null,
+              }))
+            : [],
+        };
 
-      // Add image URL if provided
-      if (image && image.url) {
-        payload.imageUrl = image.url;
+        // Add image URL if provided
+        if (image && image.url) {
+          payload.imageUrl = image.url;
       }
 
       const response = await fetch("/api/messages/bulk-job", {
@@ -85,7 +94,9 @@ export const useBulkJob = () => {
     } finally {
       setIsCreating(false);
     }
-  }, []);
+    },
+    []
+  );
 
   /**
    * Check status of a specific job

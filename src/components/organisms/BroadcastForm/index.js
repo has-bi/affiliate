@@ -288,7 +288,13 @@ const BroadcastForm = () => {
           console.log("Broadcast result:", result);
         } else {
           // For simple messages, use the job system
-          await createBulkJob(formData.sessionName, recipients, finalMessage, selectedImage);
+          await createBulkJob(
+            formData.sessionName,
+            recipients,
+            finalMessage,
+            [],
+            selectedImage
+          );
         }
       } else {
         await broadcastMessage(formData.sessionName, recipients, finalMessage, selectedImage);
