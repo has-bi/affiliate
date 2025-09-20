@@ -22,12 +22,22 @@ export const useBulkJob = () => {
     setError(null);
 
     try {
+      const defaultDelay = Number.parseInt(
+        process.env.NEXT_PUBLIC_BULK_SEND_DELAY_MS || "350",
+        10
+      );
+
       const payload = {
         recipients,
         message,
         session: sessionName,
-        delay: 8000, // 8 second delay between messages
-        templateName: "Manual broadcast"
+        delay: Number.isFinite(defaultDelay) && defaultDelay > 0 ? defaultDelay : 350,
+        templateName: "Manual broadcast",
+        perRecipientMessages: processedMessages.map((item) => ({
+          recipient: item.recipient,
+          message: item.message,
+          contactData: item.contactData || null,
+        })),
       };
 
       // Add image URL if provided

@@ -15,6 +15,17 @@ class JobQueue {
     this.batchDelay = 1000; // 1 second between batches (reduced from 2 seconds)
     this.adaptiveDelayEnabled = true; // Enable adaptive delays based on success rate
     this.recentFailures = []; // Track recent failures for rate limiting
+    this.defaultDelay = this.normalizeDelay(
+      process.env.BULK_SEND_DELAY_MS || "350"
+    );
+  }
+
+  normalizeDelay(value) {
+    const numeric = Number.parseInt(value, 10);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return 350;
+    }
+    return Math.max(150, Math.round(numeric));
   }
 
   /**
@@ -26,14 +37,25 @@ class JobQueue {
    */
   createJob(recipients, message, options = {}) {
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const resolvedDelay = this.normalizeDelay(options.delay);
+
+    let perRecipientMessageMap = null;
+    if (Array.isArray(options.perRecipientMessages) && options.perRecipientMessages.length > 0) {
+      perRecipientMessageMap = new Map();
+      options.perRecipientMessages.forEach((item) => {
+        if (item && typeof item.recipient === "string") {
+          perRecipientMessageMap.set(item.recipient, item.message);
+        }
+      });
+    }
+
     const job = {
       id: jobId,
       status: 'pending',
       recipients: recipients,
       message: message,
       session: options.session || 'youvit',
-      delay: options.delay || 1500, // Reduced from 8000ms to 1.5 seconds
+      delay: resolvedDelay || this.defaultDelay,
       imageUrl: options.imageUrl || null,
       templateName: options.templateName || 'Manual broadcast',
       createdAt: new Date(),
@@ -51,7 +73,8 @@ class JobQueue {
         success: [],
         failures: []
       },
-      error: null
+      error: null,
+      perRecipientMessages: perRecipientMessageMap
     };
 
     // Create campaign record in message history
@@ -224,18 +247,20 @@ class JobQueue {
 
         // Send message (with or without image) - skip individual session checks
         // since we already validated the session at job start
+        const messageContent = this.resolveMessage(job, recipient);
+
         if (job.imageUrl) {
           sendResult = await wahaClient.sendImage(
             job.session,
             recipient,
             job.imageUrl,
-            job.message
+            messageContent
           );
         } else {
           sendResult = await wahaClient.sendText(
             job.session,
             recipient,
-            job.message
+            messageContent
           );
         }
 
@@ -252,7 +277,7 @@ class JobQueue {
         // Record message in history
         messageHistory.recordMessage(job.campaignId, {
           recipient: recipient,
-          message: job.message,
+          message: messageContent,
           imageUrl: job.imageUrl,
           status: 'success',
           sentAt: new Date(),
@@ -285,7 +310,7 @@ class JobQueue {
         // Record failure in history
         messageHistory.recordMessage(job.campaignId, {
           recipient: recipient,
-          message: job.message,
+          message: this.resolveMessage(job, recipient),
           imageUrl: job.imageUrl,
           status: 'failed',
           sentAt: new Date(),
@@ -314,6 +339,13 @@ class JobQueue {
         }
       }
     }
+  }
+
+  resolveMessage(job, recipient) {
+    if (job.perRecipientMessages && job.perRecipientMessages.size > 0) {
+      return job.perRecipientMessages.get(recipient) || job.message;
+    }
+    return job.message;
   }
 
   /**
@@ -367,26 +399,30 @@ class JobQueue {
     const totalRecipients = progress.total;
     const recentFailureCount = this.getRecentFailureCount();
 
-    // Start with base delay
     let adaptiveDelay = baseDelay;
 
-    // Reduce delay for smaller batches (under 20 recipients)
     if (totalRecipients <= 20) {
-      adaptiveDelay = Math.min(adaptiveDelay, 1000); // Max 1 second for small batches
+      adaptiveDelay = Math.min(adaptiveDelay, Math.max(baseDelay, 600));
     }
 
-    // Reduce delay if success rate is high
-    if (successRate >= 0.95 && recentFailureCount === 0) {
-      adaptiveDelay = Math.max(adaptiveDelay * 0.6, 800); // Reduce by 40%, min 0.8 seconds
-    } else if (successRate >= 0.85) {
-      adaptiveDelay = Math.max(adaptiveDelay * 0.8, 1000); // Reduce by 20%, min 1 second
+    if (baseDelay > 800) {
+      if (successRate >= 0.95 && recentFailureCount === 0) {
+        adaptiveDelay = Math.max(adaptiveDelay * 0.6, 800);
+      } else if (successRate >= 0.85) {
+        adaptiveDelay = Math.max(adaptiveDelay * 0.8, 1000);
+      }
+    } else {
+      if (successRate >= 0.95 && recentFailureCount === 0) {
+        adaptiveDelay = Math.max(Math.round(adaptiveDelay * 0.7), 150);
+      } else if (successRate >= 0.85) {
+        adaptiveDelay = Math.max(Math.round(adaptiveDelay * 0.85), 200);
+      }
     }
 
-    // Increase delay if there are recent failures (rate limiting)
     if (recentFailureCount >= 3) {
-      adaptiveDelay = Math.min(adaptiveDelay * 2, 10000); // Double delay, max 10 seconds
+      adaptiveDelay = Math.min(adaptiveDelay * 2, 10000);
     } else if (recentFailureCount >= 1) {
-      adaptiveDelay = Math.min(adaptiveDelay * 1.5, 5000); // Increase by 50%, max 5 seconds
+      adaptiveDelay = Math.min(adaptiveDelay * 1.5, 5000);
     }
 
     return Math.round(adaptiveDelay);

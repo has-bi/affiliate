@@ -29,14 +29,15 @@ export async function POST(req) {
       );
     }
 
-    // Format and validate phone numbers
+    // Format and validate phone numbers while keeping per-recipient messages aligned
     let formattedRecipients = { valid: [], invalid: [] };
+    const perRecipientMessages = [];
     
     try {
       if (Array.isArray(body.recipients)) {
         const seenNumbers = new Set();
         
-        body.recipients.forEach((phone) => {
+        body.recipients.forEach((phone, index) => {
           if (!phone || typeof phone !== 'string') {
             formattedRecipients.invalid.push({
               input: phone || '',
@@ -57,6 +58,14 @@ export async function POST(req) {
             } else {
               seenNumbers.add(result.cleanNumber);
               formattedRecipients.valid.push(result.formatted);
+              const messageForRecipient =
+                body.perRecipientMessages?.[index]?.message || body.message;
+              perRecipientMessages.push({
+                recipient: result.formatted,
+                message: messageForRecipient,
+                contactData:
+                  body.perRecipientMessages?.[index]?.contactData || null,
+              });
             }
           } else {
             formattedRecipients.invalid.push({
@@ -93,9 +102,10 @@ export async function POST(req) {
     // Create job options
     const jobOptions = {
       session: body.session || 'youvit',
-      delay: body.delay || 8000,
+      delay: body.delay,
       imageUrl: body.imageUrl || null,
-      templateName: body.templateName || 'Manual broadcast'
+      templateName: body.templateName || 'Manual broadcast',
+      perRecipientMessages,
     };
 
     // Validate WhatsApp session before creating job

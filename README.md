@@ -99,9 +99,10 @@ GOOGLE_SHEETS_DOCUMENT_ID="your_google_sheets_document_id"
 NEXT_PUBLIC_WAHA_API_URL="https://your-waha-server.com"
 NEXT_PUBLIC_WAHA_SESSION="your_session_name"
 NEXT_PUBLIC_WAHA_API_KEY="your_api_key" # Optional
-# Scheduler safeguards — optional but recommended
-SCHEDULE_SEND_DELAY_MS="250" # Delay between recipients (in ms)
+# Bulk / Scheduler safeguards
+SCHEDULE_SEND_DELAY_MS="250" # Delay between scheduled recipients (ms)
 WAHA_SEND_TIMEOUT_MS="15000" # Abort WAHA requests after this many ms
+BULK_SEND_DELAY_MS="350" # Delay between bulk recipients (ms)
 
 # App Configuration
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
@@ -137,7 +138,7 @@ npx prisma db seed
 2. Create a WhatsApp session
 3. Scan QR code to authenticate
 4. Configure the session name in environment variables
-5. Tune delivery delay (`SCHEDULE_SEND_DELAY_MS`) and timeout (`WAHA_SEND_TIMEOUT_MS`) to balance throughput vs stability
+5. Tune delivery delay (`SCHEDULE_SEND_DELAY_MS`, `BULK_SEND_DELAY_MS`) and timeout (`WAHA_SEND_TIMEOUT_MS`) to balance throughput vs stability
 
 ## 🚀 Running the Application
 
