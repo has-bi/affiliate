@@ -17,6 +17,14 @@ class WAHAClient {
     this.CACHE_TTL = 60000; // 60 seconds cache (increased from 30)
     this.failureCount = 0;
     this.lastFailureTime = 0;
+
+    this.sendTimeoutMs = Number.parseInt(
+      process.env.WAHA_SEND_TIMEOUT_MS || "15000",
+      10
+    );
+    if (!Number.isFinite(this.sendTimeoutMs) || this.sendTimeoutMs <= 0) {
+      this.sendTimeoutMs = 15000;
+    }
   }
 
   // Get headers with API key if needed
@@ -311,21 +319,25 @@ class WAHAClient {
       // This reduces redundant checks during batch processing
 
       // Send image using WAHA API - Updated to match official documentation
-      const response = await fetch(`${this.baseUrl}/api/sendImage`, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          chatId: `${recipient}@c.us`,
-          file: {
-            mimetype: detectedMimetype,
-            filename: detectedFilename,
-            url: imageUrl
-          },
-          reply_to: null,
-          caption: whatsappFormattedCaption,
-          session: session || this.defaultSession
-        }),
-      });
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/api/sendImage`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            chatId: `${recipient}@c.us`,
+            file: {
+              mimetype: detectedMimetype,
+              filename: detectedFilename,
+              url: imageUrl,
+            },
+            reply_to: null,
+            caption: whatsappFormattedCaption,
+            session: session || this.defaultSession,
+          }),
+        },
+        this.sendTimeoutMs
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -407,15 +419,19 @@ class WAHAClient {
       console.log('Text content (raw):', whatsappFormattedText);
 
       // Send message using WAHA API
-      const response = await fetch(`${this.baseUrl}/api/sendText`, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          chatId: `${recipient}@c.us`,
-          text: whatsappFormattedText,
-          session: session || this.defaultSession,
-        }),
-      });
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/api/sendText`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            chatId: `${recipient}@c.us`,
+            text: whatsappFormattedText,
+            session: session || this.defaultSession,
+          }),
+        },
+        this.sendTimeoutMs
+      );
 
       if (!response.ok) {
         const errorText = await response.text();

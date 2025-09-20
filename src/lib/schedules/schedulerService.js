@@ -13,6 +13,9 @@ import {
 import { phoneKey } from "@/lib/utils";
 import { validateAndFormatPhone } from "@/lib/utils/phoneValidator";
 import { getActiveAffiliates } from "@/lib/sheets/spreadsheetService";
+import wahaClient from "@/lib/whatsapp/wahaClient";
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class SchedulerService {
   constructor() {
@@ -20,6 +23,13 @@ class SchedulerService {
     this.executionLocks = new Map();
     this.wahaApiUrl = process.env.NEXT_PUBLIC_WAHA_API_URL;
     this.wahaApiKey = process.env.NEXT_PUBLIC_WAHA_API_KEY;
+    this.delayBetweenSendsMs = Number.parseInt(
+      process.env.SCHEDULE_SEND_DELAY_MS || "250",
+      10
+    );
+    if (!Number.isFinite(this.delayBetweenSendsMs) || this.delayBetweenSendsMs < 0) {
+      this.delayBetweenSendsMs = 0;
+    }
 
     // Log time zone information for debugging
     console.log(
@@ -469,201 +479,135 @@ class SchedulerService {
       console.log(`Processing ${scheduleData.recipients.length} recipients...`);
 
       try {
-        // Process each recipient
-        const results = await Promise.allSettled(
-          scheduleData.recipients.map(async (recipient) => {
-            try {
-              console.log(`\nProcessing recipient: ${recipient}`);
+        const processRecipient = async (recipient, index) => {
+          try {
+            console.log(`\nProcessing recipient #${index + 1}: ${recipient}`);
 
-              // Format phone number if needed
-              let formattedChatId;
-              if (recipient.includes("@c.us")) {
-                formattedChatId = recipient;
-              } else {
-                const phoneResult = validateAndFormatPhone(recipient);
-                if (!phoneResult.isValid) {
-                  console.error(`Invalid phone number ${recipient}: ${phoneResult.error}`);
-                  throw new Error(`Invalid phone number: ${phoneResult.error}`);
-                }
-                formattedChatId = phoneResult.formatted;
-              }
-
-              console.log(`Formatted chat ID: ${formattedChatId}`);
-
-              // Extract phone number for lookup
-              const contactPhone = formattedChatId.split("@")[0];
-              const normalizedPhone = phoneKey(contactPhone);
-
-              // Look up affiliate info by phone number
-              const affiliateInfo = affiliateMap.get(normalizedPhone);
-
-              // Create contact object with real name if found, or fallback
-              const contactData = affiliateInfo
-                ? {
-                    name: affiliateInfo.name || "Affiliate",
-                    phone: contactPhone,
-                    platform: affiliateInfo.platform,
-                    // Include other fields from affiliate data as needed
-                  }
-                : {
-                    name: "Affiliate", // Default fallback name
-                    phone: contactPhone,
-                  };
-
-              console.log(`Contact data for ${contactPhone}:`, contactData);
-
-              // Process the template with both dynamic and static parameters
-              const processedMessage = processAllParameters(
-                template.content,
-                contactData,
-                scheduleData.paramValues
-              );
-
-              // Log the preview
-              console.log(
-                `Message preview: ${processedMessage.substring(0, 50)}...`
-              );
-
-              // Check if schedule or template includes image (prioritize schedule-specific image)
-              let response;
-              const imageUrl = scheduleData.imageUrl || template.imageUrl;
-              if (imageUrl) {
-                // Send message with image
-                const imageRequestBody = {
-                  chatId: formattedChatId,
-                  file: {
-                    mimetype: "image/jpeg",
-                    filename: "image.jpg",
-                    url: imageUrl
-                  },
-                  caption: processedMessage,
-                  session: scheduleData.sessionName,
-                };
-
-                console.log(
-                  `Making API request to ${this.wahaApiUrl}/api/sendImage`
-                );
-                console.log(
-                  `Image request body:`,
-                  JSON.stringify(imageRequestBody, null, 2)
-                );
-
-                const imageHeaders = {
-                  "Content-Type": "application/json",
-                  Accept: "application/json",
-                  "X-Api-Key": this.wahaApiKey,
-                };
-
-                response = await fetch(`${this.wahaApiUrl}/api/sendImage`, {
-                  method: "POST",
-                  headers: imageHeaders,
-                  body: JSON.stringify(imageRequestBody),
-                });
-              } else {
-                // Send text message only
-                const requestBody = {
-                  chatId: formattedChatId,
-                  text: processedMessage,
-                  session: scheduleData.sessionName,
-                };
-
-                console.log(
-                  `Making API request to ${this.wahaApiUrl}/api/sendText`
-                );
-                console.log(
-                  `Request body:`,
-                  JSON.stringify(requestBody, null, 2)
-                );
-
-                response = await fetch(`${this.wahaApiUrl}/api/sendText`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                    "X-Api-Key": this.wahaApiKey,
-                  },
-                  body: JSON.stringify(requestBody),
-                });
-              }
-
-              console.log(`Session name: ${scheduleData.sessionName}`);
-
-              console.log(`Response status: ${response.status}`);
-
-              let responseData;
-
-              try {
-                responseData = await response.json();
-                console.log(
-                  `Response data:`,
-                  JSON.stringify(responseData, null, 2)
-                );
-              } catch (parseError) {
-                console.error(`Failed to parse response JSON:`, parseError);
-                const responseText = await response.text();
-                console.log(`Raw response text:`, responseText);
-                throw new Error(`Invalid JSON response: ${responseText}`);
-              }
-
-              if (!response.ok) {
-                // Get more detailed error information
-                const errorMessage =
-                  responseData.error ||
-                  responseData.message ||
-                  "Failed to send message";
+            // Format phone number if needed
+            let formattedChatId;
+            if (recipient.includes("@c.us")) {
+              formattedChatId = recipient;
+            } else {
+              const phoneResult = validateAndFormatPhone(recipient);
+              if (!phoneResult.isValid) {
                 console.error(
-                  `[ERROR] API response error for ${formattedChatId}:`
+                  `Invalid phone number ${recipient}: ${phoneResult.error}`
                 );
-                console.error(`- Status: ${response.status}`);
-                console.error(`- Error message: ${errorMessage}`);
-                console.error(`- Full response:`, responseData);
-
-                // Check for specific error types
-                if (response.status === 404) {
-                  throw new Error(
-                    `Session not found: ${scheduleData.sessionName}`
-                  );
-                } else if (response.status === 400) {
-                  throw new Error(`Bad request: ${errorMessage}`);
-                } else if (response.status === 401 || response.status === 403) {
-                  throw new Error(`Authentication error: ${errorMessage}`);
-                } else {
-                  throw new Error(errorMessage);
-                }
+                throw new Error(`Invalid phone number: ${phoneResult.error}`);
               }
-
-              console.log(`✅ Message sent successfully to ${formattedChatId}`);
-              return {
-                recipient: formattedChatId,
-                success: true,
-                messageId: responseData.id || "unknown",
-              };
-            } catch (error) {
-              console.error(`❌ Failed to send to ${recipient}:`);
-              console.error(`- Error type: ${error.constructor.name}`);
-              console.error(`- Error message: ${error.message}`);
-              console.error(`- Error stack:`, error.stack);
-
-              return {
-                recipient,
-                success: false,
-                error: error.message || "Failed to send message",
-              };
+              formattedChatId = phoneResult.formatted;
             }
-          })
-        );
+
+            console.log(`Formatted chat ID: ${formattedChatId}`);
+
+            // Extract phone number for lookup
+            const contactPhone = formattedChatId.split("@")[0];
+            const normalizedPhone = phoneKey(contactPhone);
+
+            // Look up affiliate info by phone number
+            const affiliateInfo = affiliateMap.get(normalizedPhone);
+
+            // Create contact object with real name if found, or fallback
+            const contactData = affiliateInfo
+              ? {
+                  name: affiliateInfo.name || "Affiliate",
+                  phone: contactPhone,
+                  platform: affiliateInfo.platform,
+                }
+              : {
+                  name: "Affiliate",
+                  phone: contactPhone,
+                };
+
+            console.log(`Contact data for ${contactPhone}:`, contactData);
+
+            // Process the template with both dynamic and static parameters
+            const processedMessage = processAllParameters(
+              template.content,
+              contactData,
+              scheduleData.paramValues
+            );
+
+            console.log(
+              `Message preview: ${processedMessage.substring(0, 50)}...`
+            );
+
+            const sessionName = scheduleData.sessionName;
+            const imageUrl = scheduleData.imageUrl || template.imageUrl;
+
+            let responseData;
+            if (imageUrl) {
+              console.log(
+                `Sending message with image via WAHA session '${
+                  sessionName || wahaClient.defaultSession
+                }'`
+              );
+              responseData = await wahaClient.sendImageWithValidation(
+                sessionName,
+                formattedChatId,
+                imageUrl,
+                processedMessage,
+                null,
+                null,
+                true
+              );
+            } else {
+              console.log(
+                `Sending text message via WAHA session '${
+                  sessionName || wahaClient.defaultSession
+                }'`
+              );
+              responseData = await wahaClient.sendTextWithValidation(
+                sessionName,
+                formattedChatId,
+                processedMessage,
+                true
+              );
+            }
+
+            console.log(`✅ Message sent successfully to ${formattedChatId}`);
+            return {
+              recipient: formattedChatId,
+              success: true,
+              messageId: responseData.id || "unknown",
+            };
+          } catch (error) {
+            console.error(`❌ Failed to send to ${recipient}:`);
+            console.error(`- Error type: ${error.constructor.name}`);
+            console.error(`- Error message: ${error.message}`);
+            console.error(`- Error stack:`, error.stack);
+
+            return {
+              recipient,
+              success: false,
+              error: error.message || "Failed to send message",
+            };
+          }
+        };
+
+        const sequentialResults = [];
+        for (let i = 0; i < scheduleData.recipients.length; i += 1) {
+          if (i > 0 && this.delayBetweenSendsMs > 0) {
+            console.log(
+              `Delaying ${this.delayBetweenSendsMs}ms before next recipient`
+            );
+            await sleep(this.delayBetweenSendsMs);
+          }
+
+          const result = await processRecipient(
+            scheduleData.recipients[i],
+            i
+          );
+          sequentialResults.push(result);
+        }
+
+        const results = sequentialResults;
 
         console.log(`All messages processed. Analyzing results...`);
 
         // Process results
-        const successResults = results.filter(
-          (r) => r.status === "fulfilled" && r.value.success
-        );
-        const failedResults = results.filter(
-          (r) =>
-            r.status === "rejected" ||
-            (r.status === "fulfilled" && !r.value.success)
-        );
+        const successResults = results.filter((r) => r.success);
+        const failedResults = results.filter((r) => !r.success);
 
         console.log(`Results summary:`);
         console.log(`- Total processed: ${results.length}`);
@@ -675,12 +619,8 @@ class SchedulerService {
           success: successResults.length,
           failed: failedResults.length,
           details: [
-            ...successResults.map((r) => r.value),
-            ...failedResults.map((r) =>
-              r.status === "rejected"
-                ? { success: false, error: r.reason?.message || r.reason }
-                : r.value
-            ),
+            ...successResults,
+            ...failedResults,
           ],
         };
 
